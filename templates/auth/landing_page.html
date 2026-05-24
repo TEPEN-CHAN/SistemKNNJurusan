@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Sistem KNN Jurusan</title>
+
+    <!-- Bootstrap 5 -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
+    <!-- Google Font -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet"
+    >
+
+    <!-- Bootstrap Icons -->
+    <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    >
+
+    <style>
+
+        *{
+            font-family:'Poppins', sans-serif;
+        }
+
+        body{
+
+            margin:0;
+            padding:0;
+
+            min-height:100vh;
+
+            background:
+            linear-gradient(
+                135deg,
+                #eff4ff,
+                #ffffff
+            );
+
+            overflow-x:hidden;
+        }
+
+        .hero-section{
+
+            position:relative;
+
+            padding:40px 60px 120px;
+        }
+
+        .top-navbar{
+
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+
+            margin-bottom:70px;
+        }
+
+        .logo-wrapper{
+
+            display:flex;
+            align-items:center;
+            gap:18px;
+        }
+
+        .logo-circle{
+
+            width:70px;
+            height:70px;
+
+            border-radius:50%;
+
+            background:
+            linear-gradient(
+                135deg,
+                #2563eb,
+                #1d4ed8
+            );
+
+            display:flex;
+            justify-content:center;
+            align-items:center;
+
+            color:white;
+
+            font-size:34px;
+            font-weight:700;
+
+            box-shadow:
+            0 10px 25px rgba(37,99,235,0.3);
+        }
+
+        .logo-title{
+
+            font-size:34px;
+            font-weight:800;
+
+            color:#0f172a;
+
+            margin-bottom:0;
+        }
+
+        .logo-subtitle{
+
+            color:#64748b;
+
+            margin-top:2px;
+        }
+
+        .about-btn{
+
+            border:none;
+
+            background:white;
+
+            padding:15px 30px;
+
+            border-radius:50px;
+
+            font-weight:600;
+
+            color:#2563eb;
+
+            box-shadow:
+            0 5px 20px rgba(0,0,0,0.08);
+
+            transition:0.3s;
+        }
+
+        .about-btn:hover{
+
+            transform:translateY(-3px);
+        }
+
+        .hero-content{
+
+            text-align:center;
+
+            max-width:900px;
+
+            margin:auto;
+        }
+
+        .hero-title{
+
+            font-size:80px;
+            font-weight:800;
+
+            color:#0f172a;
+
+            margin-bottom:20px;
+        }
+
+        .hero-subtitle{
+
+            font-size:28px;
+            font-weight:700;
+
+            color:#2563eb;
+
+            margin-bottom:25px;
+        }
+
+        .hero-description{
+
+            font-size:22px;
+
+            color:#475569;
+
+            line-height:1.8;
+        }
+
+        .section-title{
+
+            text-align:center;
+
+            margin-top:90px;
+            margin-bottom:50px;
+        }
+
+        .section-title h2{
+
+            font-size:48px;
+            font-weight:800;
+
+            color:#0f172a;
+        }
+
+        .section-title p{
+
+            color:#64748b;
+
+            font-size:20px;
+        }
+
+        .card-login{
+
+            background:white;
+
+            border-radius:35px;
+
+            padding:45px 35px;
+
+            height:100%;
+
+            text-align:center;
+
+            transition:0.4s;
+
+            box-shadow:
+            0 15px 40px rgba(0,0,0,0.08);
+        }
+
+        .card-login:hover{
+
+            transform:translateY(-10px);
+
+            box-shadow:
+            0 20px 50px rgba(37,99,235,0.15);
+        }
+
+        .icon-circle{
+
+            width:110px;
+            height:110px;
+
+            border-radius:50%;
+
+            margin:auto auto 25px;
+
+            display:flex;
+            justify-content:center;
+            align-items:center;
+
+            color:white;
+
+            font-size:45px;
+        }
+
+        .icon-siswa{
+
+            background:
+            linear-gradient(
+                135deg,
+                #2563eb,
+                #1d4ed8
+            );
+        }
+
+        .icon-guru{
+
+            background:
+            linear-gradient(
+                135deg,
+                #10b981,
+                #059669
+            );
+        }
+
+        .card-title{
+
+            font-size:38px;
+            font-weight:700;
+
+            margin-bottom:20px;
+        }
+
+        .title-siswa{
+            color:#2563eb;
+        }
+
+        .title-guru{
+            color:#10b981;
+        }
+
+        .card-text{
+
+            color:#64748b;
+
+            font-size:19px;
+
+            line-height:1.8;
+
+            min-height:120px;
+        }
+
+        .btn-login-custom{
+
+            width:100%;
+
+            height:65px;
+
+            border:none;
+
+            border-radius:18px;
+
+            color:white;
+
+            font-size:22px;
+            font-weight:700;
+
+            transition:0.3s;
+        }
+
+        .btn-siswa{
+
+            background:
+            linear-gradient(
+                135deg,
+                #2563eb,
+                #1d4ed8
+            );
+        }
+
+        .btn-guru{
+
+            background:
+            linear-gradient(
+                135deg,
+                #10b981,
+                #059669
+            );
+        }
+
+        .btn-login-custom:hover{
+
+            transform:translateY(-3px);
+
+            opacity:0.95;
+        }
+
+        .footer{
+
+            margin-top:100px;
+
+            background:
+            linear-gradient(
+                135deg,
+                #1e3a8a,
+                #1d4ed8
+            );
+
+            color:white;
+
+            padding:35px 60px;
+
+            border-top-left-radius:40px;
+            border-top-right-radius:40px;
+        }
+
+        .footer-content{
+
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+
+            flex-wrap:wrap;
+
+            gap:20px;
+        }
+
+        .footer-title{
+
+            font-size:24px;
+            font-weight:700;
+        }
+
+        .footer-desc{
+
+            color:#dbeafe;
+        }
+
+        .shape1{
+
+            position:absolute;
+
+            top:-100px;
+            left:-100px;
+
+            width:300px;
+            height:300px;
+
+            border-radius:50%;
+
+            background:
+            rgba(37,99,235,0.08);
+        }
+
+        .shape2{
+
+            position:absolute;
+
+            bottom:120px;
+            right:-100px;
+
+            width:350px;
+            height:350px;
+
+            border-radius:50%;
+
+            background:
+            rgba(37,99,235,0.06);
+        }
+
+        @media(max-width:992px){
+
+            .hero-title{
+                font-size:52px;
+            }
+
+            .hero-subtitle{
+                font-size:24px;
+            }
+
+            .hero-description{
+                font-size:18px;
+            }
+
+            .top-navbar{
+                flex-direction:column;
+                gap:20px;
+            }
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <div class="hero-section">
+
+        <div class="shape1"></div>
+        <div class="shape2"></div>
+
+        <!-- NAVBAR -->
+        <div class="top-navbar">
+
+            <div class="logo-wrapper">
+
+                <div class="logo-circle">
+                    K
+                </div>
+
+                <div>
+
+                    <h1 class="logo-title">
+                        Sistem KNN Jurusan
+                    </h1>
+
+                    <div class="logo-subtitle">
+                        Rekomendasi Cerdas Masa Depan Siswa
+                    </div>
+
+                </div>
+
+            </div>
+
+            <button class="about-btn">
+
+                <i class="bi bi-info-circle"></i>
+                Tentang Sistem
+
+            </button>
+
+        </div>
+
+        <!-- HERO -->
+        <div class="hero-content">
+
+            <h1 class="hero-title">
+                Selamat Datang
+            </h1>
+
+            <div class="hero-subtitle">
+                Sistem Rekomendasi Jurusan Berbasis KNN
+            </div>
+
+            <p class="hero-description">
+
+                Sistem ini membantu siswa menentukan
+                jurusan terbaik berdasarkan kemampuan
+                akademik dan minat RIASEC menggunakan
+                metode K-Nearest Neighbor.
+
+            </p>
+
+        </div>
+
+        <!-- PILIH LOGIN -->
+        <div class="section-title">
+
+            <h2>
+                Pilih Akses Login
+            </h2>
+
+            <p>
+                Silakan masuk sesuai role pada sistem
+            </p>
+
+        </div>
+
+        <!-- CARD LOGIN -->
+        <div class="container">
+
+            <div class="row g-5 justify-content-center">
+
+                <!-- LOGIN SISWA -->
+                <div class="col-lg-5">
+
+                    <div class="card-login">
+
+                        <div class="icon-circle icon-siswa">
+
+                            <i class="bi bi-mortarboard"></i>
+
+                        </div>
+
+                        <h3 class="card-title title-siswa">
+                            Login Siswa
+                        </h3>
+
+                        <p class="card-text">
+
+                            Masuk sebagai siswa untuk
+                            melihat hasil rekomendasi
+                            jurusan terbaik sesuai
+                            kemampuan dan minat Anda.
+
+                        </p>
+
+                        <a
+                            href="{{ url_for('login_siswa') }}"
+                            class="btn btn-login-custom btn-siswa"
+                        >
+
+                            Login Siswa
+                            <i class="bi bi-arrow-right"></i>
+
+                        </a>
+
+                    </div>
+
+                </div>
+
+                <!-- LOGIN GURU -->
+                <div class="col-lg-5">
+
+                    <div class="card-login">
+
+                        <div class="icon-circle icon-guru">
+
+                            <i class="bi bi-person-workspace"></i>
+
+                        </div>
+
+                        <h3 class="card-title title-guru">
+                            Login Guru BK
+                        </h3>
+
+                        <p class="card-text">
+
+                            Masuk sebagai Guru BK untuk
+                            mengelola data siswa,
+                            melakukan proses rekomendasi,
+                            dan monitoring hasil.
+
+                        </p>
+
+                        <a
+                            href="{{ url_for('login_guru') }}"
+                            class="btn btn-login-custom btn-guru"
+                        >
+
+                            Login Guru BK
+                            <i class="bi bi-arrow-right"></i>
+
+                        </a>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+
+        <div class="footer-content">
+
+            <div>
+
+                <div class="footer-title">
+                    Aman • Akurat • Modern
+                </div>
+
+                <div class="footer-desc">
+
+                    Sistem pendukung keputusan
+                    rekomendasi jurusan berbasis KNN.
+
+                </div>
+
+            </div>
+
+            <div>
+
+                © 2026 Sistem KNN Jurusan
+
+            </div>
+
+        </div>
+
+    </div>
+
+</body>
+</html>

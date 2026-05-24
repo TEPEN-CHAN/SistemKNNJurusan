@@ -1,0 +1,45 @@
+{% extends 'layout/base.html' %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+    <div class="card shadow">
+
+        <div class="card-header bg-primary text-white">
+            <h4>Upload Excel Nilai Siswa</h4>
+        </div>
+
+        <div class="card-body">
+
+            <form method="POST" enctype="multipart/form-data">
+
+                <div class="mb-3">
+
+                    <label class="form-label">
+                        Upload File Excel
+                    </label>
+
+                    <input
+                        type="file"
+                        name="file_excel"
+                        class="form-control"
+                        accept=".xlsx,.xls"
+                        required
+                    >
+
+                </div>
+
+                <button class="btn btn-success">
+                    Upload Data
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

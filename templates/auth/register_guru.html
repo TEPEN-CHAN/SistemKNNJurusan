@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Register Guru BK</title>
+
+    <!-- Bootstrap 5 -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
+    <!-- Google Font -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <style>
+
+        *{
+            font-family:'Poppins', sans-serif;
+        }
+
+        body{
+
+            margin:0;
+            padding:0;
+
+            min-height:100vh;
+
+            background:
+            linear-gradient(
+                135deg,
+                #0f172a,
+                #1e3a8a,
+                #2563eb
+            );
+
+            display:flex;
+            justify-content:center;
+            align-items:center;
+        }
+
+        .register-card{
+
+            width:100%;
+            max-width:500px;
+
+            background:white;
+
+            padding:40px;
+
+            border-radius:25px;
+
+            box-shadow:
+            0 15px 40px rgba(0,0,0,0.2);
+
+            animation:fadeIn 0.5s ease;
+        }
+
+        .logo-box{
+
+            width:90px;
+            height:90px;
+
+            margin:auto;
+
+            border-radius:50%;
+
+            background:
+            linear-gradient(
+                135deg,
+                #2563eb,
+                #1d4ed8
+            );
+
+            display:flex;
+            justify-content:center;
+            align-items:center;
+
+            color:white;
+
+            font-size:35px;
+            font-weight:bold;
+
+            margin-bottom:20px;
+        }
+
+        .title{
+
+            text-align:center;
+
+            font-size:28px;
+            font-weight:700;
+
+            color:#0f172a;
+
+            margin-bottom:8px;
+        }
+
+        .subtitle{
+
+            text-align:center;
+
+            color:#64748b;
+
+            font-size:14px;
+
+            margin-bottom:30px;
+        }
+
+        .form-label{
+
+            font-weight:500;
+
+            color:#334155;
+        }
+
+        .form-control{
+
+            height:52px;
+
+            border-radius:14px;
+
+            border:1px solid #cbd5e1;
+
+            padding-left:15px;
+
+            transition:0.3s;
+        }
+
+        .form-control:focus{
+
+            border-color:#2563eb;
+
+            box-shadow:
+            0 0 0 0.2rem rgba(37,99,235,0.2);
+        }
+
+        .btn-register{
+
+            width:100%;
+            height:52px;
+
+            border:none;
+
+            border-radius:14px;
+
+            background:
+            linear-gradient(
+                135deg,
+                #2563eb,
+                #1d4ed8
+            );
+
+            color:white;
+
+            font-weight:600;
+
+            transition:0.3s;
+        }
+
+        .btn-register:hover{
+
+            transform:translateY(-2px);
+
+            box-shadow:
+            0 10px 20px rgba(37,99,235,0.3);
+        }
+
+        .bottom-text{
+
+            text-align:center;
+
+            margin-top:20px;
+
+            font-size:14px;
+
+            color:#64748b;
+        }
+
+        .bottom-text a{
+
+            text-decoration:none;
+
+            color:#2563eb;
+
+            font-weight:600;
+        }
+
+        @keyframes fadeIn{
+
+            from{
+                opacity:0;
+                transform:translateY(20px);
+            }
+
+            to{
+                opacity:1;
+                transform:translateY(0);
+            }
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <div class="register-card">
+
+        <div class="logo-box">
+            G
+        </div>
+
+        <h2 class="title">
+            Register Guru BK
+        </h2>
+
+        <p class="subtitle">
+            Buat akun Guru BK untuk mengelola data siswa
+            dan proses rekomendasi jurusan.
+        </p>
+
+        <!-- ALERT ERROR -->
+        {% if error %}
+
+        <div
+            class="alert alert-danger alert-dismissible fade show"
+            role="alert"
+        >
+
+            {{ error }}
+
+            <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="alert"
+            ></button>
+
+        </div>
+
+        {% endif %}
+
+        <!-- FORM REGISTER -->
+        <form
+            method="POST"
+            action="{{ url_for('register_guru') }}"
+        >
+
+            <!-- NIP -->
+            <div class="mb-3">
+
+                <label class="form-label">
+                    NIP
+                </label>
+
+                <input
+                    type="text"
+                    name="nip"
+                    class="form-control"
+                    placeholder="Masukkan NIP Guru BK"
+                    required
+                >
+
+            </div>
+
+            <!-- NAMA -->
+            <div class="mb-3">
+
+                <label class="form-label">
+                    Nama Guru
+                </label>
+
+                <input
+                    type="text"
+                    name="nama"
+                    class="form-control"
+                    placeholder="Masukkan nama lengkap"
+                    required
+                >
+
+            </div>
+
+            <!-- USERNAME -->
+            <div class="mb-3">
+
+                <label class="form-label">
+                    Username
+                </label>
+
+                <input
+                    type="text"
+                    name="username"
+                    class="form-control"
+                    placeholder="Masukkan username"
+                    required
+                >
+
+            </div>
+
+            <!-- PASSWORD -->
+            <div class="mb-4">
+
+                <label class="form-label">
+                    Password
+                </label>
+
+                <input
+                    type="password"
+                    name="password"
+                    class="form-control"
+                    placeholder="Masukkan password"
+                    required
+                >
+
+            </div>
+
+            <!-- BUTTON -->
+            <button
+                type="submit"
+                class="btn btn-register"
+            >
+                Register Guru BK
+            </button>
+
+        </form>
+
+        <!-- LOGIN -->
+        <div class="bottom-text">
+
+            Sudah punya akun?
+
+            <a href="{{ url_for('login_page') }}">
+                Login di sini
+            </a>
+
+        </div>
+
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
+    </script>
+
+</body>
+</html>

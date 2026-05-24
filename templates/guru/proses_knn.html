@@ -1,0 +1,209 @@
+{% extends 'layout/base.html' %}
+
+{% block content %}
+
+<style>
+
+    .main-content{
+        padding: 40px;
+    }
+
+    .top-card{
+        background: linear-gradient(
+            90deg,
+            #2563eb,
+            #3b82f6
+        );
+        border-radius: 25px;
+        padding: 40px;
+        color: white;
+        margin-bottom: 35px;
+    }
+
+    .top-card h1{
+        font-size: 42px;
+        font-weight: 700;
+    }
+
+    .top-card p{
+        font-size: 18px;
+        opacity: .9;
+        margin-top: 10px;
+    }
+
+    .process-card{
+        background: white;
+        border-radius: 25px;
+        padding: 40px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    }
+
+    .process-icon{
+        width: 100px;
+        height: 100px;
+        border-radius: 25px;
+        background: #dbeafe;
+        color: #2563eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 50px;
+        margin: auto;
+        margin-bottom: 25px;
+    }
+
+    .process-title{
+        text-align: center;
+        font-size: 30px;
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+
+    .process-subtitle{
+        text-align: center;
+        color: #6b7280;
+        margin-bottom: 35px;
+    }
+
+    .info-box{
+        background: #f9fafb;
+        border-radius: 18px;
+        padding: 25px;
+        margin-bottom: 30px;
+    }
+
+    .info-box h5{
+        font-weight: 700;
+        margin-bottom: 15px;
+    }
+
+    .info-box ul{
+        padding-left: 20px;
+    }
+
+    .info-box li{
+        margin-bottom: 10px;
+    }
+
+    .btn-process{
+        background: linear-gradient(
+            90deg,
+            #2563eb,
+            #3b82f6
+        );
+        border: none;
+        padding: 16px;
+        border-radius: 15px;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .btn-process:hover{
+        opacity: .9;
+    }
+
+    .alert-custom{
+        border-radius: 18px;
+        padding: 18px;
+    }
+
+</style>
+
+<!-- =========================
+     MAIN CONTENT
+========================== -->
+<div class="main-content">
+
+    <!-- HEADER -->
+    <div class="top-card">
+
+        <h1>
+            Proses Perhitungan KNN
+        </h1>
+
+        <p>
+            Jalankan proses klasifikasi K-Nearest Neighbor
+            untuk menghasilkan rekomendasi jurusan siswa.
+        </p>
+
+    </div>
+
+    <!-- PROCESS CARD -->
+    <div class="process-card">
+
+        <div class="process-icon">
+            <i class="bi bi-cpu-fill"></i>
+        </div>
+
+        <div class="process-title">
+            Jalankan Algoritma KNN
+        </div>
+
+        <div class="process-subtitle">
+            Sistem akan menghitung jarak Euclidean Distance
+            antara data siswa dan data alumni.
+        </div>
+
+        <!-- INFO -->
+        <div class="info-box">
+
+            <h5>
+                Tahapan Proses KNN
+            </h5>
+
+            <ul>
+
+                <li>
+                    Mengambil data nilai siswa
+                </li>
+
+                <li>
+                    Mengambil data alumni sebagai data latih
+                </li>
+
+                <li>
+                    Menghitung Euclidean Distance
+                </li>
+
+                <li>
+                    Mengambil tetangga terdekat (K=3)
+                </li>
+
+                <li>
+                    Menentukan hasil rekomendasi jurusan
+                </li>
+
+            </ul>
+
+        </div>
+
+        <!-- ALERT -->
+        <div class="alert alert-warning alert-custom">
+
+            <strong>Perhatian:</strong>
+
+            Pastikan data siswa dan data alumni
+            sudah diupload sebelum menjalankan
+            proses KNN.
+
+        </div>
+
+        <!-- BUTTON -->
+        <div class="mt-4">
+
+            <a href="/proses_knn"
+               class="btn btn-primary btn-process w-100">
+
+                <i class="bi bi-play-circle-fill me-2"></i>
+
+                Mulai Proses KNN
+
+            </a>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
