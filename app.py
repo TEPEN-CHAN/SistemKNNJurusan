@@ -208,6 +208,54 @@ def allowed_file(filename):
         and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
     )
 
+
+def is_serverless_environment():
+
+    return bool(
+        os.getenv('VERCEL')
+        or os.getenv('AWS_LAMBDA_FUNCTION_NAME')
+        or os.getenv('K_SERVICE')
+    )
+
+
+def simpan_file_profil(file, prefix, id_ref):
+
+    if not file or file.filename == '':
+
+        return False, None, 'Silakan pilih foto terlebih dahulu'
+
+    if not allowed_file(file.filename):
+
+        return False, None, 'Format foto harus PNG, JPG, JPEG, atau WEBP'
+
+    # Vercel/serverless tidak mendukung penyimpanan file permanen di static/uploads.
+    # Route tetap aman dan tidak error. Untuk foto permanen gunakan Cloudinary/Supabase Storage.
+    if is_serverless_environment():
+
+        return False, None, (
+            'Upload foto lokal tidak tersedia di serverless/Vercel. '
+            'Gunakan Cloudinary atau Supabase Storage agar foto tersimpan permanen.'
+        )
+
+    filename_asli = secure_filename(file.filename)
+    ekstensi = filename_asli.rsplit('.', 1)[1].lower()
+    filename_baru = f"{prefix}_{id_ref}.{ekstensi}"
+
+    os.makedirs(
+        app.config['UPLOAD_FOLDER'],
+        exist_ok=True
+    )
+
+    upload_path = os.path.join(
+        app.config['UPLOAD_FOLDER'],
+        filename_baru
+    )
+
+    file.save(upload_path)
+
+    return True, filename_baru, 'Foto profil berhasil diperbarui'
+
+
 # =========================================================
 # DECORATOR LOGIN
 # =========================================================
@@ -738,7 +786,7 @@ def admin_input_alumni():
 
                 cur.execute("""
 
-                    INSERT INTO alumni(
+                    REPLACE INTO alumni(
 
                         id_alumni,
                         nama_alumni,
@@ -785,7 +833,7 @@ def admin_input_alumni():
 
             flash('Data alumni berhasil diupload', 'success')
 
-            return redirect('/input_alumni')
+            return redirect('/admin/input_alumni')
 
         except Exception as e:
 
@@ -868,7 +916,7 @@ def download_alumni():
         columns=kolom
     )
 
-    file_excel = 'data_alumni.xlsx'
+    file_excel = os.path.join('/tmp', 'data_alumni.xlsx') if os.getenv('VERCEL') else 'data_alumni.xlsx'
 
     df.to_excel(
         file_excel,
@@ -881,6 +929,104 @@ def download_alumni():
         file_excel,
         as_attachment=True
     )
+
+# =========================================================
+# ADMIN - HAPUS SATU DATA ALUMNI
+# =========================================================
+@app.route('/admin/hapus_alumni/<int:id_alumni>')
+@login_required(roles=[1])
+def admin_hapus_alumni(id_alumni):
+
+    cur = mysql.connection.cursor()
+
+    try:
+
+        cur.execute("""
+            DELETE FROM alumni
+            WHERE id_alumni=%s
+        """, [id_alumni])
+
+        mysql.connection.commit()
+
+        simpan_log(f'Menghapus data alumni dengan ID {id_alumni}')
+
+        flash('Data alumni berhasil dihapus', 'success')
+
+    except Exception as e:
+
+        mysql.connection.rollback()
+
+        flash(f'Gagal menghapus data alumni: {str(e)}', 'danger')
+
+    finally:
+
+        cur.close()
+
+    return redirect('/admin/input_alumni')
+
+
+# =========================================================
+# ADMIN - HAPUS DATA ALUMNI MASSAL
+# =========================================================
+@app.route('/admin/hapus_alumni_massal', methods=['POST'])
+@login_required(roles=[1])
+def admin_hapus_alumni_massal():
+
+    data = request.get_json(silent=True) or {}
+    ids = data.get('ids', [])
+
+    if not ids:
+
+        return jsonify({
+            'status': 'error',
+            'message': 'Tidak ada data alumni yang dipilih'
+        }), 400
+
+    try:
+
+        ids = [int(id_alumni) for id_alumni in ids]
+
+    except Exception:
+
+        return jsonify({
+            'status': 'error',
+            'message': 'Format ID alumni tidak valid'
+        }), 400
+
+    cur = mysql.connection.cursor()
+
+    try:
+
+        placeholders = ','.join(['%s'] * len(ids))
+
+        cur.execute(f"""
+            DELETE FROM alumni
+            WHERE id_alumni IN ({placeholders})
+        """, ids)
+
+        mysql.connection.commit()
+
+        simpan_log(f'Menghapus data alumni massal sebanyak {len(ids)} data')
+
+        return jsonify({
+            'status': 'success',
+            'message': 'Data alumni terpilih berhasil dihapus'
+        })
+
+    except Exception as e:
+
+        mysql.connection.rollback()
+
+        return jsonify({
+            'status': 'error',
+            'message': f'Gagal menghapus data alumni: {str(e)}'
+        }), 500
+
+    finally:
+
+        cur.close()
+
+
 # =========================================================
 # INPUT NILAI SISWA
 # =========================================================
@@ -931,14 +1077,18 @@ def input_nilai():
 
         if not hasil_chatbot:
 
-            cur.close()
+            minat_bakat = 'BELUM MENGISI'
+            kelompok_mapel = 'BELUM MENGISI'
 
-            flash('Siswa belum mengisi chatbot RIASEC', 'danger')
+            flash(
+                'Siswa belum mengisi chatbot RIASEC. Nilai tetap disimpan, tetapi minat bakat diset BELUM MENGISI.',
+                'warning'
+            )
 
-            return redirect('/input_nilai')
+        else:
 
-        minat_bakat = hasil_chatbot[0]
-        kelompok_mapel = hasil_chatbot[1]
+            minat_bakat = hasil_chatbot[0]
+            kelompok_mapel = hasil_chatbot[1]
 
         # ============================================
         # KONVERSI LANJUT PT
@@ -1153,7 +1303,7 @@ def input_alumni():
 
                 cur.execute("""
 
-                    INSERT INTO alumni(
+                    REPLACE INTO alumni(
 
                         id_alumni,
                         nama_alumni,
@@ -1864,64 +2014,39 @@ def profil_siswa():
 
         file = request.files['foto_profil']
 
-        if file.filename == '':
+        berhasil_upload, filename_baru, pesan_upload = simpan_file_profil(
+            file,
+            'profil',
+            nis
+        )
 
-            flash('Silakan pilih foto terlebih dahulu', 'danger')
+        if not berhasil_upload:
 
-            cur.close()
-
-            return redirect('/profil_siswa')
-
-        if file and allowed_file(file.filename):
-
-            filename_asli = secure_filename(file.filename)
-
-            ekstensi = filename_asli.rsplit('.', 1)[1].lower()
-
-            filename_baru = f"profil_{nis}.{ekstensi}"
-
-            upload_path = os.path.join(
-                app.config['UPLOAD_FOLDER'],
-                filename_baru
-            )
-
-            # Pastikan folder upload tersedia
-            os.makedirs(
-                app.config['UPLOAD_FOLDER'],
-                exist_ok=True
-            )
-
-            # Simpan file
-            file.save(upload_path)
-
-            # Simpan nama file ke database
-            cur.execute("""
-                UPDATE siswa
-                SET foto_profil=%s
-                WHERE nis=%s
-            """, (
-                filename_baru,
-                nis
-            ))
-
-            mysql.connection.commit()
-            session['foto_profil'] = filename_baru
-
-            simpan_log('Memperbarui foto profil siswa')
-
-            cur.close()
-
-            flash('Foto profil berhasil diperbarui', 'success')
-
-            return redirect('/profil_siswa')
-
-        else:
-
-            flash('Format foto harus PNG, JPG, JPEG, atau WEBP', 'danger')
+            flash(pesan_upload, 'warning')
 
             cur.close()
 
             return redirect('/profil_siswa')
+
+        cur.execute("""
+            UPDATE siswa
+            SET foto_profil=%s
+            WHERE nis=%s
+        """, (
+            filename_baru,
+            nis
+        ))
+
+        mysql.connection.commit()
+        session['foto_profil'] = filename_baru
+
+        simpan_log('Memperbarui foto profil siswa')
+
+        cur.close()
+
+        flash(pesan_upload, 'success')
+
+        return redirect('/profil_siswa')
 
     # =====================================================
     # AMBIL DATA SISWA
@@ -1956,6 +2081,7 @@ def profil_siswa():
 # MANAJEMEN AKUN
 # =========================================================
 @app.route('/manajemen_akun', methods=['GET', 'POST'])
+@app.route('/admin/manajemen_akun', methods=['GET', 'POST'])
 @login_required(roles=[1])
 def manajemen_akun():
 
@@ -2246,6 +2372,7 @@ def manajemen_akun():
 # HAPUS AKUN
 # =========================================================
 @app.route('/hapus_akun/<int:id_akun>')
+@app.route('/admin/hapus_akun/<int:id_akun>')
 @login_required(roles=[1])
 def hapus_akun(id_akun):
 
@@ -2421,14 +2548,18 @@ def admin_nilai_siswa():
 
         if not hasil_chatbot:
 
-            flash('Siswa belum mengisi chatbot RIASEC', 'danger')
+            minat_bakat = 'BELUM MENGISI'
+            kelompok_mapel = 'BELUM MENGISI'
 
-            cur.close()
+            flash(
+                'Siswa belum mengisi chatbot RIASEC. Nilai tetap disimpan, tetapi minat bakat diset BELUM MENGISI.',
+                'warning'
+            )
 
-            return redirect('/admin/nilai_siswa')
+        else:
 
-        minat_bakat = hasil_chatbot[0]
-        kelompok_mapel = hasil_chatbot[1]
+            minat_bakat = hasil_chatbot[0]
+            kelompok_mapel = hasil_chatbot[1]
 
         # =================================================
         # KONVERSI LANJUT PT
@@ -3693,60 +3824,38 @@ def profil_guru():
 
         file = request.files['foto_profil']
 
-        if file.filename == '':
+        berhasil_upload, filename_baru, pesan_upload = simpan_file_profil(
+            file,
+            'guru',
+            id_guru
+        )
 
-            flash('Silakan pilih foto terlebih dahulu', 'danger')
+        if not berhasil_upload:
 
-            cur.close()
-
-            return redirect('/profil_guru')
-
-        if file and allowed_file(file.filename):
-
-            filename_asli = secure_filename(file.filename)
-
-            ekstensi = filename_asli.rsplit('.', 1)[1].lower()
-
-            filename_baru = f"guru_{id_guru}.{ekstensi}"
-
-            upload_path = os.path.join(
-                app.config['UPLOAD_FOLDER'],
-                filename_baru
-            )
-
-            os.makedirs(
-                app.config['UPLOAD_FOLDER'],
-                exist_ok=True
-            )
-
-            file.save(upload_path)
-
-            cur.execute("""
-                UPDATE guru_bk
-                SET foto_profil=%s
-                WHERE id_guru=%s
-            """, (
-                filename_baru,
-                id_guru
-            ))
-
-            mysql.connection.commit()
-
-            session['foto_profil'] = filename_baru
-
-            cur.close()
-
-            flash('Foto profil berhasil diperbarui', 'success')
-
-            return redirect('/profil_guru')
-
-        else:
-
-            flash('Format foto harus PNG, JPG, JPEG, atau WEBP', 'danger')
+            flash(pesan_upload, 'warning')
 
             cur.close()
 
             return redirect('/profil_guru')
+
+        cur.execute("""
+            UPDATE guru_bk
+            SET foto_profil=%s
+            WHERE id_guru=%s
+        """, (
+            filename_baru,
+            id_guru
+        ))
+
+        mysql.connection.commit()
+
+        session['foto_profil'] = filename_baru
+
+        cur.close()
+
+        flash(pesan_upload, 'success')
+
+        return redirect('/profil_guru')
 
     # =====================================================
     # AMBIL DATA GURU
