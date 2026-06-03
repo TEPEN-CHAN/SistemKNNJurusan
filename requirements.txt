@@ -1,9 +1,7 @@
-# Add your chosen NLP / agent dependencies here
-# Example: openai==1.0.0
 Flask
-flask-mysqldb
-mysqlclient
+PyMySQL
 Werkzeug
 pandas
 openpyxl
 numpy
+gunicorn

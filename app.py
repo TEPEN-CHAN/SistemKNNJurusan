@@ -1,9 +1,8 @@
-from flask import Flask, render_template, request, redirect, session, jsonify
-from flask_mysqldb import MySQL
+from flask import Flask, render_template, request, redirect, session, jsonify, g, send_file, flash
+import pymysql
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from datetime import datetime
-from flask import send_file, flash
 from knn import knn_predict
 from chatbot import chatbot_response
 import os
@@ -26,7 +25,47 @@ app.config['MYSQL_DB'] = config.MYSQL_DB
 app.config['MYSQL_PORT'] = config.MYSQL_PORT
 app.secret_key = config.SECRET_KEY
 
-mysql = MySQL(app)
+# =========================================================
+# KONEKSI DATABASE MYSQL DENGAN PYMYSQL
+# Cocok untuk Vercel / Serverless
+# =========================================================
+class MySQLConnection:
+
+    def __init__(self, app):
+
+        self.app = app
+
+        app.teardown_appcontext(self.close_connection)
+
+    @property
+    def connection(self):
+
+        if 'mysql_connection' not in g:
+
+            g.mysql_connection = pymysql.connect(
+                host=self.app.config['MYSQL_HOST'],
+                user=self.app.config['MYSQL_USER'],
+                password=self.app.config['MYSQL_PASSWORD'],
+                database=self.app.config['MYSQL_DB'],
+                port=int(self.app.config.get('MYSQL_PORT', 3306)),
+                charset='utf8mb4',
+                cursorclass=pymysql.cursors.Cursor,
+                autocommit=False,
+                ssl={}
+            )
+
+        return g.mysql_connection
+
+    def close_connection(self, exception=None):
+
+        db = g.pop('mysql_connection', None)
+
+        if db is not None:
+
+            db.close()
+
+
+mysql = MySQLConnection(app)
 # =========================================================
 # HITUNG METRIK EVALUASI KNN
 # Accuracy, Precision, Recall, F1-Score
