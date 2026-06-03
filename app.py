@@ -6,6 +6,13 @@ from datetime import datetime
 from knn import knn_predict
 from chatbot import chatbot_response
 import os
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
+
 from werkzeug.utils import secure_filename
 import pandas as pd
 import config
@@ -18,12 +25,12 @@ app = Flask(__name__)
 # =========================================================
 # CONFIG DATABASE
 # =========================================================
-app.config['MYSQL_HOST'] = config.MYSQL_HOST
-app.config['MYSQL_USER'] = config.MYSQL_USER
-app.config['MYSQL_PASSWORD'] = config.MYSQL_PASSWORD
-app.config['MYSQL_DB'] = config.MYSQL_DB
-app.config['MYSQL_PORT'] = config.MYSQL_PORT
-app.secret_key = config.SECRET_KEY
+app.config['MYSQL_HOST'] = getattr(config, 'MYSQL_HOST', None) or os.getenv('MYSQL_HOST')
+app.config['MYSQL_USER'] = getattr(config, 'MYSQL_USER', None) or os.getenv('MYSQL_USER')
+app.config['MYSQL_PASSWORD'] = getattr(config, 'MYSQL_PASSWORD', None) or os.getenv('MYSQL_PASSWORD')
+app.config['MYSQL_DB'] = getattr(config, 'MYSQL_DB', None) or os.getenv('MYSQL_DB')
+app.config['MYSQL_PORT'] = int(getattr(config, 'MYSQL_PORT', None) or os.getenv('MYSQL_PORT', 3306))
+app.secret_key = getattr(config, 'SECRET_KEY', None) or os.getenv('SECRET_KEY', 'default-secret-key')
 
 # =========================================================
 # KONEKSI DATABASE MYSQL DENGAN PYMYSQL
@@ -41,6 +48,17 @@ class MySQLConnection:
     def connection(self):
 
         if 'mysql_connection' not in g:
+
+            required_config = [
+                self.app.config.get('MYSQL_HOST'),
+                self.app.config.get('MYSQL_USER'),
+                self.app.config.get('MYSQL_DB')
+            ]
+
+            if not all(required_config):
+                raise RuntimeError(
+                    'Konfigurasi database belum lengkap. Pastikan MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DB, dan MYSQL_PORT sudah diisi.'
+                )
 
             g.mysql_connection = pymysql.connect(
                 host=self.app.config['MYSQL_HOST'],
@@ -254,6 +272,24 @@ def simpan_file_profil(file, prefix, id_ref):
     file.save(upload_path)
 
     return True, filename_baru, 'Foto profil berhasil diperbarui'
+
+
+def get_temp_excel_path(filename='data_alumni.xlsx'):
+
+    if os.getenv('VERCEL') or os.getenv('AWS_LAMBDA_FUNCTION_NAME'):
+
+        return os.path.join('/tmp', filename)
+
+    return filename
+
+
+def redirect_alumni_page():
+
+    if session.get('id_role') == 2:
+
+        return redirect('/input_alumni')
+
+    return redirect_alumni_page()
 
 
 # =========================================================
@@ -754,8 +790,12 @@ def dashboard_siswa():
 # INPUT DATA ALUMNI
 # =========================================================
 @app.route('/admin/input_alumni', methods=['GET', 'POST'])
-@login_required(roles=[1])
+@login_required(roles=[1, 2])
 def admin_input_alumni():
+
+    if session.get('id_role') == 2 and request.method == 'GET':
+
+        return redirect('/input_alumni')
 
     # ==================================================
     # PROSES UPLOAD EXCEL
@@ -833,7 +873,7 @@ def admin_input_alumni():
 
             flash('Data alumni berhasil diupload', 'success')
 
-            return redirect('/admin/input_alumni')
+            return redirect_alumni_page()
 
         except Exception as e:
 
@@ -877,8 +917,9 @@ def admin_input_alumni():
         data_alumni=data_alumni
 
     )
+@app.route('/download_alumni')
 @app.route('/admin/download_alumni')
-@login_required(roles=[1])
+@login_required(roles=[1, 2])
 def download_alumni():
 
     cur = mysql.connection.cursor()
@@ -916,7 +957,7 @@ def download_alumni():
         columns=kolom
     )
 
-    file_excel = os.path.join('/tmp', 'data_alumni.xlsx') if os.getenv('VERCEL') else 'data_alumni.xlsx'
+    file_excel = get_temp_excel_path('data_alumni.xlsx')
 
     df.to_excel(
         file_excel,
@@ -933,8 +974,9 @@ def download_alumni():
 # =========================================================
 # ADMIN - HAPUS SATU DATA ALUMNI
 # =========================================================
+@app.route('/hapus_alumni/<int:id_alumni>')
 @app.route('/admin/hapus_alumni/<int:id_alumni>')
-@login_required(roles=[1])
+@login_required(roles=[1, 2])
 def admin_hapus_alumni(id_alumni):
 
     cur = mysql.connection.cursor()
@@ -968,8 +1010,9 @@ def admin_hapus_alumni(id_alumni):
 # =========================================================
 # ADMIN - HAPUS DATA ALUMNI MASSAL
 # =========================================================
+@app.route('/hapus_alumni_massal', methods=['POST'])
 @app.route('/admin/hapus_alumni_massal', methods=['POST'])
-@login_required(roles=[1])
+@login_required(roles=[1, 2])
 def admin_hapus_alumni_massal():
 
     data = request.get_json(silent=True) or {}
@@ -1616,8 +1659,8 @@ def hasil_rekomendasi():
             hasil_knn.nis,
             siswa.nama_siswa,
             siswa.kelas,
-            hasil_chatbot.minat_bakat,
-            hasil_chatbot.kelompok_mapel,
+            COALESCE(hasil_chatbot.minat_bakat, 'BELUM MENGISI') AS minat_bakat,
+            COALESCE(hasil_chatbot.kelompok_mapel, 'BELUM MENGISI') AS kelompok_mapel,
             hasil_knn.hasil_jurusan,
             hasil_knn.nilai_k,
             hasil_knn.rata_jarak,
@@ -1629,7 +1672,7 @@ def hasil_rekomendasi():
         JOIN siswa
             ON hasil_knn.nis = siswa.nis
 
-        JOIN hasil_chatbot
+        LEFT JOIN hasil_chatbot
             ON hasil_knn.nis = hasil_chatbot.nis
 
         ORDER BY hasil_knn.id_hasil DESC
@@ -2786,8 +2829,8 @@ def admin_hasil_rekomendasi():
             hasil_knn.nis,
             siswa.nama_siswa,
             siswa.kelas,
-            hasil_chatbot.minat_bakat,
-            hasil_chatbot.kelompok_mapel,
+            COALESCE(hasil_chatbot.minat_bakat, 'BELUM MENGISI') AS minat_bakat,
+            COALESCE(hasil_chatbot.kelompok_mapel, 'BELUM MENGISI') AS kelompok_mapel,
             hasil_knn.hasil_jurusan,
             hasil_knn.nilai_k,
             hasil_knn.rata_jarak,
@@ -2799,7 +2842,7 @@ def admin_hasil_rekomendasi():
         JOIN siswa
             ON hasil_knn.nis = siswa.nis
 
-        JOIN hasil_chatbot
+        LEFT JOIN hasil_chatbot
             ON hasil_knn.nis = hasil_chatbot.nis
 
         ORDER BY hasil_knn.id_hasil DESC
@@ -3497,7 +3540,7 @@ def admin_proses_knn():
         SELECT COUNT(*)
         FROM input_siswa
 
-        JOIN hasil_chatbot
+        LEFT JOIN hasil_chatbot
             ON input_siswa.nis = hasil_chatbot.nis
 
         JOIN siswa
@@ -3536,8 +3579,8 @@ def admin_proses_knn():
             input_siswa.nis,
             siswa.nama_siswa,
             siswa.kelas,
-            hasil_chatbot.minat_bakat,
-            hasil_chatbot.kelompok_mapel,
+            COALESCE(hasil_chatbot.minat_bakat, 'BELUM MENGISI') AS minat_bakat,
+            COALESCE(hasil_chatbot.kelompok_mapel, 'BELUM MENGISI') AS kelompok_mapel,
             input_siswa.nilai_pancasila,
             input_siswa.nilai_pkwu,
             input_siswa.nilai_matematika,
@@ -3549,7 +3592,7 @@ def admin_proses_knn():
         JOIN siswa
             ON input_siswa.nis = siswa.nis
 
-        JOIN hasil_chatbot
+        LEFT JOIN hasil_chatbot
             ON input_siswa.nis = hasil_chatbot.nis
 
         WHERE input_siswa.status_proses='belum'
@@ -3609,8 +3652,8 @@ def admin_proses_semua_knn():
                 input_siswa.nis,
                 siswa.nama_siswa,
                 siswa.kelas,
-                hasil_chatbot.minat_bakat,
-                hasil_chatbot.kelompok_mapel,
+                COALESCE(hasil_chatbot.minat_bakat, 'BELUM MENGISI') AS minat_bakat,
+                COALESCE(hasil_chatbot.kelompok_mapel, 'BELUM MENGISI') AS kelompok_mapel,
 
                 input_siswa.nilai_pancasila,
                 input_siswa.nilai_pkwu,
@@ -3623,7 +3666,7 @@ def admin_proses_semua_knn():
             JOIN siswa
                 ON input_siswa.nis = siswa.nis
 
-            JOIN hasil_chatbot
+            LEFT JOIN hasil_chatbot
                 ON input_siswa.nis = hasil_chatbot.nis
 
             WHERE input_siswa.status_proses='belum'

@@ -379,7 +379,6 @@
 
 <div class="page-wrapper">
 
-    <!-- HEADER -->
     <div class="page-header">
 
         <div>
@@ -400,7 +399,6 @@
 
     <div class="content-grid">
 
-        <!-- UPLOAD CARD -->
         <div class="card-custom">
 
             <div class="card-custom-header">
@@ -415,7 +413,7 @@
 
             <div class="card-custom-body">
 
-                <form action="/admin/input_alumni" method="POST" enctype="multipart/form-data">
+                <form action="/input_alumni" method="POST" enctype="multipart/form-data">
 
                     <div class="upload-area">
 
@@ -473,7 +471,6 @@
 
         </div>
 
-        <!-- TABLE CARD -->
         <div class="card-custom">
 
             <div class="card-custom-header">
@@ -492,12 +489,12 @@
 
                     <div class="action-group">
 
-                        <button class="btn-action-danger" onclick="hapusTerpilih()">
+                        <button type="button" class="btn-action-danger" onclick="hapusTerpilih()">
                             <i class="bi bi-trash-fill me-1"></i>
                             Hapus Terpilih
                         </button>
 
-                        <a href="/admin/download_alumni" class="btn-action-success">
+                        <a href="/download_alumni" class="btn-action-success">
                             <i class="bi bi-file-earmark-excel-fill me-1"></i>
                             Download Excel
                         </a>
@@ -547,41 +544,45 @@
 
                         <tbody>
 
-                            {% for a in data_alumni %}
+                            {% if data_alumni %}
 
-                                <tr>
-                                    <td>
-                                        <input type="checkbox" class="pilih-data" value="{{ a[0] }}">
-                                    </td>
+                                {% for a in data_alumni %}
 
-                                    <td>{{ a[0] }}</td>
+                                    <tr>
+                                        <td>
+                                            <input type="checkbox" class="pilih-data" value="{{ a[0] }}">
+                                        </td>
 
-                                    <td>{{ a[1] }}</td>
+                                        <td>{{ a[0] }}</td>
 
-                                    <td>{{ a[2] }}</td>
+                                        <td>{{ a[1] }}</td>
 
-                                    <td>{{ a[3] }}</td>
+                                        <td>{{ a[2] }}</td>
 
-                                    <td>{{ a[4] }}</td>
+                                        <td>{{ a[3] }}</td>
 
-                                    <td>{{ a[5] }}</td>
+                                        <td>{{ a[4] }}</td>
 
-                                    <td>{{ a[6] }}</td>
+                                        <td>{{ a[5] }}</td>
 
-                                    <td>{{ a[7] }}</td>
+                                        <td>{{ a[6] }}</td>
 
-                                    <td>{{ a[8] }}</td>
+                                        <td>{{ a[7] }}</td>
 
-                                    <td>{{ a[9] }}</td>
+                                        <td>{{ a[8] }}</td>
 
-                                    <td>
-                                        <a href="/admin/hapus_alumni/{{ a[0] }}" class="btn-delete-sm btn-hapus">
-                                            <i class="bi bi-trash-fill"></i>
-                                        </a>
-                                    </td>
-                                </tr>
+                                        <td>{{ a[9] }}</td>
 
-                            {% endfor %}
+                                        <td>
+                                            <a href="/hapus_alumni/{{ a[0] }}" class="btn-delete-sm btn-hapus">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+
+                                {% endfor %}
+
+                            {% endif %}
 
                         </tbody>
 
@@ -597,18 +598,25 @@
 
 </div>
 
-<!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
 
 <script>
+    let tableAlumni = null;
+
     $(document).ready(function(){
 
-        const table = $('#tabelAlumni').DataTable({
+        tableAlumni = $('#tabelAlumni').DataTable({
             pageLength: 10,
             autoWidth: false,
+            columnDefs: [
+                {
+                    orderable: false,
+                    targets: [0, 11]
+                }
+            ],
             language: {
                 lengthMenu: 'Tampilkan _MENU_ data',
                 info: 'Menampilkan _START_ sampai _END_ dari _TOTAL_ data',
@@ -623,11 +631,16 @@
         });
 
         $('#searchAlumni').on('keyup change', function(){
-            table.search(this.value).draw();
+            tableAlumni.search(this.value).draw();
         });
 
         $('#checkAll').on('click', function(){
-            $('.pilih-data').prop('checked', this.checked);
+            const checked = this.checked;
+            $('.pilih-data').prop('checked', checked);
+        });
+
+        $('#tabelAlumni').on('draw.dt', function(){
+            $('#checkAll').prop('checked', false);
         });
 
         $(document).on('click', '.btn-hapus', function(e){
@@ -653,9 +666,12 @@
     });
 
     function hapusTerpilih(){
-        const ids = $('.pilih-data:checked').map(function(){
-            return $(this).val();
-        }).get();
+
+        const ids = [];
+
+        $('.pilih-data:checked').each(function(){
+            ids.push($(this).val());
+        });
 
         if(ids.length === 0){
             Swal.fire('Peringatan', 'Pilih data terlebih dahulu.', 'warning');
@@ -671,11 +687,12 @@
             cancelButtonText: 'Batal',
             confirmButtonColor: '#dc2626'
         }).then((result) => {
+
             if(!result.isConfirmed){
                 return;
             }
 
-            fetch('/admin/hapus_alumni_massal', {
+            fetch('/hapus_alumni_massal', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -686,9 +703,19 @@
             })
             .then((res) => res.json())
             .then((data) => {
-                Swal.fire('Berhasil', data.message, 'success')
-                    .then(() => location.reload());
+
+                if(data.status === 'success'){
+                    Swal.fire('Berhasil', data.message, 'success')
+                        .then(() => location.reload());
+                }else{
+                    Swal.fire('Gagal', data.message, 'error');
+                }
+
+            })
+            .catch(() => {
+                Swal.fire('Gagal', 'Terjadi kesalahan saat menghapus data.', 'error');
             });
+
         });
     }
 </script>
