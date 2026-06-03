@@ -1,0 +1,280 @@
+{% extends 'layout/base.html' %}
+
+{% block content %}
+
+<!-- ===================== STYLES ===================== -->
+<style>
+  .main-content       { padding: 40px; }
+
+  /* ── Top Card ── */
+  .top-card           { background: linear-gradient(90deg, #2563eb, #3b82f6); border-radius: 25px; padding: 40px; color: white; margin-bottom: 35px; }
+  .top-card h1        { font-size: 40px; font-weight: 700; }
+  .top-card p         { font-size: 17px; opacity: .9; margin-top: 10px; }
+
+  /* ── Upload Card ── */
+  .upload-card        { background: white; border-radius: 25px; padding: 35px; box-shadow: 0 5px 15px rgba(0,0,0,.05); }
+  .upload-icon        { width: 90px; height: 90px; border-radius: 25px; background: #dbeafe; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 45px; margin: auto auto 25px; }
+  .upload-title       { text-align: center; font-size: 28px; font-weight: 700; margin-bottom: 10px; }
+  .upload-subtitle    { text-align: center; color: #6b7280; margin-bottom: 35px; }
+
+  /* ── Form ── */
+  .form-label         { font-weight: 600; margin-bottom: 10px; }
+  .form-control       { border-radius: 14px; padding: 14px; }
+  .btn-upload         { background: linear-gradient(90deg, #2563eb, #3b82f6); border: none; padding: 14px; border-radius: 14px; font-weight: 600; font-size: 17px; }
+  .btn-upload:hover   { opacity: .9; }
+
+  /* ── Format Card ── */
+  .format-card        { background: #f9fafb; border-radius: 20px; padding: 25px; margin-top: 35px; }
+  .format-card h5     { font-weight: 700; margin-bottom: 20px; }
+  .badge-format       { background: #2563eb; font-size: 14px; padding: 8px 12px; border-radius: 10px; }
+
+  /* ── Table Card ── */
+  .table-card         { background: white; border-radius: 25px; padding: 35px; margin-top: 35px; box-shadow: 0 5px 15px rgba(0,0,0,.05); }
+  .table-card h3      { font-weight: 700; margin-bottom: 25px; }
+  #tabelAlumni thead  { background: #eff6ff; }
+
+  /* ── Sticky Search Bar ── */
+  .search-sticky-wrapper {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: white;
+    padding: 12px 0;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 15px;
+  }
+
+  .search-sticky-wrapper label {
+    font-weight: 600;
+    margin-right: 8px;
+    white-space: nowrap;
+    color: #374151;
+  }
+
+  .search-sticky-wrapper input[type="search"] {
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding: 8px 14px;
+    outline: none;
+    font-size: 14px;
+    min-width: 220px;
+    transition: border-color .2s;
+  }
+
+  .search-sticky-wrapper input[type="search"]:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+  }
+
+  /* Sembunyikan search bawaan DataTables */
+  .dataTables_filter { display: none !important; }
+</style>
+
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+
+<!-- ===================== KONTEN ===================== -->
+<div class="main-content">
+
+  <!-- Header -->
+  <div class="top-card">
+    <h1>Upload Data Alumni</h1>
+    <p>Upload data alumni sebagai data latih untuk proses klasifikasi K-Nearest Neighbor.</p>
+  </div>
+
+  <!-- Card Upload -->
+  <div class="upload-card">
+
+    <div class="upload-icon">
+      <i class="bi bi-file-earmark-excel-fill"></i>
+    </div>
+
+    <div class="upload-title">Upload File Excel Alumni</div>
+    <div class="upload-subtitle">Pastikan file menggunakan format .xlsx dan sesuai struktur dataset sistem.</div>
+
+    <form action="/admin/input_alumni" method="POST" enctype="multipart/form-data">
+      <div class="mb-4">
+        <label class="form-label">Pilih File Excel</label>
+        <input type="file" name="file_excel" class="form-control" accept=".xlsx" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-upload w-100">
+        <i class="bi bi-cloud-upload-fill me-2"></i>Upload Data Alumni
+      </button>
+    </form>
+
+    <!-- Format Kolom -->
+    <div class="format-card">
+      <h5>Format Kolom Excel</h5>
+      <span class="badge badge-format text-white">Wajib Sesuai</span>
+      <ul class="mt-3">
+        <li>id_alumni</li>
+        <li>nama_alumni</li>
+        <li>nilai_pancasila</li>
+        <li>nilai_pkwu</li>
+        <li>nilai_matematika</li>
+        <li>nilai_bahasaindo</li>
+        <li>nilai_bahasaingg</li>
+        <li>minat_bakat</li>
+        <li>lanjut_pt</li>
+        <li>hasil_jurusan</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- Tabel Alumni -->
+  <div class="table-card">
+
+    <h3>Data Alumni</h3>
+
+    <!-- Tombol Aksi -->
+    <div class="mb-3 d-flex gap-2">
+      <button class="btn btn-danger" onclick="hapusTerpilih()">
+        <i class="bi bi-trash-fill me-1"></i>Hapus Terpilih
+      </button>
+      <a href="/admin/download_alumni" class="btn btn-success">
+        <i class="bi bi-file-earmark-excel-fill me-1"></i>Download Excel
+      </a>
+    </div>
+
+    <!-- Search Bar Sticky (selalu di kanan saat scroll) -->
+    <div class="search-sticky-wrapper">
+      <label for="searchAlumni">Cari Alumni :</label>
+      <input type="search" id="searchAlumni" placeholder="Ketik untuk mencari...">
+    </div>
+
+    <div class="table-responsive">
+      <table id="tabelAlumni" class="table table-bordered table-striped w-100">
+        <thead>
+          <tr>
+            <th><input type="checkbox" id="checkAll"></th>
+            <th>ID</th>
+            <th>Nama Alumni</th>
+            <th>Pancasila</th>
+            <th>PKWU</th>
+            <th>Matematika</th>
+            <th>B. Indonesia</th>
+            <th>B. Inggris</th>
+            <th>Minat Bakat</th>
+            <th>Lanjut PT</th>
+            <th>Jurusan</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in data_alumni %}
+          <tr>
+            <td><input type="checkbox" class="pilih-data" value="{{ a[0] }}"></td>
+            <td>{{ a[0] }}</td>
+            <td>{{ a[1] }}</td>
+            <td>{{ a[2] }}</td>
+            <td>{{ a[3] }}</td>
+            <td>{{ a[4] }}</td>
+            <td>{{ a[5] }}</td>
+            <td>{{ a[6] }}</td>
+            <td>{{ a[7] }}</td>
+            <td>{{ a[8] }}</td>
+            <td>{{ a[9] }}</td>
+            <td>
+              <a href="/admin/hapus_alumni/{{ a[0] }}" class="btn btn-danger btn-sm btn-hapus">
+                <i class="bi bi-trash-fill"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ===================== SCRIPTS ===================== -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+$(document).ready(function () {
+
+  // ── Init DataTable ──
+  const table = $('#tabelAlumni').DataTable({
+    pageLength: 10,
+    language: {
+      search:     'Cari Alumni : ',
+      lengthMenu: 'Tampilkan _MENU_ data',
+      info:       'Menampilkan _START_ sampai _END_ dari _TOTAL_ data',
+      paginate: {
+        previous: 'Sebelumnya',
+        next:     'Berikutnya'
+      }
+    }
+  });
+
+  // ── Hubungkan input search custom ke DataTable ──
+  $('#searchAlumni').on('keyup', function () {
+    table.search(this.value).draw();
+  });
+
+  // ── Check All ──
+  $('#checkAll').on('click', function () {
+    $('.pilih-data').prop('checked', this.checked);
+  });
+
+  // ── Hapus satu baris ──
+  $(document).on('click', '.btn-hapus', function (e) {
+    e.preventDefault();
+    const url = $(this).attr('href');
+
+    Swal.fire({
+      title:             'Yakin?',
+      text:              'Data alumni akan dihapus permanen.',
+      icon:              'warning',
+      showCancelButton:  true,
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText:  'Batal'
+    }).then((result) => {
+      if (result.isConfirmed) window.location.href = url;
+    });
+  });
+
+});
+
+// ── Hapus massal ──
+function hapusTerpilih() {
+  const ids = $('.pilih-data:checked').map(function () { return $(this).val(); }).get();
+
+  if (ids.length === 0) {
+    Swal.fire('Peringatan', 'Pilih data terlebih dahulu.', 'warning');
+    return;
+  }
+
+  Swal.fire({
+    title:             'Yakin?',
+    text:              'Semua data terpilih akan dihapus.',
+    icon:              'warning',
+    showCancelButton:  true,
+    confirmButtonText: 'Ya, Hapus',
+    cancelButtonText:  'Batal'
+  }).then((result) => {
+    if (!result.isConfirmed) return;
+
+    fetch('/admin/hapus_alumni_massal', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ ids })
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        Swal.fire('Berhasil', data.message, 'success').then(() => location.reload());
+      });
+  });
+}
+</script>
+
+{% endblock %}

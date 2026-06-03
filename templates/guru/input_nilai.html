@@ -2,39 +2,535 @@
 
 {% block content %}
 
-<div class="container mt-4">
+<style>
+    .page-wrapper{
+        padding: 25px;
+    }
 
-    <div class="card shadow">
+    .card-custom{
+        border: none;
+        border-radius: 22px;
+        overflow: hidden;
+        box-shadow: 0 12px 30px rgba(15,23,42,0.08);
+        background: white;
+    }
 
-        <div class="card-header bg-primary text-white">
-            <h4>Upload Excel Nilai Siswa</h4>
+    .card-custom .card-header{
+        background: #0d6efd;
+        color: white;
+        padding: 18px 22px;
+    }
+
+    .card-custom .card-header h4{
+        font-weight: 800;
+        margin: 0;
+    }
+
+    .card-custom .card-body{
+        padding: 24px;
+    }
+
+    .form-label{
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .form-select,
+    .form-control{
+        border-radius: 10px;
+        padding: 12px 14px;
+    }
+
+    .btn-save{
+        background: #198754;
+        color: white;
+        border: none;
+        border-radius: 9px;
+        padding: 12px 30px;
+        font-weight: 700;
+    }
+
+    .btn-save:hover{
+        background: #157347;
+        color: white;
+    }
+
+    .table-card-header{
+        background: #0d6efd;
+        color: white;
+        padding: 16px 22px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .table-card-header h4{
+        margin: 0;
+        font-weight: 800;
+    }
+
+    .search-box{
+        margin-left: auto;
+        min-width: 360px;
+        max-width: 470px;
+    }
+
+    .search-form{
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .search-form .form-control{
+        height: 42px;
+        border-radius: 12px;
+        border: none;
+    }
+
+    .btn-search{
+        height: 42px;
+        border-radius: 12px;
+        border: none;
+        background: #0f172a;
+        color: white;
+        font-weight: 700;
+        padding: 0 15px;
+        white-space: nowrap;
+    }
+
+    .btn-search:hover{
+        background: #1e293b;
+        color: white;
+    }
+
+    .btn-reset{
+        height: 42px;
+        border-radius: 12px;
+        background: #e2e8f0;
+        color: #0f172a;
+        font-weight: 700;
+        padding: 9px 14px;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .btn-reset:hover{
+        background: #cbd5e1;
+        color: #0f172a;
+    }
+
+    .table thead{
+        background: #dbeafe;
+    }
+
+    .table th{
+        white-space: nowrap;
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .table td{
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    .alert{
+        border-radius: 14px;
+    }
+
+    @media(max-width: 768px){
+        .page-wrapper{
+            padding: 15px;
+        }
+
+        .table-card-header{
+            align-items: stretch;
+        }
+
+        .search-box{
+            width: 100%;
+            min-width: 100%;
+            max-width: 100%;
+            margin-left: 0;
+        }
+
+        .search-form{
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .btn-search,
+        .btn-reset{
+            width: 100%;
+            text-align: center;
+        }
+    }
+</style>
+
+<div class="page-wrapper">
+
+    <div class="card card-custom">
+
+        <div class="card-header">
+
+            <h4>
+                Input Nilai Siswa
+            </h4>
+
         </div>
 
         <div class="card-body">
 
-            <form method="POST" enctype="multipart/form-data">
+            {% with messages = get_flashed_messages(with_categories=true) %}
 
-                <div class="mb-3">
+                {% if messages %}
+
+                    {% for category, message in messages %}
+
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+
+                            {{ message }}
+
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+
+                        </div>
+
+                    {% endfor %}
+
+                {% endif %}
+
+            {% endwith %}
+
+            <form method="POST">
+
+                <div class="mb-4">
 
                     <label class="form-label">
-                        Upload File Excel
+                        NIS Siswa
                     </label>
 
-                    <input
-                        type="file"
-                        name="file_excel"
-                        class="form-control"
-                        accept=".xlsx,.xls"
+                    <select
+                        name="nis"
+                        class="form-select"
                         required
                     >
 
+                        <option value="">
+                            -- Pilih Siswa --
+                        </option>
+
+                        {% for s in siswa %}
+
+                            <option value="{{ s[0] }}">
+                                {{ s[0] }} - {{ s[1] }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
                 </div>
 
-                <button class="btn btn-success">
-                    Upload Data
-                </button>
+                <div class="row">
+
+                    <div class="col-md-4 mb-3">
+
+                        <label class="form-label">
+                            Nilai Matematika
+                        </label>
+
+                        <select
+                            name="nilai_matematika"
+                            class="form-select"
+                            required
+                        >
+
+                            <option value="">
+                                -- Pilih Nilai --
+                            </option>
+
+                            {% for i in range(0,101) %}
+
+                                <option value="{{ i }}">
+                                    {{ i }}
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+
+                        <label class="form-label">
+                            Nilai Bahasa Indonesia
+                        </label>
+
+                        <select
+                            name="nilai_indonesia"
+                            class="form-select"
+                            required
+                        >
+
+                            <option value="">
+                                -- Pilih Nilai --
+                            </option>
+
+                            {% for i in range(0,101) %}
+
+                                <option value="{{ i }}">
+                                    {{ i }}
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+
+                        <label class="form-label">
+                            Nilai Bahasa Inggris
+                        </label>
+
+                        <select
+                            name="nilai_inggris"
+                            class="form-select"
+                            required
+                        >
+
+                            <option value="">
+                                -- Pilih Nilai --
+                            </option>
+
+                            {% for i in range(0,101) %}
+
+                                <option value="{{ i }}">
+                                    {{ i }}
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+                <div class="row">
+
+                    <div class="col-md-6 mb-3">
+
+                        <label class="form-label">
+                            Nilai Pancasila
+                        </label>
+
+                        <select
+                            name="nilai_pancasila"
+                            class="form-select"
+                            required
+                        >
+
+                            <option value="">
+                                -- Pilih Nilai --
+                            </option>
+
+                            {% for i in range(0,101) %}
+
+                                <option value="{{ i }}">
+                                    {{ i }}
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+
+                        <label class="form-label">
+                            Nilai PKWU
+                        </label>
+
+                        <select
+                            name="nilai_pkwu"
+                            class="form-select"
+                            required
+                        >
+
+                            <option value="">
+                                -- Pilih Nilai --
+                            </option>
+
+                            {% for i in range(0,101) %}
+
+                                <option value="{{ i }}">
+                                    {{ i }}
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+                <div class="mt-4">
+
+                    <button
+                        type="submit"
+                        class="btn btn-save"
+                    >
+
+                        <i class="bi bi-save-fill me-2"></i>
+                        Simpan Data
+
+                    </button>
+
+                </div>
 
             </form>
+
+        </div>
+
+    </div>
+
+    <!-- TABEL DATA NILAI SISWA -->
+    <div class="card card-custom mt-4">
+
+        <div class="table-card-header">
+
+            <h4>
+                Data Nilai Siswa
+            </h4>
+
+            <div class="search-box">
+
+                <form
+                    action="{{ url_for('input_nilai') }}"
+                    method="GET"
+                    class="search-form"
+                >
+
+                    <input
+                        type="text"
+                        name="keyword"
+                        class="form-control"
+                        placeholder="Cari NIS, nama, kelas, status..."
+                        value="{{ keyword if keyword else '' }}"
+                    >
+
+                    <button type="submit" class="btn btn-search">
+                        <i class="bi bi-search"></i>
+                    </button>
+
+                    <a href="{{ url_for('input_nilai') }}" class="btn-reset">
+                        Reset
+                    </a>
+
+                </form>
+
+            </div>
+
+        </div>
+
+        <div class="card-body">
+
+            <div class="table-responsive">
+
+                <table class="table table-bordered table-hover align-middle">
+
+                    <thead>
+
+                        <tr>
+                            <th>No</th>
+                            <th>NIS</th>
+                            <th>Nama Siswa</th>
+                            <th>Kelas</th>
+                            <th>Matematika</th>
+                            <th>B. Indonesia</th>
+                            <th>B. Inggris</th>
+                            <th>Pancasila</th>
+                            <th>PKWU</th>
+                            <th>Status</th>
+                            <th>Tanggal Input</th>
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        {% if data_nilai %}
+
+                            {% for n in data_nilai %}
+
+                                <tr>
+
+                                    <td>{{ loop.index }}</td>
+
+                                    <td>{{ n[1] }}</td>
+
+                                    <td>{{ n[2] }}</td>
+
+                                    <td>{{ n[3] }}</td>
+
+                                    <td>{{ n[4] }}</td>
+
+                                    <td>{{ n[5] }}</td>
+
+                                    <td>{{ n[6] }}</td>
+
+                                    <td>{{ n[7] }}</td>
+
+                                    <td>{{ n[8] }}</td>
+
+                                    <td>
+
+                                        {% if n[11] == 'belum' %}
+
+                                            <span class="badge bg-warning text-dark">
+                                                Belum Diproses
+                                            </span>
+
+                                        {% else %}
+
+                                            <span class="badge bg-primary">
+                                                Sudah Diproses
+                                            </span>
+
+                                        {% endif %}
+
+                                    </td>
+
+                                    <td>
+                                        {{ n[12].strftime('%d-%m-%Y %H:%M') if n[12] else '-' }}
+                                    </td>
+
+                                </tr>
+
+                            {% endfor %}
+
+                        {% else %}
+
+                            <tr>
+                                <td colspan="11" class="text-center text-muted">
+                                    Belum ada data nilai siswa
+                                </td>
+                            </tr>
+
+                        {% endif %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
 
         </div>
 

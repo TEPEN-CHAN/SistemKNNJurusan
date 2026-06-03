@@ -1,396 +1,400 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Siswa</title>
+{% extends 'layout/base.html' %}
 
-    <!-- Bootstrap 5 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+{% block title %}
+Chatbot Konsultasi Jurusan SMA
+{% endblock %}
 
-    <!-- Bootstrap Icon -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+{% block content %}
 
-    <!-- Google Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    .chat-page{
+        height: calc(100vh - 115px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background: transparent;
+    }
 
-    <style>
+    .chat-header{
+        padding: 18px 10px 20px;
+        border-bottom: 1px solid #e5e7eb;
+    }
 
-        *{
-            font-family: 'Poppins', sans-serif;
+    .chat-title{
+        font-size: 28px;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 4px;
+    }
+
+    .chat-subtitle{
+        color: #64748b;
+        font-size: 14px;
+    }
+
+    .chat-body{
+        flex: 1;
+        overflow-y: auto;
+        padding: 30px 10px 24px;
+        background: transparent;
+    }
+
+    .chat-container{
+        max-width: 860px;
+        margin: 0 auto;
+        padding-bottom: 20px;
+    }
+
+    .welcome-area{
+        padding: 32px 0 24px;
+        animation: fadeUp .4s ease;
+    }
+
+    .welcome-icon{
+        width: 54px;
+        height: 54px;
+        border-radius: 18px;
+        background: linear-gradient(135deg, #2563eb, #60a5fa);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 25px rgba(37,99,235,0.22);
+    }
+
+    .welcome-title{
+        font-size: 30px;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 14px;
+    }
+
+    .welcome-text{
+        color: #475569;
+        line-height: 1.8;
+        font-size: 16px;
+        max-width: 780px;
+        margin-bottom: 0;
+    }
+
+    .quick-actions{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 24px;
+    }
+
+    .quick-btn{
+        border: 1px solid #dbeafe;
+        background: #eff6ff;
+        color: #2563eb;
+        border-radius: 999px;
+        padding: 10px 16px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: .25s ease;
+    }
+
+    .quick-btn:hover{
+        background: #2563eb;
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .message-row{
+        display: flex;
+        margin-bottom: 24px;
+        animation: messageIn .25s ease;
+    }
+
+    .message-row.bot{
+        justify-content: flex-start;
+    }
+
+    .message-row.user{
+        justify-content: flex-end;
+    }
+
+    .message-wrap{
+        max-width: 80%;
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+    }
+
+    .message-row.user .message-wrap{
+        justify-content: flex-end;
+    }
+
+    .bot-avatar{
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: #0f172a;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 17px;
+        flex-shrink: 0;
+        box-shadow: 0 8px 18px rgba(15,23,42,0.16);
+    }
+
+    .bubble{
+        padding: 15px 18px;
+        border-radius: 20px;
+        line-height: 1.75;
+        font-size: 15px;
+        white-space: pre-wrap;
+    }
+
+    .message-row.bot .bubble{
+        background: white;
+        border: 1px solid #e2e8f0;
+        color: #0f172a;
+        border-top-left-radius: 6px;
+        box-shadow: 0 8px 22px rgba(15,23,42,0.06);
+    }
+
+    .message-row.user .bubble{
+        background: linear-gradient(135deg, #2563eb, #3b82f6);
+        color: white;
+        border-top-right-radius: 6px;
+        box-shadow: 0 8px 22px rgba(37,99,235,0.20);
+    }
+
+    .typing-dot{
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .typing-dot span{
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #2563eb;
+        display: block;
+        animation: typing 1s infinite ease-in-out;
+    }
+
+    .typing-dot span:nth-child(2){
+        animation-delay: .15s;
+    }
+
+    .typing-dot span:nth-child(3){
+        animation-delay: .3s;
+    }
+
+    .chat-input-area{
+        background: transparent;
+        padding: 14px 10px 10px;
+    }
+
+    .input-container{
+        max-width: 860px;
+        margin: 0 auto;
+    }
+
+    .chat-input-box{
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: white;
+        border: 1px solid #cbd5e1;
+        border-radius: 24px;
+        padding: 12px 14px 12px 20px;
+        box-shadow: 0 12px 35px rgba(15,23,42,0.08);
+    }
+
+    .chat-input{
+        flex: 1;
+        border: none;
+        outline: none;
+        background: transparent;
+        font-size: 15px;
+        color: #0f172a;
+    }
+
+    .chat-input::placeholder{
+        color: #94a3b8;
+    }
+
+    .send-btn{
+        width: 50px;
+        height: 50px;
+        border: none;
+        border-radius: 17px;
+        background: linear-gradient(135deg, #2563eb, #3b82f6);
+        color: white;
+        font-size: 18px;
+        cursor: pointer;
+        transition: .25s ease;
+        box-shadow: 0 10px 22px rgba(37,99,235,0.25);
+    }
+
+    .send-btn:hover{
+        transform: translateY(-2px);
+        background: linear-gradient(135deg, #1d4ed8, #2563eb);
+    }
+
+    .input-note{
+        text-align: center;
+        color: #94a3b8;
+        font-size: 12px;
+        margin-top: 10px;
+    }
+
+    @keyframes fadeUp{
+        from{
+            opacity: 0;
+            transform: translateY(16px);
         }
 
-        body{
-            background: #f4f7ff;
+        to{
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes messageIn{
+        from{
+            opacity: 0;
+            transform: translateY(10px);
         }
 
-        .sidebar{
-            width: 270px;
-            height: 100vh;
-            position: fixed;
-            background: linear-gradient(
-                180deg,
-                #1e40af,
-                #2563eb
-            );
-            color: white;
-            padding: 30px 20px;
+        to{
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes typing{
+        0%, 80%, 100%{
+            transform: translateY(0);
+            opacity: .5;
         }
 
-        .logo-box{
-            display: flex;
-            align-items: center;
-            margin-bottom: 50px;
-        }
-
-        .logo-circle{
-            width: 65px;
-            height: 65px;
-            border-radius: 50%;
-            background: white;
-            color: #2563eb;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 32px;
-            font-weight: bold;
-            margin-right: 15px;
-        }
-
-        .logo-text h3{
-            font-size: 30px;
-            font-weight: 700;
-            margin: 0;
-        }
-
-        .logo-text p{
-            margin: 0;
-            opacity: .8;
-        }
-
-        .menu-title{
-            font-size: 14px;
-            font-weight: 600;
-            letter-spacing: 2px;
-            margin-bottom: 20px;
-            opacity: .8;
-        }
-
-        .menu-item{
-            display: flex;
-            align-items: center;
-            padding: 15px 18px;
-            border-radius: 15px;
-            text-decoration: none;
-            color: white;
-            margin-bottom: 15px;
-            transition: .3s;
-            font-size: 18px;
-            font-weight: 500;
-        }
-
-        .menu-item:hover{
-            background: rgba(255,255,255,0.15);
-            color: white;
-        }
-
-        .menu-item.active{
-            background: linear-gradient(
-                90deg,
-                #60a5fa,
-                #3b82f6
-            );
-        }
-
-        .menu-item i{
-            font-size: 24px;
-            margin-right: 15px;
-        }
-
-        .main-content{
-            margin-left: 270px;
-            padding: 40px;
-        }
-
-        .top-card{
-            background: linear-gradient(
-                90deg,
-                #2563eb,
-                #3b82f6
-            );
-            border-radius: 25px;
-            padding: 40px;
-            color: white;
-            margin-bottom: 35px;
-        }
-
-        .top-card h1{
-            font-size: 42px;
-            font-weight: 700;
-        }
-
-        .top-card p{
-            font-size: 18px;
-            opacity: .9;
-        }
-
-        .info-card{
-            background: white;
-            border-radius: 22px;
-            padding: 30px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-            height: 100%;
-            transition: .3s;
-        }
-
-        .info-card:hover{
+        40%{
             transform: translateY(-5px);
+            opacity: 1;
+        }
+    }
+
+    @media(max-width:768px){
+        .chat-page{
+            height: calc(100vh - 95px);
         }
 
-        .info-icon{
-            width: 70px;
-            height: 70px;
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 32px;
-            margin-bottom: 20px;
+        .chat-header{
+            padding: 14px 4px 16px;
         }
 
-        .bg-blue{
-            background: #dbeafe;
-            color: #2563eb;
+        .chat-title{
+            font-size: 20px;
         }
 
-        .bg-green{
-            background: #dcfce7;
-            color: #16a34a;
+        .chat-subtitle{
+            display: none;
         }
 
-        .info-card h4{
-            font-weight: 700;
-            margin-bottom: 10px;
+        .chat-body{
+            padding: 18px 4px;
         }
 
-        .info-card p{
-            color: #6b7280;
-            margin-bottom: 0;
+        .welcome-area{
+            padding: 22px 0;
         }
 
-        .profile-card{
-            background: white;
-            border-radius: 25px;
-            padding: 35px;
-            margin-top: 35px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        .welcome-title{
+            font-size: 23px;
         }
 
-        .profile-title{
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 25px;
+        .welcome-text{
+            font-size: 14px;
         }
 
-        .profile-item{
-            margin-bottom: 20px;
+        .message-wrap{
+            max-width: 94%;
         }
 
-        .profile-item label{
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 5px;
+        .bubble{
+            font-size: 14px;
+            padding: 14px;
         }
 
-        .profile-item .value{
-            background: #f3f4f6;
-            padding: 14px 18px;
-            border-radius: 12px;
+        .chat-input-area{
+            padding: 10px 4px;
         }
 
-    </style>
-</head>
-<body>
+        .chat-input-box{
+            border-radius: 18px;
+            padding: 10px 11px 10px 15px;
+        }
 
-    <!-- SIDEBAR -->
-    <div class="sidebar">
+        .send-btn{
+            width: 44px;
+            height: 44px;
+            font-size: 15px;
+            border-radius: 14px;
+        }
+    }
+</style>
 
-        <div class="logo-box">
+<div class="chat-page">
 
-            <div class="logo-circle">
-                K
-            </div>
+    <div class="chat-header">
 
-            <div class="logo-text">
-                <h3>Sistem KNN</h3>
-                <p>Siswa</p>
-            </div>
-
+        <div class="chat-title">
+            Chatbot Konsultasi Jurusan SMA
         </div>
 
-        <div class="menu-title">
-            MENU UTAMA
+        <div class="chat-subtitle">
+            Tanya seputar jurusan, mapel, RIASEC, kuliah, dan karir.
         </div>
-
-        <a href="/dashboard_siswa" class="menu-item active">
-            <i class="bi bi-grid-fill"></i>
-            Dashboard
-        </a>
-
-        <a href="/hasil" class="menu-item">
-            <i class="bi bi-bar-chart-fill"></i>
-            Hasil Rekomendasi
-        </a>
-
-        <a href="/chatbot" class="menu-item">
-            <i class="bi bi-chat-dots-fill"></i>
-            Chatbot Konseling
-        </a>
-
-        <a href="/logout" class="menu-item">
-            <i class="bi bi-box-arrow-right"></i>
-            Logout
-        </a>
 
     </div>
 
-    <!-- MAIN CONTENT -->
-    <div class="main-content">
+    <div class="chat-body" id="chatMessages">
 
-        <!-- WELCOME -->
-        <div class="top-card">
+        <div class="chat-container">
 
-            <h1>
-                Selamat Datang,
-                {{ siswa[2] }}
-            </h1>
+            <div class="welcome-area" id="welcomeCard">
 
-            <p>
-                Sistem rekomendasi jurusan berbasis
-                K-Nearest Neighbor (KNN) dan RIASEC.
-            </p>
-
-        </div>
-
-        <!-- FITUR -->
-        <div class="row g-4">
-
-            <div class="col-md-6">
-
-                <div class="info-card">
-
-                    <div class="info-icon bg-blue">
-                        <i class="bi bi-bar-chart-line-fill"></i>
-                    </div>
-
-                    <h4>
-                        Hasil Rekomendasi
-                    </h4>
-
-                    <p>
-                        Lihat hasil rekomendasi jurusan
-                        berdasarkan nilai akademik dan
-                        minat RIASEC Anda.
-                    </p>
-
-                    <a href="/hasil" class="btn btn-primary mt-4">
-                        Lihat Hasil
-                    </a>
-
+                <div class="welcome-icon">
+                    <i class="bi bi-stars"></i>
                 </div>
 
-            </div>
-
-            <div class="col-md-6">
-
-                <div class="info-card">
-
-                    <div class="info-icon bg-green">
-                        <i class="bi bi-chat-dots-fill"></i>
-                    </div>
-
-                    <h4>
-                        Chatbot Konseling
-                    </h4>
-
-                    <p>
-                        Konsultasikan jurusan dan minat
-                        karier Anda menggunakan chatbot.
-                    </p>
-
-                    <a href="/chatbot" class="btn btn-success mt-4">
-                        Mulai Chat
-                    </a>
-
+                <div class="welcome-title">
+                    Halo, {{ siswa[1] }} 👋
                 </div>
 
-            </div>
+                <p class="welcome-text">
+                    Saya adalah AI Konsultasi Jurusan SMA. Saya dapat membantu kamu melakukan tes minat bakat RIASEC,
+                    memahami kelompok mapel, memilih jurusan, serta berkonsultasi tentang kuliah dan karir.
+                    <br><br>
+                    Ketik <b>MULAI</b> untuk memulai tes minat bakat.
+                </p>
 
-        </div>
+                <div class="quick-actions">
+                    <button type="button" class="quick-btn" onclick="quickSend('MULAI')">
+                        Mulai Tes RIASEC
+                    </button>
 
-        <!-- PROFILE -->
-        <div class="profile-card">
+                    <button type="button" class="quick-btn" onclick="quickSend('Apa itu RIASEC?')">
+                        Apa itu RIASEC?
+                    </button>
 
-            <div class="profile-title">
-                Profil Siswa
-            </div>
+                    <button type="button" class="quick-btn" onclick="quickSend('Jurusan IPA cocok untuk siapa?')">
+                        Tanya Jurusan IPA
+                    </button>
 
-            <div class="row">
-
-                <div class="col-md-6">
-
-                    <div class="profile-item">
-
-                        <label>NIS</label>
-
-                        <div class="value">
-                            {{ siswa[1] }}
-                        </div>
-
-                    </div>
-
-                </div>
-
-                <div class="col-md-6">
-
-                    <div class="profile-item">
-
-                        <label>Nama Siswa</label>
-
-                        <div class="value">
-                            {{ siswa[2] }}
-                        </div>
-
-                    </div>
-
-                </div>
-
-                <div class="col-md-6">
-
-                    <div class="profile-item">
-
-                        <label>Kelas</label>
-
-                        <div class="value">
-                            {{ siswa[3] }}
-                        </div>
-
-                    </div>
-
-                </div>
-
-                <div class="col-md-6">
-
-                    <div class="profile-item">
-
-                        <label>Status Sistem</label>
-
-                        <div class="value">
-                            Aktif
-                        </div>
-
-                    </div>
-
+                    <button type="button" class="quick-btn" onclick="quickSend('Saya suka desain')">
+                        Saya suka desain
+                    </button>
                 </div>
 
             </div>
@@ -399,5 +403,476 @@
 
     </div>
 
-</body>
-</html>
+    <div class="chat-input-area">
+
+        <div class="input-container">
+
+            <div class="chat-input-box">
+
+                <input
+                    type="text"
+                    id="chatInput"
+                    class="chat-input"
+                    placeholder="Tulis pertanyaan seputar jurusan, mapel, RIASEC..."
+                >
+
+                <button type="button" class="send-btn" id="sendButton">
+                    <i class="bi bi-send-fill"></i>
+                </button>
+
+            </div>
+
+            <div class="input-note">
+                AI hanya membahas topik jurusan, mapel, RIASEC, kuliah, dan karir.
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+    var chatMessages = document.getElementById('chatMessages');
+    var chatInput = document.getElementById('chatInput');
+    var sendButton = document.getElementById('sendButton');
+    var welcomeCard = document.getElementById('welcomeCard');
+    var chatContainer = document.querySelector('.chat-container');
+
+    var testStarted = false;
+    var currentQuestion = 0;
+    var waitingCollegeAnswer = false;
+
+    var hasilRiasec = '';
+    var kelompokMapel = '';
+    var statusKuliah = '';
+
+    var questions = [
+        {
+            text: "Apakah kamu suka memperbaiki mesin atau alat elektronik?",
+            type: "REALISTIC"
+        },
+        {
+            text: "Apakah kamu suka melakukan penelitian atau eksperimen?",
+            type: "INVESTIGATIVE"
+        },
+        {
+            text: "Apakah kamu suka menggambar atau desain?",
+            type: "ARTISTIC"
+        },
+        {
+            text: "Apakah kamu suka membantu orang lain?",
+            type: "SOCIAL"
+        },
+        {
+            text: "Apakah kamu suka memimpin organisasi?",
+            type: "ENTERPRISING"
+        },
+        {
+            text: "Apakah kamu suka pekerjaan administrasi dan data?",
+            type: "CONVENTIONAL"
+        }
+    ];
+
+    var scores = {
+        REALISTIC: 0,
+        INVESTIGATIVE: 0,
+        ARTISTIC: 0,
+        SOCIAL: 0,
+        ENTERPRISING: 0,
+        CONVENTIONAL: 0
+    };
+
+    var responses = {
+        ipa: "Jurusan IPA cocok untuk siswa yang suka Matematika, Fisika, Kimia, dan Biologi.",
+        ips: "Jurusan IPS cocok untuk siswa yang tertarik pada Ekonomi, Sosiologi, Geografi, dan Sejarah.",
+        bahasa: "Jurusan Bahasa cocok untuk siswa yang suka komunikasi, sastra, dan bahasa asing.",
+        informatika: "Informatika cocok untuk siswa yang tertarik pada teknologi, coding, dan komputer.",
+        kedokteran: "Jurusan Kedokteran biasanya disarankan mengambil kelompok mapel IPA.",
+        teknik: "Jurusan teknik membutuhkan logika dan kemampuan Matematika yang kuat.",
+        akuntansi: "Akuntansi cocok untuk siswa yang suka berhitung dan administrasi.",
+        desain: "Bidang desain sangat cocok untuk tipe ARTISTIC dalam RIASEC.",
+        riasec: "RIASEC terdiri dari Realistic, Investigative, Artistic, Social, Enterprising, dan Conventional."
+    };
+
+    function scrollBottom(){
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function hideWelcome(){
+        if(welcomeCard){
+            welcomeCard.style.display = 'none';
+        }
+    }
+
+    function getBotAvatar(){
+        return (
+            '<div class="bot-avatar">' +
+                '<i class="bi bi-stars"></i>' +
+            '</div>'
+        );
+    }
+
+    function createMessageElement(text, sender){
+        var row = document.createElement('div');
+
+        row.className = 'message-row ' + sender;
+
+        if(sender === 'bot'){
+            row.innerHTML =
+                '<div class="message-wrap">' +
+                    getBotAvatar() +
+                    '<div class="bubble"></div>' +
+                '</div>';
+        }else{
+            row.innerHTML =
+                '<div class="message-wrap">' +
+                    '<div class="bubble"></div>' +
+                '</div>';
+        }
+
+        row.querySelector('.bubble').textContent = text;
+
+        return row;
+    }
+
+    function addMessage(text, sender){
+        hideWelcome();
+
+        var message = createMessageElement(text, sender);
+
+        chatContainer.appendChild(message);
+
+        scrollBottom();
+    }
+
+    function botTyping(){
+        hideWelcome();
+
+        var typing = document.createElement('div');
+
+        typing.className = 'message-row bot';
+        typing.id = 'typing';
+
+        typing.innerHTML =
+            '<div class="message-wrap">' +
+                getBotAvatar() +
+                '<div class="bubble">' +
+                    '<span class="typing-dot">' +
+                        '<span></span>' +
+                        '<span></span>' +
+                        '<span></span>' +
+                    '</span>' +
+                '</div>' +
+            '</div>';
+
+        chatContainer.appendChild(typing);
+
+        scrollBottom();
+    }
+
+    function removeTyping(){
+        var typing = document.getElementById('typing');
+
+        if(typing){
+            typing.remove();
+        }
+    }
+
+    function resetScores(){
+        scores = {
+            REALISTIC: 0,
+            INVESTIGATIVE: 0,
+            ARTISTIC: 0,
+            SOCIAL: 0,
+            ENTERPRISING: 0,
+            CONVENTIONAL: 0
+        };
+    }
+
+    function startQuestions(){
+        testStarted = true;
+        currentQuestion = 0;
+        waitingCollegeAnswer = false;
+
+        resetScores();
+
+        addMessage(
+            questions[currentQuestion].text + "\n\nJawab: suka / tidak",
+            'bot'
+        );
+    }
+
+    function processRiasecAnswer(text){
+        if(text === 'suka'){
+            scores[questions[currentQuestion].type] += 1;
+        }
+
+        currentQuestion++;
+
+        if(currentQuestion < questions.length){
+            setTimeout(function(){
+                addMessage(
+                    questions[currentQuestion].text + "\n\nJawab: suka / tidak",
+                    'bot'
+                );
+            }, 600);
+
+            return;
+        }
+
+        showResult();
+
+        testStarted = false;
+    }
+
+    function getHighestRiasec(){
+        var highest = '';
+        var highestScore = 0;
+        var totalScore = 0;
+
+        for(var key in scores){
+            totalScore += scores[key];
+
+            if(scores[key] > highestScore){
+                highestScore = scores[key];
+                highest = key;
+            }
+        }
+
+        if(totalScore === 0){
+            return 'BELUM TERDETEKSI';
+        }
+
+        return highest;
+    }
+
+    function getRecommendation(highest){
+        if(
+            highest === 'INVESTIGATIVE' ||
+            highest === 'ENTERPRISING' ||
+            highest === 'CONVENTIONAL'
+        ){
+            return {
+                kelompok: 'Kelompok Mapel 1',
+                mapel: [
+                    'Matematika Tingkat Lanjut',
+                    'Ekonomi',
+                    'PKWu',
+                    'Biologi',
+                    'Fisika'
+                ]
+            };
+        }
+
+        return {
+            kelompok: 'Kelompok Mapel 2',
+            mapel: [
+                'Biologi',
+                'Ekonomi',
+                'PKWu',
+                'Bahasa Inggris Tingkat Lanjut',
+                'Informatika'
+            ]
+        };
+    }
+
+    function showResult(){
+        var highest = getHighestRiasec();
+
+        if(highest === 'BELUM TERDETEKSI'){
+            hasilRiasec = 'BELUM TERDETEKSI';
+            kelompokMapel = 'BELUM TERDETEKSI';
+
+            addMessage(
+                "Hasil minat bakat kamu belum dapat ditentukan.\n\n" +
+                "Karena semua jawaban kamu adalah 'tidak', sistem belum menemukan kategori RIASEC yang dominan.\n\n" +
+                "Silakan ulangi tes dan jawab 'suka' pada aktivitas yang paling mendekati minat kamu.",
+                'bot'
+            );
+
+            testStarted = false;
+            waitingCollegeAnswer = false;
+
+            return;
+        }
+
+        var recommendation = getRecommendation(highest);
+
+        hasilRiasec = highest;
+        kelompokMapel = recommendation.kelompok;
+
+        addMessage(
+            "🎯 HASIL RIASEC\n\n" +
+            "Minat Bakat: " + highest + "\n" +
+            "Kelompok Mapel: " + recommendation.kelompok + "\n\n" +
+            "Rekomendasi Mapel:\n- " +
+            recommendation.mapel.join('\n- '),
+            'bot'
+        );
+
+        setTimeout(function(){
+            addMessage(
+                "Apakah kamu ingin melanjutkan ke perguruan tinggi?\n\n" +
+                "Jawab:\n• iya\n• mungkin\n• tidak",
+                'bot'
+            );
+
+            waitingCollegeAnswer = true;
+        }, 1000);
+    }
+
+    function saveToDatabase(){
+        fetch('/chatbot', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                minat_bakat: hasilRiasec,
+                kelompok_mapel: kelompokMapel,
+                status_kuliah: statusKuliah
+            })
+        });
+    }
+
+    function handleCollegeAnswer(lower){
+        if(lower === 'iya' || lower === 'ya'){
+            statusKuliah = 'Iya';
+
+            addMessage(
+                "Bagus 😊\n\nKamu dapat mulai mencari jurusan kuliah yang sesuai dengan hasil RIASEC kamu.",
+                'bot'
+            );
+
+            saveToDatabase();
+
+            waitingCollegeAnswer = false;
+
+            return;
+        }
+
+        if(lower === 'mungkin'){
+            statusKuliah = 'Mungkin';
+
+            addMessage(
+                "Tidak masalah 😊\n\nKamu masih punya waktu mempertimbangkan pilihan kuliah atau karir.",
+                'bot'
+            );
+
+            saveToDatabase();
+
+            waitingCollegeAnswer = false;
+
+            return;
+        }
+
+        if(lower === 'tidak'){
+            statusKuliah = 'Tidak';
+
+            addMessage(
+                "Baik 😊\n\nKamu bisa fokus pada pekerjaan, pelatihan skill, atau wirausaha sesuai minatmu.",
+                'bot'
+            );
+
+            saveToDatabase();
+
+            waitingCollegeAnswer = false;
+
+            return;
+        }
+
+        addMessage(
+            "Mohon jawab dengan:\n• iya\n• mungkin\n• tidak",
+            'bot'
+        );
+    }
+
+    function handleNormalChat(lower){
+        botTyping();
+
+        setTimeout(function(){
+            removeTyping();
+
+            var found = false;
+
+            for(var key in responses){
+                if(lower.includes(key)){
+                    addMessage(responses[key], 'bot');
+
+                    found = true;
+
+                    break;
+                }
+            }
+
+            if(!found){
+                addMessage(
+                    "Maaf, saya tidak bisa membahas itu.\n\n" +
+                    "Silakan tanyakan hal seputar:\n" +
+                    "• Jurusan SMA\n" +
+                    "• Mapel\n" +
+                    "• Minat bakat\n" +
+                    "• RIASEC\n" +
+                    "• Kuliah & Karir",
+                    'bot'
+                );
+            }
+        }, 800);
+    }
+
+    function handleSend(){
+        var text = chatInput.value.trim();
+
+        if(!text){
+            return;
+        }
+
+        addMessage(text, 'user');
+
+        chatInput.value = '';
+
+        var lower = text.toLowerCase();
+
+        if(waitingCollegeAnswer){
+            handleCollegeAnswer(lower);
+            return;
+        }
+
+        if(lower === 'mulai'){
+            startQuestions();
+            return;
+        }
+
+        if(testStarted){
+            if(lower !== 'suka' && lower !== 'tidak'){
+                addMessage(
+                    "Mohon jawab dengan: suka / tidak",
+                    'bot'
+                );
+
+                return;
+            }
+
+            processRiasecAnswer(lower);
+            return;
+        }
+
+        handleNormalChat(lower);
+    }
+
+    function quickSend(text){
+        chatInput.value = text;
+        handleSend();
+    }
+
+    sendButton.addEventListener('click', handleSend);
+
+    chatInput.addEventListener('keydown', function(e){
+        if(e.key === 'Enter'){
+            handleSend();
+        }
+    });
+</script>
+
+{% endblock %}

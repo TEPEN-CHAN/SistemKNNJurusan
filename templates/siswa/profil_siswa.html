@@ -1,0 +1,284 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}
+Profil Siswa
+{% endblock %}
+
+{% block content %}
+
+<style>
+
+    .content{
+        padding: 30px;
+    }
+
+    .profile-card{
+        background: white;
+        border-radius: 25px;
+        padding: 35px;
+        box-shadow: 0 10px 30px rgba(15,23,42,0.08);
+        border: 1px solid #e2e8f0;
+        max-width: 850px;
+        margin: auto;
+    }
+
+    .profile-header{
+        display: flex;
+        align-items: center;
+        gap: 25px;
+        margin-bottom: 30px;
+    }
+
+    .profile-photo{
+        width: 135px;
+        height: 135px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 5px solid #2563eb;
+        box-shadow: 0 10px 25px rgba(37,99,235,0.25);
+        background: #eff6ff;
+    }
+
+    .profile-placeholder{
+        width: 135px;
+        height: 135px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #2563eb, #60a5fa);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 55px;
+        border: 5px solid #dbeafe;
+        box-shadow: 0 10px 25px rgba(37,99,235,0.25);
+    }
+
+    .profile-name{
+        font-size: 32px;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 5px;
+    }
+
+    .profile-subtitle{
+        color: #64748b;
+        font-size: 16px;
+    }
+
+    .info-box{
+        background: #f8fafc;
+        border-radius: 18px;
+        padding: 20px;
+        margin-bottom: 25px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .info-label{
+        font-weight: 700;
+        color: #475569;
+        font-size: 14px;
+    }
+
+    .info-value{
+        font-size: 18px;
+        color: #0f172a;
+        font-weight: 600;
+    }
+
+    .upload-box{
+        background: #eff6ff;
+        border: 2px dashed #93c5fd;
+        border-radius: 20px;
+        padding: 25px;
+    }
+
+    .form-label{
+        font-weight: 700;
+        color: #334155;
+    }
+
+    .form-control{
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .btn-upload{
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 12px 20px;
+        font-weight: 700;
+        transition: .3s;
+    }
+
+    .btn-upload:hover{
+        background: #1d4ed8;
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .alert{
+        border-radius: 14px;
+        font-weight: 500;
+    }
+
+    @media(max-width:768px){
+
+        .profile-header{
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .profile-name{
+            font-size: 26px;
+        }
+
+    }
+
+</style>
+
+<div class="content">
+
+    <div class="profile-card">
+
+        <!-- FLASH MESSAGE -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+
+            {% if messages %}
+
+                {% for category, message in messages %}
+
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+
+                        {{ message }}
+
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+
+                    </div>
+
+                {% endfor %}
+
+            {% endif %}
+
+        {% endwith %}
+
+        <!-- HEADER PROFIL -->
+        <div class="profile-header">
+
+            {% if siswa[3] %}
+
+                <img
+                    src="{{ url_for('static', filename='uploads/profil/' ~ siswa[3]) }}"
+                    class="profile-photo"
+                    alt="Foto Profil"
+                >
+
+            {% else %}
+
+                <div class="profile-placeholder">
+                    <i class="bi bi-person-fill"></i>
+                </div>
+
+            {% endif %}
+
+            <div>
+
+                <div class="profile-name">
+                    {{ siswa[1] }}
+                </div>
+
+                <div class="profile-subtitle">
+                    Profil Siswa - Sistem Rekomendasi Jurusan
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- DATA SISWA -->
+        <div class="row g-3">
+
+            <div class="col-md-4">
+
+                <div class="info-box">
+
+                    <div class="info-label">
+                        NIS
+                    </div>
+
+                    <div class="info-value">
+                        {{ siswa[0] }}
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="col-md-4">
+
+                <div class="info-box">
+
+                    <div class="info-label">
+                        Nama Siswa
+                    </div>
+
+                    <div class="info-value">
+                        {{ siswa[1] }}
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="col-md-4">
+
+                <div class="info-box">
+
+                    <div class="info-label">
+                        Kelas
+                    </div>
+
+                    <div class="info-value">
+                        {{ siswa[2] }}
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- UPLOAD FOTO -->
+        <div class="upload-box mt-4">
+
+            <form action="/profil_siswa" method="POST" enctype="multipart/form-data">
+
+                <label class="form-label">
+                    Upload Foto Profil
+                </label>
+
+                <input
+                    type="file"
+                    name="foto_profil"
+                    class="form-control mb-3"
+                    accept=".jpg,.jpeg,.png,.webp"
+                    required
+                >
+
+                <button type="submit" class="btn btn-upload">
+
+                    <i class="bi bi-upload me-1"></i>
+                    Simpan Foto Profil
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

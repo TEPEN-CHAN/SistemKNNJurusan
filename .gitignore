@@ -1,12 +1,11 @@
-# Python cache
+.venv/
+venv/
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-.pytest_cache/
-
-# Virtual environment
-.venv/
-
-# Environment files
 .env
+.DS_Store
+instance/
+*.sqlite3
+*.log
+*.bak
+*.swp

@@ -3,10 +3,11 @@ from flask_mysqldb import MySQL
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from datetime import datetime
-
+from flask import send_file, flash
 from knn import knn_predict
 from chatbot import chatbot_response
-
+import os
+from werkzeug.utils import secure_filename
 import pandas as pd
 import config
 
@@ -26,11 +27,152 @@ app.config['MYSQL_DB'] = config.MYSQL_DB
 app.secret_key = config.SECRET_KEY
 
 mysql = MySQL(app)
+# =========================================================
+# HITUNG METRIK EVALUASI KNN
+# Accuracy, Precision, Recall, F1-Score
+# =========================================================
+def hitung_metrik_evaluasi(y_true, y_pred):
+
+    total_data = len(y_true)
+
+    if total_data == 0:
+
+        return {
+            'accuracy': 0,
+            'precision': 0,
+            'recall': 0,
+            'f1_score': 0
+        }
+
+    benar = 0
+
+    for i in range(total_data):
+
+        if y_true[i] == y_pred[i]:
+
+            benar += 1
+
+    accuracy = benar / total_data
+
+    labels = list(set(y_true))
+
+    precision_total = 0
+    recall_total = 0
+    f1_total = 0
+
+    for label in labels:
+
+        tp = 0
+        fp = 0
+        fn = 0
+
+        for i in range(total_data):
+
+            if y_true[i] == label and y_pred[i] == label:
+
+                tp += 1
+
+            elif y_true[i] != label and y_pred[i] == label:
+
+                fp += 1
+
+            elif y_true[i] == label and y_pred[i] != label:
+
+                fn += 1
+
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+
+        if precision + recall > 0:
+
+            f1 = 2 * precision * recall / (precision + recall)
+
+        else:
+
+            f1 = 0
+
+        precision_total += precision
+        recall_total += recall
+        f1_total += f1
+
+    jumlah_label = len(labels)
+
+    return {
+        'accuracy': round(accuracy * 100, 2),
+        'precision': round((precision_total / jumlah_label) * 100, 2),
+        'recall': round((recall_total / jumlah_label) * 100, 2),
+        'f1_score': round((f1_total / jumlah_label) * 100, 2)
+    }
+# =========================================================
+# SIMPAN LOG AKTIVITAS
+# =========================================================
+def simpan_log(aktivitas):
+
+    try:
+
+        username = session.get('username', 'System')
+        id_role = session.get('id_role', 0)
+
+        if id_role == 1:
+
+            role = 'Admin'
+
+        elif id_role == 2:
+
+            role = 'Guru BK'
+
+        elif id_role == 3:
+
+            role = 'Siswa'
+
+        else:
+
+            role = 'Tidak Diketahui'
+
+        cur = mysql.connection.cursor()
+
+        cur.execute("""
+            INSERT INTO log_aktivitas(
+                username,
+                role,
+                aktivitas,
+                tanggal
+            )
+            VALUES(%s,%s,%s,%s)
+        """, (
+            username,
+            role,
+            aktivitas,
+            datetime.now()
+        ))
+
+        mysql.connection.commit()
+
+        cur.close()
+
+    except Exception as e:
+
+        print("Gagal menyimpan log:", e)
+# =========================================================
+# CONFIG UPLOAD FOTO PROFIL
+# =========================================================
+UPLOAD_FOLDER = 'static/uploads/profil'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+
+def allowed_file(filename):
+
+    return (
+        '.' in filename
+        and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    )
 
 # =========================================================
 # DECORATOR LOGIN
 # =========================================================
-def login_required(role=None):
+def login_required(roles=None):
 
     def wrapper(fn):
 
@@ -41,9 +183,11 @@ def login_required(role=None):
 
                 return redirect('/')
 
-            if role and session.get('id_role') != role:
+            if roles:
 
-                return redirect('/')
+                if session.get('id_role') not in roles:
+
+                    return redirect('/')
 
             return fn(*args, **kwargs)
 
@@ -93,11 +237,21 @@ def proses_login_siswa():
     cur = mysql.connection.cursor()
 
     cur.execute("""
-        SELECT *
-        FROM akun
-        WHERE username=%s
-        AND id_role=3
-    """, [username])
+    SELECT 
+        akun.id_akun,
+        akun.username,
+        akun.password,
+        akun.id_role,
+        akun.id_ref,
+        siswa.foto_profil
+    FROM akun
+
+    LEFT JOIN siswa
+        ON akun.id_ref = siswa.nis
+
+    WHERE akun.username=%s
+    AND akun.id_role=3
+""", [username])
 
     akun = cur.fetchone()
 
@@ -117,6 +271,9 @@ def proses_login_siswa():
             session['username'] = akun[1]
             session['id_role'] = akun[3]
             session['id_ref'] = akun[4]
+            session['foto_profil'] = akun[5]
+
+            simpan_log('Login sebagai siswa')
 
             return redirect('/dashboard_siswa')
 
@@ -137,10 +294,21 @@ def proses_login_guru():
     cur = mysql.connection.cursor()
 
     cur.execute("""
-        SELECT *
+        SELECT
+            akun.id_akun,
+            akun.username,
+            akun.password,
+            akun.id_role,
+            akun.id_ref,
+            guru_bk.foto_profil
         FROM akun
-        WHERE username=%s
-        AND id_role=2
+
+        LEFT JOIN guru_bk
+            ON akun.id_role = 2
+            AND akun.id_ref = guru_bk.id_guru
+
+        WHERE akun.username=%s
+        AND akun.id_role IN (1,2)
     """, [username])
 
     akun = cur.fetchone()
@@ -151,22 +319,32 @@ def proses_login_guru():
 
         password_db = akun[2]
 
-        if check_password_hash(
-            password_db,
-            password
-        ):
+        if check_password_hash(password_db, password):
 
             session['login'] = True
             session['id_akun'] = akun[0]
             session['username'] = akun[1]
             session['id_role'] = akun[3]
             session['id_ref'] = akun[4]
+            session['foto_profil'] = akun[5]
 
-            return redirect('/dashboard_guru')
+            # ADMIN
+            if akun[3] == 1:
+
+                simpan_log('Login sebagai admin')
+
+                return redirect('/dashboard_admin')
+
+            # GURU BK
+            elif akun[3] == 2:
+
+                simpan_log('Login sebagai Guru BK')
+
+                return redirect('/dashboard_guru')
 
     return render_template(
         'auth/login_guru.html',
-        error='Username atau password guru salah'
+        error='Username atau password salah'
     )
 
 # =========================================================
@@ -263,6 +441,8 @@ def register_siswa():
         ))
 
         mysql.connection.commit()
+
+        simpan_log(f'Registrasi akun siswa dengan NIS {nis}')
 
         cur.close()
 
@@ -368,6 +548,8 @@ def register_guru():
 
         mysql.connection.commit()
 
+        simpan_log(f'Registrasi akun Guru BK dengan nama {nama}')
+
         cur.close()
 
         return redirect('/login_guru')
@@ -375,12 +557,53 @@ def register_guru():
     return render_template(
         'auth/register_guru.html'
     )
+# =========================================================
+# DASHBOARD ADMIN
+# =========================================================
+@app.route('/dashboard_admin')
+@login_required(roles=[1])
+def dashboard_admin():
 
+    cur = mysql.connection.cursor()
+
+    cur.execute("""
+        SELECT COUNT(*)
+        FROM siswa
+    """)
+    total_siswa = cur.fetchone()[0]
+
+    cur.execute("""
+        SELECT COUNT(*)
+        FROM alumni
+    """)
+    total_alumni = cur.fetchone()[0]
+
+    cur.execute("""
+        SELECT COUNT(*)
+        FROM guru_bk
+    """)
+    total_guru = cur.fetchone()[0]
+
+    cur.execute("""
+        SELECT COUNT(*)
+        FROM akun
+    """)
+    total_akun = cur.fetchone()[0]
+
+    cur.close()
+
+    return render_template(
+        'admin/dashboard_admin.html',
+        total_siswa=total_siswa,
+        total_alumni=total_alumni,
+        total_guru=total_guru,
+        total_akun=total_akun
+    )
 # =========================================================
 # DASHBOARD GURU
 # =========================================================
 @app.route('/dashboard_guru')
-@login_required(role=2)
+@login_required(roles=[2])
 def dashboard_guru():
 
     cur = mysql.connection.cursor()
@@ -419,7 +642,7 @@ def dashboard_guru():
 # DASHBOARD SISWA
 # =========================================================
 @app.route('/dashboard_siswa')
-@login_required(role=3)
+@login_required(roles=[3])
 def dashboard_siswa():
 
     nis = session['id_ref']
@@ -440,15 +663,21 @@ def dashboard_siswa():
         'siswa/dashboard_siswa.html',
         siswa=siswa
     )
-
 # =========================================================
-# INPUT NILAI SISWA
+# INPUT DATA ALUMNI
 # =========================================================
-@app.route('/input_nilai', methods=['GET', 'POST'])
-@login_required(role=2)
-def input_nilai():
+@app.route('/admin/input_alumni', methods=['GET', 'POST'])
+@login_required(roles=[1])
+def admin_input_alumni():
 
+    # ==================================================
+    # PROSES UPLOAD EXCEL
+    # ==================================================
     if request.method == 'POST':
+
+        if 'file_excel' not in request.files:
+
+            return "File tidak ditemukan"
 
         file = request.files['file_excel']
 
@@ -460,69 +689,410 @@ def input_nilai():
 
             return "Format file harus .xlsx"
 
-        df = pd.read_excel(file)
+        try:
 
-        cur = mysql.connection.cursor()
+            df = pd.read_excel(file)
 
-        for index, row in df.iterrows():
+            cur = mysql.connection.cursor()
+
+            for index, row in df.iterrows():
+
+                cur.execute("""
+
+                    INSERT INTO alumni(
+
+                        id_alumni,
+                        nama_alumni,
+                        nilai_pancasila,
+                        nilai_pkwu,
+                        nilai_matematika,
+                        nilai_bahasaindo,
+                        nilai_bahasaingg,
+                        minat_bakat,
+                        lanjut_pt,
+                        hasil_jurusan,
+                        tanggal_input
+
+                    )
+
+                    VALUES(
+
+                        %s,%s,%s,%s,%s,
+                        %s,%s,%s,%s,%s,%s
+
+                    )
+
+                """, (
+
+                    row['id_alumni'],
+                    row['nama_alumni'],
+                    row['nilai_pancasila'],
+                    row['nilai_pkwu'],
+                    row['nilai_matematika'],
+                    row['nilai_bahasaindo'],
+                    row['nilai_bahasaingg'],
+                    row['minat_bakat'],
+                    row['lanjut_pt'],
+                    row['hasil_jurusan'],
+                    datetime.now()
+
+                ))
+
+            mysql.connection.commit()
+
+            simpan_log(f'Mengupload data alumni sebanyak {len(df)} baris')
+
+            cur.close()
+
+            flash('Data alumni berhasil diupload', 'success')
+
+            return redirect('/input_alumni')
+
+        except Exception as e:
+
+            return f"Terjadi error: {str(e)}"
+
+    # ==================================================
+    # TAMPILKAN DATA ALUMNI
+    # ==================================================
+
+    cur = mysql.connection.cursor()
+
+    cur.execute("""
+
+        SELECT
+
+            id_alumni,
+            nama_alumni,
+            nilai_pancasila,
+            nilai_pkwu,
+            nilai_matematika,
+            nilai_bahasaindo,
+            nilai_bahasaingg,
+            minat_bakat,
+            lanjut_pt,
+            hasil_jurusan
+
+        FROM alumni
+
+        ORDER BY id_alumni DESC
+
+    """)
+
+    data_alumni = cur.fetchall()
+
+    cur.close()
+
+    return render_template(
+
+        'admin/input_alumni.html',
+
+        data_alumni=data_alumni
+
+    )
+@app.route('/admin/download_alumni')
+@login_required(roles=[1])
+def download_alumni():
+
+    cur = mysql.connection.cursor()
+
+    cur.execute("""
+
+        SELECT *
+
+        FROM alumni
+
+    """)
+
+    data = cur.fetchall()
+
+    cur.close()
+
+    kolom = [
+
+        'id_alumni',
+        'nama_alumni',
+        'nilai_pancasila',
+        'nilai_pkwu',
+        'nilai_matematika',
+        'nilai_bahasaindo',
+        'nilai_bahasaingg',
+        'minat_bakat',
+        'lanjut_pt',
+        'hasil_jurusan',
+        'tanggal_input'
+
+    ]
+
+    df = pd.DataFrame(
+        data,
+        columns=kolom
+    )
+
+    file_excel = 'data_alumni.xlsx'
+
+    df.to_excel(
+        file_excel,
+        index=False
+    )
+
+    simpan_log('Mendownload data alumni')
+
+    return send_file(
+        file_excel,
+        as_attachment=True
+    )
+# =========================================================
+# INPUT NILAI SISWA
+# =========================================================
+@app.route('/input_nilai', methods=['GET', 'POST'])
+@login_required(roles=[2])
+def input_nilai():
+
+    cur = mysql.connection.cursor()
+
+    # ============================================
+    # AMBIL DATA SISWA UNTUK DROPDOWN
+    # ============================================
+    cur.execute("""
+        SELECT
+            nis,
+            nama_siswa
+        FROM siswa
+        ORDER BY nama_siswa ASC
+    """)
+
+    siswa = cur.fetchall()
+
+    # ============================================
+    # SIMPAN DATA NILAI SISWA
+    # ============================================
+    if request.method == 'POST':
+
+        nis = request.form['nis']
+
+        nilai_matematika = request.form['nilai_matematika']
+        nilai_indonesia = request.form['nilai_indonesia']
+        nilai_inggris = request.form['nilai_inggris']
+        nilai_pancasila = request.form['nilai_pancasila']
+        nilai_pkwu = request.form['nilai_pkwu']
+
+        # ============================================
+        # AMBIL HASIL CHATBOT
+        # ============================================
+        cur.execute("""
+            SELECT
+                minat_bakat,
+                kelompok_mapel
+            FROM hasil_chatbot
+            WHERE nis=%s
+        """, [nis])
+
+        hasil_chatbot = cur.fetchone()
+
+        if not hasil_chatbot:
+
+            cur.close()
+
+            flash('Siswa belum mengisi chatbot RIASEC', 'danger')
+
+            return redirect('/input_nilai')
+
+        minat_bakat = hasil_chatbot[0]
+        kelompok_mapel = hasil_chatbot[1]
+
+        # ============================================
+        # KONVERSI LANJUT PT
+        # ============================================
+        if kelompok_mapel == 'Kelompok Mapel 1':
+
+            lanjut_pt = 'IYA'
+
+        else:
+
+            lanjut_pt = 'MUNGKIN'
+
+        # ============================================
+        # CEK APAKAH DATA NILAI SISWA SUDAH ADA
+        # ============================================
+        cur.execute("""
+            SELECT id_input
+            FROM input_siswa
+            WHERE nis=%s
+            ORDER BY id_input DESC
+            LIMIT 1
+        """, [nis])
+
+        cek_nilai = cur.fetchone()
+
+        # ============================================
+        # UPDATE JIKA SUDAH ADA
+        # ============================================
+        if cek_nilai:
+
+            cur.execute("""
+                UPDATE input_siswa
+                SET
+                    nilai_matematika=%s,
+                    nilai_indonesia=%s,
+                    nilai_inggris=%s,
+                    nilai_pancasila=%s,
+                    nilai_pkwu=%s,
+                    minat_bakat=%s,
+                    lanjut_pt=%s,
+                    tanggal_input=%s,
+                    status_proses=%s
+                WHERE id_input=%s
+            """, (
+                nilai_matematika,
+                nilai_indonesia,
+                nilai_inggris,
+                nilai_pancasila,
+                nilai_pkwu,
+                minat_bakat,
+                lanjut_pt,
+                datetime.now(),
+                'belum',
+                cek_nilai[0]
+            ))
+
+            flash('Data nilai siswa berhasil diperbarui', 'success')
+
+        # ============================================
+        # INSERT JIKA BELUM ADA
+        # ============================================
+        else:
 
             cur.execute("""
                 INSERT INTO input_siswa(
                     nis,
                     nilai_matematika,
-                    nilai_bahasa_indonesia,
-                    nilai_bahasa_inggris,
-                    nilai_ipa,
-                    nilai_ips,
-                    realistic_score,
-                    investigative_score,
-                    artistic_score,
-                    social_score,
-                    enterprising_score,
-                    conventional_score,
+                    nilai_indonesia,
+                    nilai_inggris,
+                    nilai_pancasila,
+                    nilai_pkwu,
+                    minat_bakat,
+                    lanjut_pt,
                     tanggal_input,
                     status_proses
                 )
-                VALUES(
-                    %s,%s,%s,%s,%s,%s,
-                    %s,%s,%s,%s,%s,%s,
-                    %s,%s
-                )
+                VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, (
-                row['nis'],
-                row['matematika'],
-                row['indonesia'],
-                row['inggris'],
-                row['ipa'],
-                row['ips'],
-                row['realistic'],
-                row['investigative'],
-                row['artistic'],
-                row['social'],
-                row['enterprising'],
-                row['conventional'],
+                nis,
+                nilai_matematika,
+                nilai_indonesia,
+                nilai_inggris,
+                nilai_pancasila,
+                nilai_pkwu,
+                minat_bakat,
+                lanjut_pt,
                 datetime.now(),
                 'belum'
             ))
 
+            flash('Data nilai siswa berhasil ditambahkan', 'success')
+
         mysql.connection.commit()
+
+        simpan_log(f'Guru BK menyimpan nilai siswa dengan NIS {nis}')
 
         cur.close()
 
-        return redirect('/dashboard_guru')
+        return redirect('/input_nilai')
+
+    # ============================================
+    # PENCARIAN DATA NILAI SISWA
+    # ============================================
+    keyword = request.args.get('keyword', '')
+
+    if keyword:
+
+        search = f"%{keyword}%"
+
+        cur.execute("""
+            SELECT
+                input_siswa.id_input,
+                input_siswa.nis,
+                siswa.nama_siswa,
+                siswa.kelas,
+                input_siswa.nilai_matematika,
+                input_siswa.nilai_indonesia,
+                input_siswa.nilai_inggris,
+                input_siswa.nilai_pancasila,
+                input_siswa.nilai_pkwu,
+                input_siswa.minat_bakat,
+                input_siswa.lanjut_pt,
+                input_siswa.status_proses,
+                input_siswa.tanggal_input
+            FROM input_siswa
+
+            JOIN siswa
+                ON input_siswa.nis = siswa.nis
+
+            WHERE
+                input_siswa.nis LIKE %s
+                OR siswa.nama_siswa LIKE %s
+                OR siswa.kelas LIKE %s
+                OR input_siswa.status_proses LIKE %s
+
+            ORDER BY input_siswa.id_input DESC
+        """, (
+            search,
+            search,
+            search,
+            search
+        ))
+
+    else:
+
+        cur.execute("""
+            SELECT
+                input_siswa.id_input,
+                input_siswa.nis,
+                siswa.nama_siswa,
+                siswa.kelas,
+                input_siswa.nilai_matematika,
+                input_siswa.nilai_indonesia,
+                input_siswa.nilai_inggris,
+                input_siswa.nilai_pancasila,
+                input_siswa.nilai_pkwu,
+                input_siswa.minat_bakat,
+                input_siswa.lanjut_pt,
+                input_siswa.status_proses,
+                input_siswa.tanggal_input
+            FROM input_siswa
+
+            JOIN siswa
+                ON input_siswa.nis = siswa.nis
+
+            ORDER BY input_siswa.id_input DESC
+        """)
+
+    data_nilai = cur.fetchall()
+
+    cur.close()
 
     return render_template(
-        'guru/input_nilai.html'
+        'guru/input_nilai.html',
+        siswa=siswa,
+        data_nilai=data_nilai,
+        keyword=keyword
     )
-
 # =========================================================
 # INPUT DATA ALUMNI
 # =========================================================
 @app.route('/input_alumni', methods=['GET', 'POST'])
-@login_required(role=2)
+@login_required(roles=[2])
 def input_alumni():
 
+    # ==================================================
+    # PROSES UPLOAD EXCEL
+    # ==================================================
     if request.method == 'POST':
+
+        if 'file_excel' not in request.files:
+
+            return "File tidak ditemukan"
 
         file = request.files['file_excel']
 
@@ -534,63 +1104,113 @@ def input_alumni():
 
             return "Format file harus .xlsx"
 
-        df = pd.read_excel(file)
+        try:
 
-        cur = mysql.connection.cursor()
+            df = pd.read_excel(file)
 
-        for index, row in df.iterrows():
+            cur = mysql.connection.cursor()
 
-            cur.execute("""
-                INSERT INTO alumni(
-                    nama_alumni,
-                    pilihan_mapel,
-                    nilai_matematika,
-                    nilai_bahasa_indonesia,
-                    nilai_bahasa_inggris,
-                    nilai_ipa,
-                    nilai_ips,
-                    realistic_score,
-                    investigative_score,
-                    artistic_score,
-                    social_score,
-                    enterprising_score,
-                    conventional_score
-                )
-                VALUES(
-                    %s,%s,%s,%s,%s,%s,
-                    %s,%s,%s,%s,%s,%s,%s
-                )
-            """, (
-                row['nama_alumni'],
-                row['pilihan_mapel'],
-                row['matematika'],
-                row['indonesia'],
-                row['inggris'],
-                row['ipa'],
-                row['ips'],
-                row['realistic'],
-                row['investigative'],
-                row['artistic'],
-                row['social'],
-                row['enterprising'],
-                row['conventional']
-            ))
+            for index, row in df.iterrows():
 
-        mysql.connection.commit()
+                cur.execute("""
 
-        cur.close()
+                    INSERT INTO alumni(
 
-        return redirect('/dashboard_guru')
+                        id_alumni,
+                        nama_alumni,
+                        nilai_pancasila,
+                        nilai_pkwu,
+                        nilai_matematika,
+                        nilai_bahasaindo,
+                        nilai_bahasaingg,
+                        minat_bakat,
+                        lanjut_pt,
+                        hasil_jurusan,
+                        tanggal_input
+
+                    )
+
+                    VALUES(
+
+                        %s,%s,%s,%s,%s,
+                        %s,%s,%s,%s,%s,%s
+
+                    )
+
+                """, (
+
+                    row['id_alumni'],
+                    row['nama_alumni'],
+                    row['nilai_pancasila'],
+                    row['nilai_pkwu'],
+                    row['nilai_matematika'],
+                    row['nilai_bahasaindo'],
+                    row['nilai_bahasaingg'],
+                    row['minat_bakat'],
+                    row['lanjut_pt'],
+                    row['hasil_jurusan'],
+                    datetime.now()
+
+                ))
+
+            mysql.connection.commit()
+
+            simpan_log(f'Mengupload data alumni Guru BK sebanyak {len(df)} baris')
+
+            cur.close()
+
+            flash('Data alumni berhasil diupload', 'success')
+
+            return redirect('/input_alumni')
+
+        except Exception as e:
+
+            return f"Terjadi error: {str(e)}"
+
+    # ==================================================
+    # TAMPILKAN DATA ALUMNI
+    # ==================================================
+
+    cur = mysql.connection.cursor()
+
+    cur.execute("""
+
+        SELECT
+
+            id_alumni,
+            nama_alumni,
+            nilai_pancasila,
+            nilai_pkwu,
+            nilai_matematika,
+            nilai_bahasaindo,
+            nilai_bahasaingg,
+            minat_bakat,
+            lanjut_pt,
+            hasil_jurusan
+
+        FROM alumni
+
+        ORDER BY id_alumni DESC
+
+    """)
+
+    data_alumni = cur.fetchall()
+
+    cur.close()
 
     return render_template(
-        'guru/input_alumni.html'
+
+        'guru/input_alumni.html',
+
+        data_alumni=data_alumni
+
     )
 
 # =========================================================
 # HALAMAN PROSES KNN
 # =========================================================
 @app.route('/proses_knn')
-@login_required(role=2)
+@login_required(roles=[2])
 def proses_knn():
 
     cur = mysql.connection.cursor()
@@ -629,7 +1249,7 @@ def proses_knn():
 # EKSEKUSI PROSES KNN
 # =========================================================
 @app.route('/proses_semua_knn')
-@login_required(role=2)
+@login_required(roles=[2])
 def proses_semua_knn():
 
     cur = mysql.connection.cursor()
@@ -671,22 +1291,17 @@ def proses_semua_knn():
 
         fitur = [
 
+            float(a[2]),
             float(a[3]),
             float(a[4]),
             float(a[5]),
-            float(a[6]),
-            float(a[7]),
+            float(a[6])
 
-            float(a[8]),
-            float(a[9]),
-            float(a[10]),
-            float(a[11]),
-            float(a[12])
         ]
 
         data_latih.append(fitur)
 
-        label_latih.append(a[2])
+        label_latih.append(a[9])
 
     # =====================================================
     # LOOP PROSES KNN
@@ -697,25 +1312,36 @@ def proses_semua_knn():
 
         fitur_uji = [
 
-            float(siswa[2]),
-            float(siswa[3]),
-            float(siswa[4]),
-            float(siswa[5]),
-            float(siswa[6]),
+        float(siswa[2]),
+        float(siswa[3]),
+        float(siswa[4]),
+        float(siswa[5]),
+        float(siswa[6])
 
-            float(siswa[7]),
-            float(siswa[8]),
-            float(siswa[9]),
-            float(siswa[10]),
-            float(siswa[11])
-        ]
-
-        hasil = knn_predict(
+    ]
+        hasil_knn = knn_predict(
             data_latih,
             label_latih,
             fitur_uji,
             k=3
         )
+
+        nama_jurusan = hasil_knn['hasil']
+        confidence = hasil_knn['confidence']
+
+        neighbors = hasil_knn['neighbors']
+        print("\n========== DEBUG KNN ==========")
+        print("NIS :", nis)
+        print("FITUR UJI :", fitur_uji)
+        print("HASIL KNN :", hasil_knn)
+        print("CONFIDENCE :", confidence)
+        print("NEIGHBORS :", neighbors)
+        print("================================\n")
+        
+        rata_jarak = (
+            sum(float(n['distance']) for n in neighbors)
+            / len(neighbors)
+        ) if neighbors else 0
 
         # =================================================
         # SIMPAN HASIL
@@ -723,18 +1349,23 @@ def proses_semua_knn():
         cur.execute("""
             INSERT INTO hasil_knn(
                 nis,
-                nilai_k,
                 hasil_jurusan,
-                jumlah_tetangga
+                nilai_k,
+                jumlah_tetangga,
+                rata_jarak,
+                confidence,
+                tanggal
             )
-            VALUES(%s,%s,%s,%s)
+            VALUES(%s,%s,%s,%s,%s,%s,%s)
         """, (
             nis,
+            nama_jurusan,
             3,
-            hasil,
-            3
+            len(neighbors),
+            round(rata_jarak, 4),
+            confidence,
+            datetime.now()
         ))
-
         # =================================================
         # UPDATE STATUS
         # =================================================
@@ -746,6 +1377,8 @@ def proses_semua_knn():
 
     mysql.connection.commit()
 
+    simpan_log(f'Menjalankan proses KNN untuk {len(semua_siswa)} siswa')
+
     cur.close()
 
     return redirect('/hasil_rekomendasi')
@@ -754,7 +1387,7 @@ def proses_semua_knn():
 # HASIL SISWA
 # =========================================================
 @app.route('/hasil')
-@login_required(role=3)
+@login_required(roles=[3])
 def hasil():
 
     nis = session['id_ref']
@@ -778,40 +1411,71 @@ def hasil():
         hasil=hasil
     )
 
-# =========================================================
-# HASIL REKOMENDASI GURU
-# =========================================================
 @app.route('/hasil_rekomendasi')
-@login_required(role=2)
+@login_required(roles=[2])
 def hasil_rekomendasi():
 
     cur = mysql.connection.cursor()
 
+    # =========================================
+    # AMBIL DATA HASIL KNN
+    # =========================================
     cur.execute("""
 
         SELECT
-            hasil_chatbot.nis,
+
+            hasil_knn.nis,
             siswa.nama_siswa,
             siswa.kelas,
             hasil_chatbot.minat_bakat,
             hasil_chatbot.kelompok_mapel,
-            hasil_chatbot.detail_mapel,
-            hasil_chatbot.tanggal
+            hasil_knn.hasil_jurusan,
+            hasil_knn.nilai_k,
+            hasil_knn.rata_jarak,
+            hasil_knn.confidence,
+            hasil_knn.tanggal
 
-        FROM hasil_chatbot
+        FROM hasil_knn
 
         JOIN siswa
-        ON hasil_chatbot.nis = siswa.nis
+            ON hasil_knn.nis = siswa.nis
 
-        ORDER BY hasil_chatbot.id DESC
+        JOIN hasil_chatbot
+            ON hasil_knn.nis = hasil_chatbot.nis
+
+        ORDER BY hasil_knn.id_hasil DESC
 
     """)
 
     hasil_data = cur.fetchall()
 
+    # =========================================
+    # TOTAL
+    # =========================================
     total_hasil = len(hasil_data)
 
     total_siswa = len(hasil_data)
+
+    # =========================================
+    # DATA GRAFIK
+    # =========================================
+    jurusan_count = {}
+
+    for h in hasil_data:
+
+        jurusan = h[5]
+
+        if jurusan in jurusan_count:
+
+            jurusan_count[jurusan] += 1
+
+        else:
+
+            jurusan_count[jurusan] = 1
+
+    labels = list(jurusan_count.keys())
+
+    values = list(jurusan_count.values())
 
     cur.close()
 
@@ -823,19 +1487,27 @@ def hasil_rekomendasi():
 
         total_hasil=total_hasil,
 
-        total_siswa=total_siswa
+        total_siswa=total_siswa,
+
+        labels=labels,
+
+        values=values
+
     )
+
 
 # =========================================================
 # CHATBOT RIASEC
 # =========================================================
+
 @app.route('/chatbot', methods=['GET', 'POST'])
-@login_required(role=3)
+@login_required(roles=[3])
 def chatbot():
 
     # =====================================================
     # LIST PERTANYAAN
     # =====================================================
+
     pertanyaan_list = [
 
         {
@@ -870,6 +1542,10 @@ def chatbot():
 
     ]
 
+    # =====================================================
+    # SESSION SISWA
+    # =====================================================
+
     nis = session['id_ref']
 
     cur = mysql.connection.cursor()
@@ -877,99 +1553,127 @@ def chatbot():
     # =====================================================
     # AMBIL DATA SISWA
     # =====================================================
+
     cur.execute("""
-        SELECT nama_siswa, kelas
+
+        SELECT
+            nis,
+            nama_siswa,
+            kelas
+
         FROM siswa
+
         WHERE nis=%s
+
     """, [nis])
 
     siswa = cur.fetchone()
 
-    nama_siswa = siswa[0]
-    kelas = siswa[1]
+    # =====================================================
+    # VALIDASI DATA SISWA
+    # =====================================================
+
+    if not siswa:
+
+        cur.close()
+
+        return "Data siswa tidak ditemukan"
+
+    nama_siswa = siswa[1]
+    kelas = siswa[2]
 
     # =====================================================
     # METHOD POST DARI JAVASCRIPT
     # =====================================================
+
     if request.method == 'POST':
 
         data = request.get_json()
 
+        # =================================================
+        # AMBIL DATA JSON
+        # =================================================
+
         rekomendasi = data.get('minat_bakat')
         kelompok_mapel = data.get('kelompok_mapel')
+        lanjut_kuliah = data.get('status_kuliah')
 
         # =================================================
         # DETAIL MAPEL
         # =================================================
+
         detail_mapel = ''
 
         if rekomendasi == 'REALISTIC':
 
             detail_mapel = '''
-Biologi,
-Ekonomi,
-PKWu,
-Bahasa Inggris Tingkat Lanjut,
+Biologi
+Ekonomi
+PKWu
+Bahasa Inggris Tingkat Lanjut
 Informatika
 '''
 
         elif rekomendasi == 'INVESTIGATIVE':
 
             detail_mapel = '''
-Matematika Tingkat Lanjut,
-Ekonomi,
-PKWu,
-Biologi,
+Matematika Tingkat Lanjut
+Ekonomi
+PKWu
+Biologi
 Fisika
 '''
 
         elif rekomendasi == 'ARTISTIC':
 
             detail_mapel = '''
-Seni Musik,
-Seni Rupa,
-Bahasa Inggris,
-Desain,
+Seni Musik
+Seni Rupa
+Bahasa Inggris
+Desain
 Multimedia
 '''
 
         elif rekomendasi == 'SOCIAL':
 
             detail_mapel = '''
-Sosiologi,
-Geografi,
-Bahasa Indonesia,
-Ekonomi,
+Sosiologi
+Geografi
+Bahasa Indonesia
+Ekonomi
 PPKn
 '''
 
         elif rekomendasi == 'ENTERPRISING':
 
             detail_mapel = '''
-Ekonomi,
-Matematika,
-PKWu,
-Bahasa Inggris,
+Ekonomi
+Matematika
+PKWu
+Bahasa Inggris
 Bisnis Digital
 '''
 
         elif rekomendasi == 'CONVENTIONAL':
 
             detail_mapel = '''
-Akuntansi,
-Ekonomi,
-Administrasi,
-Matematika,
+Akuntansi
+Ekonomi
+Administrasi
+Matematika
 Informatika
 '''
 
         # =================================================
         # CEK DATA SUDAH ADA / BELUM
         # =================================================
+
         cur.execute("""
-            SELECT *
+
+            SELECT id
             FROM hasil_chatbot
             WHERE nis=%s
+
         """, [nis])
 
         cek_data = cur.fetchone()
@@ -977,18 +1681,25 @@ Informatika
         # =================================================
         # UPDATE DATA
         # =================================================
+
         if cek_data:
 
             cur.execute("""
+
                 UPDATE hasil_chatbot
+
                 SET
+
                     nama_siswa=%s,
                     kelas=%s,
                     minat_bakat=%s,
                     kelompok_mapel=%s,
                     detail_mapel=%s,
+                    lanjut_pt=%s,
                     tanggal=%s
+
                 WHERE nis=%s
+
             """, (
 
                 nama_siswa,
@@ -996,6 +1707,7 @@ Informatika
                 rekomendasi,
                 kelompok_mapel,
                 detail_mapel,
+                lanjut_kuliah,
                 datetime.now(),
                 nis
 
@@ -1004,9 +1716,11 @@ Informatika
         # =================================================
         # INSERT DATA
         # =================================================
+
         else:
 
             cur.execute("""
+
                 INSERT INTO hasil_chatbot(
 
                     nis,
@@ -1015,11 +1729,12 @@ Informatika
                     minat_bakat,
                     kelompok_mapel,
                     detail_mapel,
+                    lanjut_pt,
                     tanggal
 
                 )
 
-                VALUES(%s,%s,%s,%s,%s,%s,%s)
+                VALUES(%s,%s,%s,%s,%s,%s,%s,%s)
 
             """, (
 
@@ -1029,6 +1744,7 @@ Informatika
                 rekomendasi,
                 kelompok_mapel,
                 detail_mapel,
+                lanjut_kuliah,
                 datetime.now()
 
             ))
@@ -1036,22 +1752,31 @@ Informatika
         # =================================================
         # COMMIT DATABASE
         # =================================================
+
         mysql.connection.commit()
+
+        simpan_log(f'Menyimpan hasil chatbot RIASEC: {rekomendasi}')
 
         cur.close()
 
         return jsonify({
-            'status': 'success'
+
+            'status': 'success',
+            'message': 'Data chatbot berhasil disimpan'
+
         })
 
     # =====================================================
     # TAMPIL HALAMAN CHATBOT
     # =====================================================
+
     cur.close()
 
     return render_template(
 
         'siswa/chatbot.html',
+
+        siswa=siswa,
 
         nama_siswa=nama_siswa,
 
@@ -1067,14 +1792,1954 @@ Informatika
 
         kelompok_mapel=None,
 
+        lanjut_kuliah=None,
+
         detail_mapel=None
+
     )
-    
+
+
+# =========================================
+# PROFIL SISWA
+# =========================================
+@app.route('/profil_siswa', methods=['GET', 'POST'])
+@login_required(roles=[3])
+def profil_siswa():
+
+    nis = session['id_ref']
+
+    cur = mysql.connection.cursor()
+
+    # =====================================================
+    # UPDATE FOTO PROFIL
+    # =====================================================
+    if request.method == 'POST':
+
+        if 'foto_profil' not in request.files:
+
+            flash('File foto tidak ditemukan', 'danger')
+
+            cur.close()
+
+            return redirect('/profil_siswa')
+
+        file = request.files['foto_profil']
+
+        if file.filename == '':
+
+            flash('Silakan pilih foto terlebih dahulu', 'danger')
+
+            cur.close()
+
+            return redirect('/profil_siswa')
+
+        if file and allowed_file(file.filename):
+
+            filename_asli = secure_filename(file.filename)
+
+            ekstensi = filename_asli.rsplit('.', 1)[1].lower()
+
+            filename_baru = f"profil_{nis}.{ekstensi}"
+
+            upload_path = os.path.join(
+                app.config['UPLOAD_FOLDER'],
+                filename_baru
+            )
+
+            # Pastikan folder upload tersedia
+            os.makedirs(
+                app.config['UPLOAD_FOLDER'],
+                exist_ok=True
+            )
+
+            # Simpan file
+            file.save(upload_path)
+
+            # Simpan nama file ke database
+            cur.execute("""
+                UPDATE siswa
+                SET foto_profil=%s
+                WHERE nis=%s
+            """, (
+                filename_baru,
+                nis
+            ))
+
+            mysql.connection.commit()
+            session['foto_profil'] = filename_baru
+
+            simpan_log('Memperbarui foto profil siswa')
+
+            cur.close()
+
+            flash('Foto profil berhasil diperbarui', 'success')
+
+            return redirect('/profil_siswa')
+
+        else:
+
+            flash('Format foto harus PNG, JPG, JPEG, atau WEBP', 'danger')
+
+            cur.close()
+
+            return redirect('/profil_siswa')
+
+    # =====================================================
+    # AMBIL DATA SISWA
+    # =====================================================
+    cur.execute("""
+
+        SELECT
+
+            nis,
+            nama_siswa,
+            kelas,
+            foto_profil
+
+        FROM siswa
+
+        WHERE nis=%s
+
+    """, [nis])
+
+    siswa = cur.fetchone()
+
+    cur.close()
+
+    return render_template(
+
+        'siswa/profil_siswa.html',
+
+        siswa=siswa
+
+    )
+# =========================================================
+# MANAJEMEN AKUN
+# =========================================================
+@app.route('/manajemen_akun', methods=['GET', 'POST'])
+@login_required(roles=[1])
+def manajemen_akun():
+
+    cur = mysql.connection.cursor()
+
+    # =====================================================
+    # TAMBAH AKUN
+    # =====================================================
+    if request.method == 'POST':
+
+        role = request.form['role']
+        username = request.form['username']
+        password = generate_password_hash(request.form['password'])
+
+        nama = request.form.get('nama')
+        nis = request.form.get('nis')
+        kelas = request.form.get('kelas')
+
+        jenis_kelamin = request.form.get('jenis_kelamin')
+        no_hp = request.form.get('no_hp')
+        email = request.form.get('email')
+
+        # =================================================
+        # CEK USERNAME
+        # =================================================
+        cur.execute("""
+            SELECT id_akun
+            FROM akun
+            WHERE username=%s
+        """, [username])
+
+        cek_username = cur.fetchone()
+
+        if cek_username:
+
+            flash('Username sudah digunakan', 'danger')
+
+            cur.close()
+
+            return redirect('/manajemen_akun')
+
+        # =================================================
+        # ROLE ADMIN
+        # =================================================
+        if role == '1':
+
+            cur.execute("""
+                INSERT INTO akun(
+                    username,
+                    password,
+                    id_role,
+                    id_ref
+                )
+                VALUES(%s,%s,%s,%s)
+            """, (
+                username,
+                password,
+                1,
+                None
+            ))
+
+        # =================================================
+        # ROLE GURU BK
+        # =================================================
+        elif role == '2':
+
+            if not nama:
+
+                flash('Nama guru wajib diisi', 'danger')
+
+                cur.close()
+
+                return redirect('/manajemen_akun')
+
+            cur.execute("""
+                INSERT INTO guru_bk(
+                    nama_guru,
+                    jenis_kelamin,
+                    no_hp,
+                    email
+                )
+                VALUES(%s,%s,%s,%s)
+            """, (
+                nama,
+                jenis_kelamin,
+                no_hp,
+                email
+            ))
+
+            mysql.connection.commit()
+
+            id_guru = cur.lastrowid
+
+            cur.execute("""
+                INSERT INTO akun(
+                    username,
+                    password,
+                    id_role,
+                    id_ref
+                )
+                VALUES(%s,%s,%s,%s)
+            """, (
+                username,
+                password,
+                2,
+                id_guru
+            ))
+
+        # =================================================
+        # ROLE SISWA
+        # =================================================
+        elif role == '3':
+
+            if not nis or not nama or not kelas:
+
+                flash('NIS, nama siswa, dan kelas wajib diisi', 'danger')
+
+                cur.close()
+
+                return redirect('/manajemen_akun')
+
+            cur.execute("""
+                SELECT nis
+                FROM siswa
+                WHERE nis=%s
+            """, [nis])
+
+            cek_nis = cur.fetchone()
+
+            if cek_nis:
+
+                flash('NIS sudah terdaftar', 'danger')
+
+                cur.close()
+
+                return redirect('/manajemen_akun')
+
+            cur.execute("""
+                INSERT INTO siswa(
+                    nis,
+                    nama_siswa,
+                    kelas
+                )
+                VALUES(%s,%s,%s)
+            """, (
+                nis,
+                nama,
+                kelas
+            ))
+
+            cur.execute("""
+                INSERT INTO akun(
+                    username,
+                    password,
+                    id_role,
+                    id_ref
+                )
+                VALUES(%s,%s,%s,%s)
+            """, (
+                username,
+                password,
+                3,
+                nis
+            ))
+
+        mysql.connection.commit()
+
+        simpan_log(f'Menambahkan akun dengan username {username}')
+
+        cur.close()
+
+        flash('Akun berhasil ditambahkan', 'success')
+
+        return redirect('/manajemen_akun')
+
+    # =====================================================
+    # PENCARIAN AKUN
+    # =====================================================
+    keyword = request.args.get('keyword', '')
+
+    if keyword:
+
+        search = f"%{keyword}%"
+
+        cur.execute("""
+            SELECT
+                akun.id_akun,
+                akun.username,
+                akun.id_role,
+                akun.id_ref,
+
+                CASE
+                    WHEN akun.id_role = 1 THEN 'Admin'
+                    WHEN akun.id_role = 2 THEN 'Guru BK'
+                    WHEN akun.id_role = 3 THEN 'Siswa'
+                    ELSE 'Tidak Diketahui'
+                END AS nama_role,
+
+                CASE
+                    WHEN akun.id_role = 2 THEN guru_bk.nama_guru
+                    WHEN akun.id_role = 3 THEN siswa.nama_siswa
+                    ELSE 'Administrator'
+                END AS nama_pengguna,
+
+                siswa.kelas,
+                guru_bk.jenis_kelamin,
+                guru_bk.no_hp,
+                guru_bk.email
+
+            FROM akun
+
+            LEFT JOIN siswa
+                ON akun.id_role = 3
+                AND akun.id_ref = siswa.nis
+
+            LEFT JOIN guru_bk
+                ON akun.id_role = 2
+                AND akun.id_ref = guru_bk.id_guru
+
+            WHERE
+                akun.username LIKE %s
+                OR siswa.nama_siswa LIKE %s
+                OR siswa.nis LIKE %s
+                OR guru_bk.nama_guru LIKE %s
+                OR guru_bk.no_hp LIKE %s
+                OR guru_bk.email LIKE %s
+
+            ORDER BY akun.id_akun DESC
+        """, (
+            search,
+            search,
+            search,
+            search,
+            search,
+            search
+        ))
+
+    else:
+
+        cur.execute("""
+            SELECT
+                akun.id_akun,
+                akun.username,
+                akun.id_role,
+                akun.id_ref,
+
+                CASE
+                    WHEN akun.id_role = 1 THEN 'Admin'
+                    WHEN akun.id_role = 2 THEN 'Guru BK'
+                    WHEN akun.id_role = 3 THEN 'Siswa'
+                    ELSE 'Tidak Diketahui'
+                END AS nama_role,
+
+                CASE
+                    WHEN akun.id_role = 2 THEN guru_bk.nama_guru
+                    WHEN akun.id_role = 3 THEN siswa.nama_siswa
+                    ELSE 'Administrator'
+                END AS nama_pengguna,
+
+                siswa.kelas,
+                guru_bk.jenis_kelamin,
+                guru_bk.no_hp,
+                guru_bk.email
+
+            FROM akun
+
+            LEFT JOIN siswa
+                ON akun.id_role = 3
+                AND akun.id_ref = siswa.nis
+
+            LEFT JOIN guru_bk
+                ON akun.id_role = 2
+                AND akun.id_ref = guru_bk.id_guru
+
+            ORDER BY akun.id_akun DESC
+        """)
+
+    data_akun = cur.fetchall()
+
+    cur.close()
+
+    return render_template(
+        'admin/manajemen_akun.html',
+        data_akun=data_akun,
+        keyword=keyword
+    )
+# =========================================================
+# HAPUS AKUN
+# =========================================================
+@app.route('/hapus_akun/<int:id_akun>')
+@login_required(roles=[1])
+def hapus_akun(id_akun):
+
+    cur = mysql.connection.cursor()
+
+    try:
+
+        # =================================================
+        # AMBIL DATA AKUN
+        # =================================================
+        cur.execute("""
+            SELECT
+                id_akun,
+                id_role,
+                id_ref
+            FROM akun
+            WHERE id_akun=%s
+        """, [id_akun])
+
+        akun = cur.fetchone()
+
+        if not akun:
+
+            flash('Akun tidak ditemukan', 'danger')
+
+            cur.close()
+
+            return redirect('/manajemen_akun')
+
+        id_role = akun[1]
+        id_ref = akun[2]
+
+        # =================================================
+        # CEGAH ADMIN HAPUS AKUN SENDIRI
+        # =================================================
+        if id_akun == session.get('id_akun'):
+
+            flash('Akun yang sedang login tidak boleh dihapus', 'danger')
+
+            cur.close()
+
+            return redirect('/manajemen_akun')
+
+        # =================================================
+        # JIKA AKUN SISWA
+        # =================================================
+        if id_role == 3:
+
+            nis = id_ref
+
+            # Hapus akun login siswa dulu
+            cur.execute("""
+                DELETE FROM akun
+                WHERE id_akun=%s
+            """, [id_akun])
+
+            # Hapus data hasil chatbot siswa
+            cur.execute("""
+                DELETE FROM hasil_chatbot
+                WHERE nis=%s
+            """, [nis])
+
+            # Hapus data nilai/input siswa
+            cur.execute("""
+                DELETE FROM input_siswa
+                WHERE nis=%s
+            """, [nis])
+
+            # Hapus data hasil KNN siswa
+            cur.execute("""
+                DELETE FROM hasil_knn
+                WHERE nis=%s
+            """, [nis])
+
+            # Baru hapus data utama siswa
+            cur.execute("""
+                DELETE FROM siswa
+                WHERE nis=%s
+            """, [nis])
+
+        # =================================================
+        # JIKA AKUN GURU BK
+        # =================================================
+        elif id_role == 2:
+
+            id_guru = id_ref
+
+            cur.execute("""
+                DELETE FROM akun
+                WHERE id_akun=%s
+            """, [id_akun])
+
+            cur.execute("""
+                DELETE FROM guru_bk
+                WHERE id_guru=%s
+            """, [id_guru])
+
+        # =================================================
+        # JIKA AKUN ADMIN
+        # =================================================
+        elif id_role == 1:
+
+            cur.execute("""
+                DELETE FROM akun
+                WHERE id_akun=%s
+            """, [id_akun])
+
+        mysql.connection.commit()
+
+        simpan_log(f'Menghapus akun dengan ID {id_akun}')
+
+        flash('Akun berhasil dihapus', 'success')
+
+    except Exception as e:
+
+        mysql.connection.rollback()
+
+        flash(f'Gagal menghapus akun: {str(e)}', 'danger')
+
+    finally:
+
+        cur.close()
+
+    return redirect('/manajemen_akun')
+# =========================================================
+# ADMIN - NILAI SISWA
+# =========================================================
+@app.route('/admin/nilai_siswa', methods=['GET', 'POST'])
+@login_required(roles=[1])
+def admin_nilai_siswa():
+
+    cur = mysql.connection.cursor()
+
+    # =====================================================
+    # AMBIL DATA SISWA UNTUK DROPDOWN
+    # =====================================================
+    cur.execute("""
+        SELECT
+            nis,
+            nama_siswa,
+            kelas
+        FROM siswa
+        ORDER BY nama_siswa ASC
+    """)
+
+    siswa_list = cur.fetchall()
+
+    # =====================================================
+    # TAMBAH / UPDATE NILAI SISWA
+    # =====================================================
+    if request.method == 'POST':
+
+        nis = request.form['nis']
+
+        nilai_matematika = request.form['nilai_matematika']
+        nilai_indonesia = request.form['nilai_indonesia']
+        nilai_inggris = request.form['nilai_inggris']
+        nilai_pancasila = request.form['nilai_pancasila']
+        nilai_pkwu = request.form['nilai_pkwu']
+
+        # =================================================
+        # AMBIL HASIL CHATBOT
+        # =================================================
+        cur.execute("""
+            SELECT
+                minat_bakat,
+                kelompok_mapel
+            FROM hasil_chatbot
+            WHERE nis=%s
+        """, [nis])
+
+        hasil_chatbot = cur.fetchone()
+
+        if not hasil_chatbot:
+
+            flash('Siswa belum mengisi chatbot RIASEC', 'danger')
+
+            cur.close()
+
+            return redirect('/admin/nilai_siswa')
+
+        minat_bakat = hasil_chatbot[0]
+        kelompok_mapel = hasil_chatbot[1]
+
+        # =================================================
+        # KONVERSI LANJUT PT
+        # =================================================
+        if kelompok_mapel == 'Kelompok Mapel 1':
+
+            lanjut_pt = 'IYA'
+
+        else:
+
+            lanjut_pt = 'MUNGKIN'
+
+        # =================================================
+        # CEK APAKAH NILAI SISWA SUDAH ADA
+        # =================================================
+        cur.execute("""
+            SELECT id_input
+            FROM input_siswa
+            WHERE nis=%s
+            ORDER BY id_input DESC
+            LIMIT 1
+        """, [nis])
+
+        cek_nilai = cur.fetchone()
+
+        # =================================================
+        # UPDATE JIKA SUDAH ADA
+        # =================================================
+        if cek_nilai:
+
+            cur.execute("""
+                UPDATE input_siswa
+                SET
+                    nilai_matematika=%s,
+                    nilai_indonesia=%s,
+                    nilai_inggris=%s,
+                    nilai_pancasila=%s,
+                    nilai_pkwu=%s,
+                    minat_bakat=%s,
+                    lanjut_pt=%s,
+                    tanggal_input=%s,
+                    status_proses=%s
+                WHERE id_input=%s
+            """, (
+                nilai_matematika,
+                nilai_indonesia,
+                nilai_inggris,
+                nilai_pancasila,
+                nilai_pkwu,
+                minat_bakat,
+                lanjut_pt,
+                datetime.now(),
+                'belum',
+                cek_nilai[0]
+            ))
+
+            flash('Nilai siswa berhasil diperbarui', 'success')
+
+        # =================================================
+        # INSERT JIKA BELUM ADA
+        # =================================================
+        else:
+
+            cur.execute("""
+                INSERT INTO input_siswa(
+                    nis,
+                    nilai_matematika,
+                    nilai_indonesia,
+                    nilai_inggris,
+                    nilai_pancasila,
+                    nilai_pkwu,
+                    minat_bakat,
+                    lanjut_pt,
+                    tanggal_input,
+                    status_proses
+                )
+                VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """, (
+                nis,
+                nilai_matematika,
+                nilai_indonesia,
+                nilai_inggris,
+                nilai_pancasila,
+                nilai_pkwu,
+                minat_bakat,
+                lanjut_pt,
+                datetime.now(),
+                'belum'
+            ))
+
+            flash('Nilai siswa berhasil ditambahkan', 'success')
+
+        mysql.connection.commit()
+
+        simpan_log(f'Menambahkan/memperbarui nilai siswa dengan NIS {nis}')
+
+        cur.close()
+
+        return redirect('/admin/nilai_siswa')
+
+    # =====================================================
+    # PENCARIAN NILAI SISWA
+    # =====================================================
+    keyword = request.args.get('keyword', '')
+
+    if keyword:
+
+        search = f"%{keyword}%"
+
+        cur.execute("""
+            SELECT
+                input_siswa.id_input,
+                input_siswa.nis,
+                siswa.nama_siswa,
+                siswa.kelas,
+                input_siswa.nilai_matematika,
+                input_siswa.nilai_indonesia,
+                input_siswa.nilai_inggris,
+                input_siswa.nilai_pancasila,
+                input_siswa.nilai_pkwu,
+                input_siswa.minat_bakat,
+                input_siswa.lanjut_pt,
+                input_siswa.status_proses,
+                input_siswa.tanggal_input
+            FROM input_siswa
+
+            JOIN siswa
+                ON input_siswa.nis = siswa.nis
+
+            WHERE
+                input_siswa.nis LIKE %s
+                OR siswa.nama_siswa LIKE %s
+                OR siswa.kelas LIKE %s
+                OR input_siswa.minat_bakat LIKE %s
+                OR input_siswa.lanjut_pt LIKE %s
+                OR input_siswa.status_proses LIKE %s
+
+            ORDER BY input_siswa.id_input DESC
+        """, (
+            search,
+            search,
+            search,
+            search,
+            search,
+            search
+        ))
+
+    else:
+
+        cur.execute("""
+            SELECT
+                input_siswa.id_input,
+                input_siswa.nis,
+                siswa.nama_siswa,
+                siswa.kelas,
+                input_siswa.nilai_matematika,
+                input_siswa.nilai_indonesia,
+                input_siswa.nilai_inggris,
+                input_siswa.nilai_pancasila,
+                input_siswa.nilai_pkwu,
+                input_siswa.minat_bakat,
+                input_siswa.lanjut_pt,
+                input_siswa.status_proses,
+                input_siswa.tanggal_input
+            FROM input_siswa
+
+            JOIN siswa
+                ON input_siswa.nis = siswa.nis
+
+            ORDER BY input_siswa.id_input DESC
+        """)
+
+    data_nilai = cur.fetchall()
+
+    cur.close()
+
+    return render_template(
+        'admin/nilai_siswa.html',
+        siswa_list=siswa_list,
+        data_nilai=data_nilai,
+        keyword=keyword
+    )
+
+
+# =========================================================
+# ADMIN - HAPUS NILAI SISWA
+# =========================================================
+@app.route('/admin/hapus_nilai_siswa/<int:id_input>')
+@login_required(roles=[1])
+def admin_hapus_nilai_siswa(id_input):
+
+    cur = mysql.connection.cursor()
+
+    cur.execute("""
+        DELETE FROM input_siswa
+        WHERE id_input=%s
+    """, [id_input])
+
+    mysql.connection.commit()
+
+    simpan_log(f'Menghapus data nilai siswa dengan id_input {id_input}')
+
+    cur.close()
+
+    flash('Data nilai siswa berhasil dihapus', 'success')
+
+    return redirect('/admin/nilai_siswa')
+# =========================================================
+# ADMIN - HASIL REKOMENDASI
+# =========================================================
+@app.route('/admin/hasil_rekomendasi')
+@login_required(roles=[1])
+def admin_hasil_rekomendasi():
+
+    cur = mysql.connection.cursor()
+
+    # =========================================
+    # AMBIL DATA HASIL KNN
+    # =========================================
+    cur.execute("""
+
+        SELECT
+
+            hasil_knn.nis,
+            siswa.nama_siswa,
+            siswa.kelas,
+            hasil_chatbot.minat_bakat,
+            hasil_chatbot.kelompok_mapel,
+            hasil_knn.hasil_jurusan,
+            hasil_knn.nilai_k,
+            hasil_knn.rata_jarak,
+            hasil_knn.confidence,
+            hasil_knn.tanggal
+
+        FROM hasil_knn
+
+        JOIN siswa
+            ON hasil_knn.nis = siswa.nis
+
+        JOIN hasil_chatbot
+            ON hasil_knn.nis = hasil_chatbot.nis
+
+        ORDER BY hasil_knn.id_hasil DESC
+
+    """)
+
+    hasil_data = cur.fetchall()
+
+    # =========================================
+    # TOTAL
+    # =========================================
+    total_hasil = len(hasil_data)
+
+    total_siswa = len(hasil_data)
+
+    # =========================================
+    # DATA GRAFIK
+    # =========================================
+    jurusan_count = {}
+
+    for h in hasil_data:
+
+        jurusan = h[5]
+
+        if jurusan in jurusan_count:
+
+            jurusan_count[jurusan] += 1
+
+        else:
+
+            jurusan_count[jurusan] = 1
+
+    labels = list(jurusan_count.keys())
+
+    values = list(jurusan_count.values())
+
+    cur.close()
+
+    return render_template(
+
+        'admin/hasil_rekomendasi.html',
+
+        hasil_data=hasil_data,
+
+        total_hasil=total_hasil,
+
+        total_siswa=total_siswa,
+
+        labels=labels,
+
+        values=values
+
+    )
+# =========================================================
+# ADMIN - EVALUASI SISTEM
+# =========================================================
+@app.route('/admin/evaluasi_sistem')
+@login_required(roles=[1])
+def admin_evaluasi_sistem():
+
+    cur = mysql.connection.cursor()
+
+    # =====================================================
+    # TOTAL DATA HASIL KNN
+    # =====================================================
+    cur.execute("""
+        SELECT COUNT(*)
+        FROM hasil_knn
+    """)
+
+    total_hasil = cur.fetchone()[0]
+
+    # =====================================================
+    # TOTAL SISWA YANG SUDAH DIREKOMENDASIKAN
+    # =====================================================
+    cur.execute("""
+        SELECT COUNT(DISTINCT nis)
+        FROM hasil_knn
+    """)
+
+    total_siswa = cur.fetchone()[0]
+
+    # =====================================================
+    # RATA-RATA CONFIDENCE DAN RATA-RATA JARAK
+    # =====================================================
+    cur.execute("""
+        SELECT
+            COALESCE(AVG(confidence), 0),
+            COALESCE(AVG(rata_jarak), 0)
+        FROM hasil_knn
+    """)
+
+    evaluasi = cur.fetchone()
+
+    rata_confidence = round(float(evaluasi[0]), 2)
+    rata_jarak = round(float(evaluasi[1]), 4)
+
+    # =====================================================
+    # JUMLAH BERDASARKAN TINGKAT CONFIDENCE
+    # =====================================================
+    cur.execute("""
+        SELECT
+            SUM(CASE WHEN confidence >= 70 THEN 1 ELSE 0 END) AS tinggi,
+            SUM(CASE WHEN confidence >= 40 AND confidence < 70 THEN 1 ELSE 0 END) AS sedang,
+            SUM(CASE WHEN confidence < 40 THEN 1 ELSE 0 END) AS rendah
+        FROM hasil_knn
+    """)
+
+    confidence_data = cur.fetchone()
+
+    confidence_tinggi = confidence_data[0] if confidence_data[0] else 0
+    confidence_sedang = confidence_data[1] if confidence_data[1] else 0
+    confidence_rendah = confidence_data[2] if confidence_data[2] else 0
+
+    # =====================================================
+    # DISTRIBUSI HASIL JURUSAN
+    # =====================================================
+    cur.execute("""
+        SELECT
+            hasil_jurusan,
+            COUNT(*) AS jumlah
+        FROM hasil_knn
+        GROUP BY hasil_jurusan
+        ORDER BY jumlah DESC
+    """)
+
+    jurusan_data = cur.fetchall()
+
+    labels_jurusan = []
+    values_jurusan = []
+
+    for row in jurusan_data:
+
+        labels_jurusan.append(row[0])
+        values_jurusan.append(row[1])
+
+    # =====================================================
+    # DATA DETAIL EVALUASI HASIL KNN SISWA
+    # =====================================================
+    cur.execute("""
+        SELECT
+            hasil_knn.nis,
+            siswa.nama_siswa,
+            siswa.kelas,
+            hasil_knn.hasil_jurusan,
+            hasil_knn.nilai_k,
+            hasil_knn.jumlah_tetangga,
+            hasil_knn.rata_jarak,
+            hasil_knn.confidence,
+            hasil_knn.tanggal
+        FROM hasil_knn
+
+        JOIN siswa
+            ON hasil_knn.nis = siswa.nis
+
+        ORDER BY hasil_knn.id_hasil DESC
+    """)
+
+    data_evaluasi = cur.fetchall()
+
+    # =====================================================
+    # EVALUASI AKURASI SISTEM MENGGUNAKAN DATA ALUMNI
+    # Metode: Leave-One-Out
+    # Satu data alumni diuji, data alumni lainnya jadi data latih
+    # =====================================================
+    nilai_k_evaluasi = 3
+
+    cur.execute("""
+        SELECT
+            nilai_pancasila,
+            nilai_pkwu,
+            nilai_matematika,
+            nilai_bahasaindo,
+            nilai_bahasaingg,
+            hasil_jurusan
+        FROM alumni
+        WHERE hasil_jurusan IS NOT NULL
+        AND hasil_jurusan != ''
+    """)
+
+    data_alumni = cur.fetchall()
+
+    y_true = []
+    y_pred = []
+
+    jumlah_data_evaluasi = len(data_alumni)
+
+    if jumlah_data_evaluasi > 1:
+
+        for i in range(jumlah_data_evaluasi):
+
+            fitur_uji = [
+                float(data_alumni[i][0]),
+                float(data_alumni[i][1]),
+                float(data_alumni[i][2]),
+                float(data_alumni[i][3]),
+                float(data_alumni[i][4])
+            ]
+
+            label_asli = data_alumni[i][5]
+
+            data_latih = []
+            label_latih = []
+
+            for j in range(jumlah_data_evaluasi):
+
+                if i != j:
+
+                    fitur_latih = [
+                        float(data_alumni[j][0]),
+                        float(data_alumni[j][1]),
+                        float(data_alumni[j][2]),
+                        float(data_alumni[j][3]),
+                        float(data_alumni[j][4])
+                    ]
+
+                    data_latih.append(fitur_latih)
+                    label_latih.append(data_alumni[j][5])
+
+            k_dipakai = nilai_k_evaluasi
+
+            if k_dipakai > len(data_latih):
+
+                k_dipakai = len(data_latih)
+
+            hasil_prediksi = knn_predict(
+                data_latih,
+                label_latih,
+                fitur_uji,
+                k=k_dipakai
+            )
+
+            y_true.append(label_asli)
+            y_pred.append(hasil_prediksi['hasil'])
+
+        metrik = hitung_metrik_evaluasi(y_true, y_pred)
+
+    else:
+
+        metrik = {
+            'accuracy': 0,
+            'precision': 0,
+            'recall': 0,
+            'f1_score': 0
+        }
+
+    cur.close()
+
+    return render_template(
+        'admin/evaluasi_sistem.html',
+
+        total_hasil=total_hasil,
+        total_siswa=total_siswa,
+        rata_confidence=rata_confidence,
+        rata_jarak=rata_jarak,
+
+        confidence_tinggi=confidence_tinggi,
+        confidence_sedang=confidence_sedang,
+        confidence_rendah=confidence_rendah,
+
+        labels_jurusan=labels_jurusan,
+        values_jurusan=values_jurusan,
+        data_evaluasi=data_evaluasi,
+
+        accuracy=metrik['accuracy'],
+        precision=metrik['precision'],
+        recall=metrik['recall'],
+        f1_score=metrik['f1_score'],
+        jumlah_data_evaluasi=jumlah_data_evaluasi,
+        nilai_k_evaluasi=nilai_k_evaluasi
+    )
+# =========================================================
+# ADMIN - HASIL CHATBOT
+# =========================================================
+@app.route('/admin/hasil_chatbot')
+@login_required(roles=[1])
+def admin_hasil_chatbot():
+
+    cur = mysql.connection.cursor()
+
+    keyword = request.args.get('keyword', '')
+
+    if keyword:
+
+        search = f"%{keyword}%"
+
+        cur.execute("""
+            SELECT
+                id,
+                nis,
+                nama_siswa,
+                kelas,
+                minat_bakat,
+                kelompok_mapel,
+                detail_mapel,
+                lanjut_pt,
+                tanggal
+            FROM hasil_chatbot
+            WHERE
+                nis LIKE %s
+                OR nama_siswa LIKE %s
+                OR kelas LIKE %s
+                OR minat_bakat LIKE %s
+                OR kelompok_mapel LIKE %s
+                OR lanjut_pt LIKE %s
+            ORDER BY id DESC
+        """, (
+            search,
+            search,
+            search,
+            search,
+            search,
+            search
+        ))
+
+    else:
+
+        cur.execute("""
+            SELECT
+                id,
+                nis,
+                nama_siswa,
+                kelas,
+                minat_bakat,
+                kelompok_mapel,
+                detail_mapel,
+                lanjut_pt,
+                tanggal
+            FROM hasil_chatbot
+            ORDER BY id DESC
+        """)
+
+    data_chatbot = cur.fetchall()
+
+    total_chatbot = len(data_chatbot)
+
+    cur.close()
+
+    return render_template(
+        'admin/hasil_chatbot.html',
+        data_chatbot=data_chatbot,
+        total_chatbot=total_chatbot,
+        keyword=keyword
+    )
+
+
+# =========================================================
+# ADMIN - HAPUS HASIL CHATBOT
+# =========================================================
+@app.route('/admin/hapus_hasil_chatbot/<int:id_chatbot>')
+@login_required(roles=[1])
+def admin_hapus_hasil_chatbot(id_chatbot):
+
+    cur = mysql.connection.cursor()
+
+    cur.execute("""
+        DELETE FROM hasil_chatbot
+        WHERE id=%s
+    """, [id_chatbot])
+
+    mysql.connection.commit()
+
+    simpan_log(f'Menghapus hasil chatbot dengan ID {id_chatbot}')
+
+    cur.close()
+
+    flash('Data hasil chatbot berhasil dihapus', 'success')
+
+    return redirect('/admin/hasil_chatbot')
+# =========================================================
+# ADMIN - DATA SISWA
+# =========================================================
+@app.route('/admin/data_siswa', methods=['GET', 'POST'])
+@login_required(roles=[1])
+def admin_data_siswa():
+
+    cur = mysql.connection.cursor()
+
+    # =====================================================
+    # TAMBAH DATA SISWA
+    # =====================================================
+    if request.method == 'POST':
+
+        nis = request.form['nis']
+        nama_siswa = request.form['nama_siswa']
+        kelas = request.form['kelas']
+
+        # =================================================
+        # CEK NIS
+        # =================================================
+        cur.execute("""
+            SELECT nis
+            FROM siswa
+            WHERE nis=%s
+        """, [nis])
+
+        cek_siswa = cur.fetchone()
+
+        if cek_siswa:
+
+            flash('NIS sudah terdaftar', 'danger')
+
+            cur.close()
+
+            return redirect('/admin/data_siswa')
+
+        cur.execute("""
+            INSERT INTO siswa(
+                nis,
+                nama_siswa,
+                kelas
+            )
+            VALUES(%s,%s,%s)
+        """, (
+            nis,
+            nama_siswa,
+            kelas
+        ))
+
+        mysql.connection.commit()
+
+        simpan_log(f'Menambahkan data siswa dengan NIS {nis}')
+
+        cur.close()
+
+        flash('Data siswa berhasil ditambahkan', 'success')
+
+        return redirect('/admin/data_siswa')
+
+    # =====================================================
+    # PENCARIAN DATA SISWA
+    # =====================================================
+    keyword = request.args.get('keyword', '')
+
+    if keyword:
+
+        search = f"%{keyword}%"
+
+        cur.execute("""
+            SELECT
+                nis,
+                nama_siswa,
+                kelas,
+                foto_profil
+            FROM siswa
+            WHERE
+                nis LIKE %s
+                OR nama_siswa LIKE %s
+                OR kelas LIKE %s
+            ORDER BY nama_siswa ASC
+        """, (
+            search,
+            search,
+            search
+        ))
+
+    else:
+
+        cur.execute("""
+            SELECT
+                nis,
+                nama_siswa,
+                kelas,
+                foto_profil
+            FROM siswa
+            ORDER BY nama_siswa ASC
+        """)
+
+    data_siswa = cur.fetchall()
+
+    total_siswa = len(data_siswa)
+
+    cur.close()
+
+    return render_template(
+        'admin/data_siswa.html',
+        data_siswa=data_siswa,
+        total_siswa=total_siswa,
+        keyword=keyword
+    )
+
+
+# =========================================================
+# ADMIN - EDIT DATA SISWA
+# =========================================================
+@app.route('/admin/edit_siswa/<nis>', methods=['POST'])
+@login_required(roles=[1])
+def admin_edit_siswa(nis):
+
+    cur = mysql.connection.cursor()
+
+    nama_siswa = request.form['nama_siswa']
+    kelas = request.form['kelas']
+
+    cur.execute("""
+        UPDATE siswa
+        SET
+            nama_siswa=%s,
+            kelas=%s
+        WHERE nis=%s
+    """, (
+        nama_siswa,
+        kelas,
+        nis
+    ))
+
+    # Update nama dan kelas di hasil_chatbot juga biar sinkron
+    cur.execute("""
+        UPDATE hasil_chatbot
+        SET
+            nama_siswa=%s,
+            kelas=%s
+        WHERE nis=%s
+    """, (
+        nama_siswa,
+        kelas,
+        nis
+    ))
+
+    mysql.connection.commit()
+
+    simpan_log(f'Memperbarui data siswa dengan NIS {nis}')
+
+    cur.close()
+
+    flash('Data siswa berhasil diperbarui', 'success')
+
+    return redirect('/admin/data_siswa')
+
+
+# =========================================================
+# ADMIN - HAPUS DATA SISWA
+# =========================================================
+@app.route('/admin/hapus_siswa/<nis>')
+@login_required(roles=[1])
+def admin_hapus_siswa(nis):
+
+    cur = mysql.connection.cursor()
+
+    try:
+
+        # =================================================
+        # HAPUS AKUN SISWA
+        # =================================================
+        cur.execute("""
+            DELETE FROM akun
+            WHERE id_role=3
+            AND id_ref=%s
+        """, [nis])
+
+        # =================================================
+        # HAPUS DATA TURUNAN SISWA
+        # =================================================
+        cur.execute("""
+            DELETE FROM hasil_chatbot
+            WHERE nis=%s
+        """, [nis])
+
+        cur.execute("""
+            DELETE FROM input_siswa
+            WHERE nis=%s
+        """, [nis])
+
+        cur.execute("""
+            DELETE FROM hasil_knn
+            WHERE nis=%s
+        """, [nis])
+
+        # =================================================
+        # HAPUS DATA UTAMA SISWA
+        # =================================================
+        cur.execute("""
+            DELETE FROM siswa
+            WHERE nis=%s
+        """, [nis])
+
+        mysql.connection.commit()
+
+        simpan_log(f'Menghapus data siswa dengan NIS {nis}')
+
+        flash('Data siswa berhasil dihapus', 'success')
+
+    except Exception as e:
+
+        mysql.connection.rollback()
+
+        flash(f'Gagal menghapus siswa: {str(e)}', 'danger')
+
+    finally:
+
+        cur.close()
+
+    return redirect('/admin/data_siswa')
+# =========================================================
+# ADMIN - LOG AKTIVITAS
+# =========================================================
+@app.route('/admin/log_aktivitas')
+@login_required(roles=[1])
+def admin_log_aktivitas():
+
+    simpan_log('Membuka halaman log aktivitas')
+
+    cur = mysql.connection.cursor()
+
+    keyword = request.args.get('keyword', '')
+
+    if keyword:
+
+        search = f"%{keyword}%"
+
+        cur.execute("""
+            SELECT
+                id_log,
+                username,
+                role,
+                aktivitas,
+                tanggal
+            FROM log_aktivitas
+            WHERE
+                username LIKE %s
+                OR role LIKE %s
+                OR aktivitas LIKE %s
+            ORDER BY id_log DESC
+        """, (
+            search,
+            search,
+            search
+        ))
+
+    else:
+
+        cur.execute("""
+            SELECT
+                id_log,
+                username,
+                role,
+                aktivitas,
+                tanggal
+            FROM log_aktivitas
+            ORDER BY id_log DESC
+        """)
+
+    data_log = cur.fetchall()
+
+    total_log = len(data_log)
+
+    cur.close()
+
+    return render_template(
+        'admin/log_aktivitas.html',
+        data_log=data_log,
+        total_log=total_log,
+        keyword=keyword
+    )
+
+# =========================================================
+# ADMIN - HAPUS SEMUA LOG AKTIVITAS
+# =========================================================
+@app.route('/admin/hapus_semua_log')
+@login_required(roles=[1])
+def admin_hapus_semua_log():
+
+    cur = mysql.connection.cursor()
+
+    cur.execute("""
+        DELETE FROM log_aktivitas
+    """)
+
+    mysql.connection.commit()
+
+    cur.close()
+
+    simpan_log('Menghapus semua log aktivitas')
+
+    flash('Semua log aktivitas berhasil dihapus', 'success')
+
+    return redirect('/admin/log_aktivitas')
+# =========================================================
+# ADMIN - HALAMAN PROSES KNN
+# =========================================================
+@app.route('/admin/proses_knn')
+@login_required(roles=[1])
+def admin_proses_knn():
+
+    cur = mysql.connection.cursor()
+
+    # =====================================================
+    # TOTAL SISWA YANG SIAP DIPROSES
+    # Syarat:
+    # 1. Sudah punya nilai di input_siswa
+    # 2. Sudah punya hasil chatbot
+    # 3. Status proses masih belum
+    # =====================================================
+    cur.execute("""
+        SELECT COUNT(*)
+        FROM input_siswa
+
+        JOIN hasil_chatbot
+            ON input_siswa.nis = hasil_chatbot.nis
+
+        JOIN siswa
+            ON input_siswa.nis = siswa.nis
+
+        WHERE input_siswa.status_proses='belum'
+    """)
+
+    total_siswa = cur.fetchone()[0]
+
+    # =====================================================
+    # TOTAL DATA LATIH ALUMNI
+    # =====================================================
+    cur.execute("""
+        SELECT COUNT(*)
+        FROM alumni
+    """)
+
+    total_alumni = cur.fetchone()[0]
+
+    # =====================================================
+    # TOTAL HASIL KNN
+    # =====================================================
+    cur.execute("""
+        SELECT COUNT(*)
+        FROM hasil_knn
+    """)
+
+    total_hasil = cur.fetchone()[0]
+
+    # =====================================================
+    # PREVIEW DATA SISWA YANG SIAP DIPROSES
+    # =====================================================
+    cur.execute("""
+        SELECT
+            input_siswa.nis,
+            siswa.nama_siswa,
+            siswa.kelas,
+            hasil_chatbot.minat_bakat,
+            hasil_chatbot.kelompok_mapel,
+            input_siswa.nilai_pancasila,
+            input_siswa.nilai_pkwu,
+            input_siswa.nilai_matematika,
+            input_siswa.nilai_indonesia,
+            input_siswa.nilai_inggris,
+            input_siswa.status_proses
+        FROM input_siswa
+
+        JOIN siswa
+            ON input_siswa.nis = siswa.nis
+
+        JOIN hasil_chatbot
+            ON input_siswa.nis = hasil_chatbot.nis
+
+        WHERE input_siswa.status_proses='belum'
+
+        ORDER BY input_siswa.id_input DESC
+    """)
+
+    data_siap = cur.fetchall()
+
+    cur.close()
+
+    return render_template(
+        'admin/proses_knn.html',
+        total_siswa=total_siswa,
+        total_alumni=total_alumni,
+        total_hasil=total_hasil,
+        data_siap=data_siap
+    )
+
+
+# =========================================================
+# ADMIN - EKSEKUSI PROSES KNN
+# =========================================================
+@app.route('/admin/proses_semua_knn', methods=['POST'])
+@login_required(roles=[1])
+def admin_proses_semua_knn():
+
+    cur = mysql.connection.cursor()
+
+    try:
+
+        # =================================================
+        # AMBIL NILAI K DARI FORM
+        # =================================================
+        nilai_k = request.form.get('nilai_k', 3)
+
+        try:
+
+            nilai_k = int(nilai_k)
+
+        except:
+
+            nilai_k = 3
+
+        if nilai_k < 1:
+
+            nilai_k = 1
+
+        # =================================================
+        # DATA SISWA UJI
+        # Gabungan:
+        # input_siswa + siswa + hasil_chatbot
+        # =================================================
+        cur.execute("""
+            SELECT
+                input_siswa.id_input,
+                input_siswa.nis,
+                siswa.nama_siswa,
+                siswa.kelas,
+                hasil_chatbot.minat_bakat,
+                hasil_chatbot.kelompok_mapel,
+
+                input_siswa.nilai_pancasila,
+                input_siswa.nilai_pkwu,
+                input_siswa.nilai_matematika,
+                input_siswa.nilai_indonesia,
+                input_siswa.nilai_inggris
+
+            FROM input_siswa
+
+            JOIN siswa
+                ON input_siswa.nis = siswa.nis
+
+            JOIN hasil_chatbot
+                ON input_siswa.nis = hasil_chatbot.nis
+
+            WHERE input_siswa.status_proses='belum'
+        """)
+
+        semua_siswa = cur.fetchall()
+
+        if len(semua_siswa) == 0:
+
+            flash('Tidak ada data siswa yang siap diproses KNN', 'danger')
+
+            cur.close()
+
+            return redirect('/admin/proses_knn')
+
+        # =================================================
+        # DATA LATIH ALUMNI
+        # =================================================
+        cur.execute("""
+            SELECT
+                id_alumni,
+                nama_alumni,
+                nilai_pancasila,
+                nilai_pkwu,
+                nilai_matematika,
+                nilai_bahasaindo,
+                nilai_bahasaingg,
+                hasil_jurusan
+            FROM alumni
+            WHERE hasil_jurusan IS NOT NULL
+            AND hasil_jurusan != ''
+        """)
+
+        alumni = cur.fetchall()
+
+        if len(alumni) == 0:
+
+            flash('Data latih alumni belum tersedia', 'danger')
+
+            cur.close()
+
+            return redirect('/admin/proses_knn')
+
+        # =================================================
+        # VALIDASI K
+        # K tidak boleh lebih besar dari jumlah data alumni
+        # =================================================
+        if nilai_k > len(alumni):
+
+            nilai_k = len(alumni)
+
+            flash(
+                f'Nilai K melebihi jumlah data alumni. Sistem menggunakan K={nilai_k}',
+                'warning'
+            )
+
+        # =================================================
+        # SUSUN DATA LATIH
+        # Urutan fitur disamakan:
+        # Pancasila, PKWU, Matematika, Bahasa Indonesia, Bahasa Inggris
+        # =================================================
+        data_latih = []
+        label_latih = []
+
+        for a in alumni:
+
+            fitur_latih = [
+                float(a[2]),
+                float(a[3]),
+                float(a[4]),
+                float(a[5]),
+                float(a[6])
+            ]
+
+            data_latih.append(fitur_latih)
+
+            label_latih.append(a[7])
+
+        jumlah_diproses = 0
+
+        # =================================================
+        # LOOP PROSES KNN
+        # =================================================
+        for siswa_uji in semua_siswa:
+
+            id_input = siswa_uji[0]
+            nis = siswa_uji[1]
+
+            fitur_uji = [
+                float(siswa_uji[6]),
+                float(siswa_uji[7]),
+                float(siswa_uji[8]),
+                float(siswa_uji[9]),
+                float(siswa_uji[10])
+            ]
+
+            hasil_knn = knn_predict(
+                data_latih,
+                label_latih,
+                fitur_uji,
+                k=nilai_k
+            )
+
+            nama_jurusan = hasil_knn['hasil']
+            confidence = hasil_knn['confidence']
+            neighbors = hasil_knn['neighbors']
+
+            rata_jarak = (
+                sum(float(n['distance']) for n in neighbors)
+                / len(neighbors)
+            ) if neighbors else 0
+
+            # =================================================
+            # SIMPAN HASIL KNN
+            # =================================================
+            cur.execute("""
+                INSERT INTO hasil_knn(
+                    nis,
+                    hasil_jurusan,
+                    nilai_k,
+                    jumlah_tetangga,
+                    rata_jarak,
+                    confidence,
+                    tanggal
+                )
+                VALUES(%s,%s,%s,%s,%s,%s,%s)
+            """, (
+                nis,
+                nama_jurusan,
+                nilai_k,
+                len(neighbors),
+                round(rata_jarak, 4),
+                confidence,
+                datetime.now()
+            ))
+
+            # =================================================
+            # UPDATE STATUS INPUT SISWA
+            # Pakai id_input supaya aman walau NIS sama pernah dobel
+            # =================================================
+            cur.execute("""
+                UPDATE input_siswa
+                SET status_proses='sudah'
+                WHERE id_input=%s
+            """, [id_input])
+
+            jumlah_diproses += 1
+
+        mysql.connection.commit()
+
+        # =================================================
+        # SIMPAN LOG AKTIVITAS
+        # =================================================
+        simpan_log(
+            f'Menjalankan proses KNN admin dengan K={nilai_k} untuk {jumlah_diproses} siswa'
+        )
+
+        flash(
+            f'Proses KNN berhasil. {jumlah_diproses} siswa diproses dengan K={nilai_k}',
+            'success'
+        )
+
+    except Exception as e:
+
+        mysql.connection.rollback()
+
+        flash(f'Gagal memproses KNN: {str(e)}', 'danger')
+
+    finally:
+
+        cur.close()
+
+    return redirect('/admin/hasil_rekomendasi')
+
+# =========================================================
+# PROFIL GURU BK
+# =========================================================
+@app.route('/profil_guru', methods=['GET', 'POST'])
+@login_required(roles=[2])
+def profil_guru():
+
+    id_guru = session['id_ref']
+
+    cur = mysql.connection.cursor()
+
+    # =====================================================
+    # UPDATE FOTO PROFIL GURU
+    # =====================================================
+    if request.method == 'POST':
+
+        if 'foto_profil' not in request.files:
+
+            flash('File foto tidak ditemukan', 'danger')
+
+            cur.close()
+
+            return redirect('/profil_guru')
+
+        file = request.files['foto_profil']
+
+        if file.filename == '':
+
+            flash('Silakan pilih foto terlebih dahulu', 'danger')
+
+            cur.close()
+
+            return redirect('/profil_guru')
+
+        if file and allowed_file(file.filename):
+
+            filename_asli = secure_filename(file.filename)
+
+            ekstensi = filename_asli.rsplit('.', 1)[1].lower()
+
+            filename_baru = f"guru_{id_guru}.{ekstensi}"
+
+            upload_path = os.path.join(
+                app.config['UPLOAD_FOLDER'],
+                filename_baru
+            )
+
+            os.makedirs(
+                app.config['UPLOAD_FOLDER'],
+                exist_ok=True
+            )
+
+            file.save(upload_path)
+
+            cur.execute("""
+                UPDATE guru_bk
+                SET foto_profil=%s
+                WHERE id_guru=%s
+            """, (
+                filename_baru,
+                id_guru
+            ))
+
+            mysql.connection.commit()
+
+            session['foto_profil'] = filename_baru
+
+            cur.close()
+
+            flash('Foto profil berhasil diperbarui', 'success')
+
+            return redirect('/profil_guru')
+
+        else:
+
+            flash('Format foto harus PNG, JPG, JPEG, atau WEBP', 'danger')
+
+            cur.close()
+
+            return redirect('/profil_guru')
+
+    # =====================================================
+    # AMBIL DATA GURU
+    # =====================================================
+    cur.execute("""
+        SELECT
+            id_guru,
+            nama_guru,
+            jenis_kelamin,
+            no_hp,
+            email,
+            foto_profil
+        FROM guru_bk
+        WHERE id_guru=%s
+    """, [id_guru])
+
+    guru = cur.fetchone()
+
+    cur.close()
+
+    return render_template(
+        'guru/profil_guru.html',
+        guru=guru
+    )
+
 # =========================================================
 # LOGOUT
 # =========================================================
 @app.route('/logout')
 def logout():
+
+    simpan_log('Logout dari sistem')
 
     session.clear()
 

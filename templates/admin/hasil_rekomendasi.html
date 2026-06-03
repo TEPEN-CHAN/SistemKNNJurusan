@@ -1,0 +1,455 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}
+Hasil Rekomendasi RIASEC
+{% endblock %}
+
+{% block content %}
+
+<style>
+
+    .content{
+        padding: 30px;
+    }
+
+    .topbar{
+
+        background: white;
+
+        border-radius: 20px;
+
+        padding: 25px 30px;
+
+        margin-bottom: 30px;
+
+        box-shadow:
+        0 5px 15px rgba(0,0,0,0.05);
+
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .topbar-title{
+
+        font-size: 34px;
+        font-weight: 700;
+
+        color: #0f172a;
+    }
+
+    .topbar-subtitle{
+
+        color: #64748b;
+    }
+
+    .profile{
+
+        display: flex;
+        align-items: center;
+    }
+
+    .profile-icon{
+
+        width: 50px;
+        height: 50px;
+
+        border-radius: 50%;
+
+        background: #2563eb;
+
+        display: flex;
+        justify-content: center;
+        align-items: center;
+
+        color: white;
+
+        font-size: 22px;
+
+        margin-right: 15px;
+    }
+
+    .card-custom{
+
+        background: white;
+
+        border-radius: 25px;
+
+        padding: 30px;
+
+        box-shadow:
+        0 5px 15px rgba(0,0,0,0.05);
+
+        margin-bottom: 30px;
+    }
+
+    .table thead{
+
+        background: #eff6ff;
+    }
+
+    .table{
+
+        border-radius: 15px;
+        overflow: hidden;
+    }
+
+    .badge-custom{
+
+        padding: 10px 15px;
+
+        border-radius: 12px;
+
+        font-size: 13px;
+
+        font-weight: 600;
+    }
+
+    .badge-success{
+
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .badge-info{
+
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .stats-box{
+
+        border-radius: 20px;
+
+        padding: 25px;
+
+        color: white;
+
+        height: 100%;
+    }
+
+    .blue{
+        background: #2563eb;
+    }
+
+    .green{
+        background: #16a34a;
+    }
+
+    .purple{
+        background: #7c3aed;
+    }
+
+    .stats-title{
+
+        font-size: 16px;
+
+        opacity: 0.9;
+    }
+
+    .stats-value{
+
+        font-size: 42px;
+        font-weight: 700;
+    }
+
+    .mapel-box{
+
+        background: #f8fafc;
+
+        border-radius: 14px;
+
+        padding: 12px;
+
+        font-size: 14px;
+
+        line-height: 1.7;
+
+        white-space: pre-line;
+    }
+
+    .chart-container{
+
+        width: 100%;
+        height: 450px;
+    }
+
+    @media(max-width:992px){
+
+        .topbar{
+
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 20px;
+        }
+    }
+
+</style>
+
+<div class="content">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+
+        <div>
+
+            <div class="topbar-title">
+                Hasil Rekomendasi RIASEC
+            </div>
+
+            <div class="topbar-subtitle">
+                Menampilkan hasil rekomendasi jurusan berdasarkan chatbot RIASEC dan metode KNN.
+            </div>
+
+        </div>
+
+        <div class="profile">
+
+            <div class="profile-icon">
+                <i class="bi bi-person-fill"></i>
+            </div>
+
+            <div>
+
+                <div class="fw-bold">
+                    {{ session['username'] }}
+                </div>
+
+                <div class="text-muted">
+                    Admin
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- STATISTIK -->
+    <div class="row g-4 mb-4">
+
+        <div class="col-lg-4">
+
+            <div class="stats-box blue">
+
+                <div class="stats-title">
+                    Total Hasil
+                </div>
+
+                <div class="stats-value">
+                    {{ total_hasil }}
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-4">
+
+            <div class="stats-box green">
+
+                <div class="stats-title">
+                    Total Siswa
+                </div>
+
+                <div class="stats-value">
+                    {{ total_siswa }}
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-4">
+
+            <div class="stats-box purple">
+
+                <div class="stats-title">
+                    Status Sistem
+                </div>
+
+                <div class="stats-value">
+                    AI
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- GRAFIK -->
+    <div class="card-custom">
+
+        <h4 class="fw-bold mb-4">
+            Grafik Hasil Jurusan
+        </h4>
+
+        <div class="chart-container">
+
+            <canvas id="chartJurusan"></canvas>
+
+        </div>
+
+    </div>
+
+    <!-- TABEL -->
+    <div class="card-custom">
+
+        <h4 class="fw-bold mb-4">
+            Data Hasil Rekomendasi
+        </h4>
+
+        <div class="table-responsive">
+
+            <table class="table table-bordered align-middle">
+
+                <thead>
+
+                    <tr>
+
+                        <th>No</th>
+                        <th>NIS</th>
+                        <th>Nama Siswa</th>
+                        <th>Kelas</th>
+                        <th>Minat Bakat</th>
+                        <th>Kelompok Mapel</th>
+                        <th>Hasil Jurusan</th>
+                        <th>Tanggal</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% if hasil_data %}
+
+                        {% for h in hasil_data %}
+
+                        <tr>
+
+                            <td>
+                                {{ loop.index }}
+                            </td>
+
+                            <td>
+                                {{ h[0] }}
+                            </td>
+
+                            <td>
+                                {{ h[1] }}
+                            </td>
+
+                            <td>
+                                {{ h[2] }}
+                            </td>
+
+                            <td>
+
+                                <span class="badge-custom badge-info">
+
+                                    {{ h[3] }}
+
+                                </span>
+
+                            </td>
+
+                            <td>
+
+                                <span class="badge-custom badge-success">
+
+                                    {{ h[4] }}
+
+                                </span>
+
+                            </td>
+
+                            <td>
+
+                                <div class="mapel-box">
+
+                                    {{ h[5] }}
+
+                                </div>
+
+                            </td>
+
+                            <td>
+                                {{ h[6] }}
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                        <tr>
+
+                            <td colspan="8" class="text-center">
+
+                                Belum ada hasil rekomendasi
+
+                            </td>
+
+                        </tr>
+
+                    {% endif %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- CHART JS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+
+const ctx = document.getElementById('chartJurusan');
+
+    new Chart(ctx, {
+
+        type: 'bar',
+
+        data: {
+
+            labels: JSON.parse('{{ labels | tojson | safe }}'),
+
+            datasets: [{
+
+                label: 'Jumlah Siswa',
+
+                data: JSON.parse('{{ values | tojson | safe }}'),
+
+                borderWidth: 1
+
+            }]
+        },
+
+        options: {
+
+            responsive: true,
+
+            maintainAspectRatio: false,
+
+            scales: {
+
+                y: {
+
+                    beginAtZero: true
+
+                }
+            }
+        }
+    });
+
+</script>
+
+{% endblock %}

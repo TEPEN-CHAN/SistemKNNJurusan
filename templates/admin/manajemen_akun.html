@@ -1,0 +1,808 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}
+Manajemen Akun
+{% endblock %}
+
+{% block content %}
+
+<style>
+
+    .content{
+        padding: 30px;
+    }
+
+    .topbar{
+        background: white;
+        border-radius: 20px;
+        padding: 25px 30px;
+        margin-bottom: 30px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .topbar-title{
+        font-size: 34px;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .topbar-subtitle{
+        color: #64748b;
+        margin-top: 5px;
+    }
+
+    .profile{
+        display: flex;
+        align-items: center;
+    }
+
+    .profile-icon{
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: #2563eb;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        font-size: 22px;
+        margin-right: 15px;
+    }
+
+    .card-custom{
+        background: white;
+        border-radius: 25px;
+        padding: 30px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        margin-bottom: 30px;
+    }
+
+    .section-title{
+        font-size: 22px;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 20px;
+    }
+
+    .form-label{
+        font-weight: 600;
+        color: #334155;
+    }
+
+    .form-control,
+    .form-select{
+        border-radius: 12px;
+        padding: 12px 15px;
+        border: 1px solid #cbd5e1;
+    }
+
+    .form-control:focus,
+    .form-select:focus{
+        border-color: #2563eb;
+        box-shadow: 0 0 0 0.2rem rgba(37,99,235,0.15);
+    }
+
+    .btn-primary-custom{
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 12px 20px;
+        font-weight: 600;
+        transition: 0.3s;
+    }
+
+    .btn-primary-custom:hover{
+        background: #1d4ed8;
+        color: white;
+    }
+
+    .btn-danger-custom{
+        background: #dc2626;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 8px 12px;
+        font-weight: 600;
+        transition: 0.3s;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-danger-custom:hover{
+        background: #b91c1c;
+        color: white;
+    }
+
+    .btn-search{
+        background: #0f172a;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 12px 20px;
+        font-weight: 600;
+    }
+
+    .btn-search:hover{
+        background: #1e293b;
+        color: white;
+    }
+
+    .btn-reset{
+        background: #e2e8f0;
+        color: #0f172a;
+        border: none;
+        border-radius: 12px;
+        padding: 12px 20px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+    }
+
+    .btn-reset:hover{
+        background: #cbd5e1;
+        color: #0f172a;
+    }
+
+    .table{
+        border-radius: 15px;
+        overflow: hidden;
+    }
+
+    .table thead{
+        background: #eff6ff;
+    }
+
+    .table th{
+        color: #0f172a;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .table td{
+        vertical-align: middle;
+    }
+
+    .badge-role{
+        padding: 8px 12px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 13px;
+        display: inline-block;
+    }
+
+    .badge-admin{
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .badge-guru{
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .badge-siswa{
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .alert{
+        border-radius: 14px;
+        font-weight: 500;
+    }
+
+    .hidden-field{
+        display: none;
+    }
+
+    .info-small{
+        color: #64748b;
+        font-size: 13px;
+    }
+
+    @media(max-width:992px){
+
+        .topbar{
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 20px;
+        }
+
+    }
+
+</style>
+
+<div class="content">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+
+        <div>
+
+            <div class="topbar-title">
+                Manajemen Akun
+            </div>
+
+            <div class="topbar-subtitle">
+                Kelola akun Admin, Guru BK, dan Siswa.
+            </div>
+
+        </div>
+
+        <div class="profile">
+
+            <div class="profile-icon">
+                <i class="bi bi-person-gear"></i>
+            </div>
+
+            <div>
+
+                <div class="fw-bold">
+                    {{ session['username'] }}
+                </div>
+
+                <div class="text-muted">
+                    Admin
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- FLASH MESSAGE -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+
+        {% if messages %}
+
+            {% for category, message in messages %}
+
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+
+                    {{ message }}
+
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+
+                </div>
+
+            {% endfor %}
+
+        {% endif %}
+
+    {% endwith %}
+
+    <!-- FORM TAMBAH AKUN -->
+    <div class="card-custom">
+
+        <div class="section-title">
+            Tambah Akun Baru
+        </div>
+
+        <form action="/manajemen_akun" method="POST">
+
+            <div class="row g-4">
+
+                <div class="col-lg-4">
+
+                    <label class="form-label">
+                        Pilih Role
+                    </label>
+
+                    <select name="role" id="role" class="form-select" required onchange="aturFormRole()">
+
+                        <option value="">
+                            -- Pilih Role --
+                        </option>
+
+                        <option value="1">
+                            Admin
+                        </option>
+
+                        <option value="2">
+                            Guru BK
+                        </option>
+
+                        <option value="3">
+                            Siswa
+                        </option>
+
+                    </select>
+
+                </div>
+
+                <div class="col-lg-4">
+
+                    <label class="form-label">
+                        Username
+                    </label>
+
+                    <input
+                        type="text"
+                        name="username"
+                        class="form-control"
+                        placeholder="Masukkan username"
+                        required
+                    >
+
+                </div>
+
+                <div class="col-lg-4">
+
+                    <label class="form-label">
+                        Password
+                    </label>
+
+                    <input
+                        type="password"
+                        name="password"
+                        class="form-control"
+                        placeholder="Masukkan password"
+                        required
+                    >
+
+                </div>
+
+                <div class="col-lg-4 field-nama hidden-field">
+
+                    <label class="form-label">
+                        Nama
+                    </label>
+
+                    <input
+                        type="text"
+                        name="nama"
+                        id="nama"
+                        class="form-control"
+                        placeholder="Masukkan nama"
+                    >
+
+                </div>
+
+                <!-- FIELD SISWA -->
+                <div class="col-lg-4 field-siswa hidden-field">
+
+                    <label class="form-label">
+                        NIS
+                    </label>
+
+                    <input
+                        type="text"
+                        name="nis"
+                        id="nis"
+                        class="form-control"
+                        placeholder="Masukkan NIS"
+                    >
+
+                </div>
+
+                <div class="col-lg-4 field-siswa hidden-field">
+
+                    <label class="form-label">
+                        Kelas
+                    </label>
+
+                    <input
+                        type="text"
+                        name="kelas"
+                        id="kelas"
+                        class="form-control"
+                        placeholder="Contoh: XII IPA 1"
+                    >
+
+                </div>
+
+                <!-- FIELD GURU BK -->
+                <div class="col-lg-4 field-guru hidden-field">
+
+                    <label class="form-label">
+                        Jenis Kelamin
+                    </label>
+
+                    <select name="jenis_kelamin" id="jenis_kelamin" class="form-select">
+
+                        <option value="">
+                            -- Pilih Jenis Kelamin --
+                        </option>
+
+                        <option value="Laki-laki">
+                            Laki-laki
+                        </option>
+
+                        <option value="Perempuan">
+                            Perempuan
+                        </option>
+
+                    </select>
+
+                </div>
+
+                <div class="col-lg-4 field-guru hidden-field">
+
+                    <label class="form-label">
+                        No HP
+                    </label>
+
+                    <input
+                        type="text"
+                        name="no_hp"
+                        id="no_hp"
+                        class="form-control"
+                        placeholder="Masukkan no HP"
+                    >
+
+                </div>
+
+                <div class="col-lg-4 field-guru hidden-field">
+
+                    <label class="form-label">
+                        Email
+                    </label>
+
+                    <input
+                        type="email"
+                        name="email"
+                        id="email"
+                        class="form-control"
+                        placeholder="Masukkan email"
+                    >
+
+                </div>
+
+                <div class="col-lg-12">
+
+                    <button type="submit" class="btn btn-primary-custom">
+
+                        <i class="bi bi-plus-circle me-1"></i>
+                        Tambah Akun
+
+                    </button>
+
+                    <div class="info-small mt-2">
+                        Field tambahan akan muncul otomatis sesuai role yang dipilih.
+                    </div>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+
+    <!-- PENCARIAN -->
+    <div class="card-custom">
+
+        <div class="section-title">
+            Cari Akun
+        </div>
+
+        <form action="/manajemen_akun" method="GET">
+
+            <div class="row g-3">
+
+                <div class="col-lg-8">
+
+                    <input
+                        type="text"
+                        name="keyword"
+                        class="form-control"
+                        placeholder="Cari berdasarkan username, nama, NIS, no HP, atau email"
+                        value="{{ keyword }}"
+                    >
+
+                </div>
+
+                <div class="col-lg-2 d-grid">
+
+                    <button type="submit" class="btn btn-search">
+
+                        <i class="bi bi-search me-1"></i>
+                        Cari
+
+                    </button>
+
+                </div>
+
+                <div class="col-lg-2 d-grid">
+
+                    <a href="/manajemen_akun" class="btn-reset">
+
+                        <i class="bi bi-arrow-clockwise me-1"></i>
+                        Reset
+
+                    </a>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+
+    <!-- DATA AKUN -->
+    <div class="card-custom">
+
+        <div class="section-title">
+            Data Akun
+        </div>
+
+        <div class="table-responsive">
+
+            <table class="table table-bordered align-middle">
+
+                <thead>
+
+                    <tr>
+
+                        <th>No</th>
+                        <th>Username</th>
+                        <th>Role</th>
+                        <th>Nama</th>
+                        <th>NIS / ID Guru</th>
+                        <th>Kelas</th>
+                        <th>Jenis Kelamin</th>
+                        <th>No HP</th>
+                        <th>Email</th>
+                        <th>Aksi</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% if data_akun %}
+
+                        {% for akun in data_akun %}
+
+                            <tr>
+
+                                <td>
+                                    {{ loop.index }}
+                                </td>
+
+                                <td>
+                                    {{ akun[1] }}
+                                </td>
+
+                                <td>
+
+                                    {% if akun[2] == 1 %}
+
+                                        <span class="badge-role badge-admin">
+                                            {{ akun[4] }}
+                                        </span>
+
+                                    {% elif akun[2] == 2 %}
+
+                                        <span class="badge-role badge-guru">
+                                            {{ akun[4] }}
+                                        </span>
+
+                                    {% elif akun[2] == 3 %}
+
+                                        <span class="badge-role badge-siswa">
+                                            {{ akun[4] }}
+                                        </span>
+
+                                    {% else %}
+
+                                        <span class="badge-role badge-admin">
+                                            Tidak Diketahui
+                                        </span>
+
+                                    {% endif %}
+
+                                </td>
+
+                                <td>
+                                    {{ akun[5] if akun[5] else '-' }}
+                                </td>
+
+                                <td>
+
+                                    {% if akun[2] == 3 %}
+
+                                        {{ akun[3] if akun[3] else '-' }}
+
+                                    {% elif akun[2] == 2 %}
+
+                                        {{ akun[3] if akun[3] else '-' }}
+
+                                    {% else %}
+
+                                        -
+
+                                    {% endif %}
+
+                                </td>
+
+                                <td>
+
+                                    {% if akun[2] == 3 %}
+
+                                        {{ akun[6] if akun[6] else '-' }}
+
+                                    {% else %}
+
+                                        -
+
+                                    {% endif %}
+
+                                </td>
+
+                                <td>
+
+                                    {% if akun[2] == 2 %}
+
+                                        {{ akun[7] if akun[7] else '-' }}
+
+                                    {% else %}
+
+                                        -
+
+                                    {% endif %}
+
+                                </td>
+
+                                <td>
+
+                                    {% if akun[2] == 2 %}
+
+                                        {{ akun[8] if akun[8] else '-' }}
+
+                                    {% else %}
+
+                                        -
+
+                                    {% endif %}
+
+                                </td>
+
+                                <td>
+
+                                    {% if akun[2] == 2 %}
+
+                                        {{ akun[9] if akun[9] else '-' }}
+
+                                    {% else %}
+
+                                        -
+
+                                    {% endif %}
+
+                                </td>
+
+                                <td>
+
+                                    {% if akun[0] == session['id_akun'] %}
+
+                                        <span class="text-muted">
+                                            Akun aktif
+                                        </span>
+
+                                    {% else %}
+
+                                        <a
+                                            href="/hapus_akun/{{ akun[0] }}"
+                                            class="btn-danger-custom"
+                                            onclick="return confirm('Yakin ingin menghapus akun ini?')"
+                                        >
+
+                                            <i class="bi bi-trash"></i>
+                                            Hapus
+
+                                        </a>
+
+                                    {% endif %}
+
+                                </td>
+
+                            </tr>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                        <tr>
+
+                            <td colspan="10" class="text-center text-muted">
+
+                                Data akun tidak ditemukan
+
+                            </td>
+
+                        </tr>
+
+                    {% endif %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+    function aturFormRole(){
+
+        const role = document.getElementById('role').value;
+
+        const fieldNama = document.querySelectorAll('.field-nama');
+        const fieldSiswa = document.querySelectorAll('.field-siswa');
+        const fieldGuru = document.querySelectorAll('.field-guru');
+
+        const nama = document.getElementById('nama');
+        const nis = document.getElementById('nis');
+        const kelas = document.getElementById('kelas');
+
+        const jenisKelamin = document.getElementById('jenis_kelamin');
+        const noHp = document.getElementById('no_hp');
+        const email = document.getElementById('email');
+
+        fieldNama.forEach(function(item){
+            item.style.display = 'none';
+        });
+
+        fieldSiswa.forEach(function(item){
+            item.style.display = 'none';
+        });
+
+        fieldGuru.forEach(function(item){
+            item.style.display = 'none';
+        });
+
+        nama.required = false;
+        nis.required = false;
+        kelas.required = false;
+
+        jenisKelamin.required = false;
+        noHp.required = false;
+        email.required = false;
+
+        if(role === '2'){
+
+            fieldNama.forEach(function(item){
+                item.style.display = 'block';
+            });
+
+            fieldGuru.forEach(function(item){
+                item.style.display = 'block';
+            });
+
+            nama.required = true;
+            jenisKelamin.required = true;
+            noHp.required = true;
+            email.required = true;
+
+        }else if(role === '3'){
+
+            fieldNama.forEach(function(item){
+                item.style.display = 'block';
+            });
+
+            fieldSiswa.forEach(function(item){
+                item.style.display = 'block';
+            });
+
+            nama.required = true;
+            nis.required = true;
+            kelas.required = true;
+
+        }
+
+    }
+
+</script>
+
+{% endblock %}

@@ -1,68 +1,645 @@
-{% extends 'layout.html' %}
+{% extends 'layout/base.html' %}
+
+{% block title %}
+Dashboard Admin
+{% endblock %}
 
 {% block content %}
 
-<div class="container-fluid">
+<style>
 
-<div class="row mb-4">
+    .admin-dashboard{
+        padding: 10px;
+    }
 
-<div class="col-lg-3 col-6">
-<div class="small-box bg-primary">
-<div class="inner">
-<h3>120</h3>
-<p>Total Siswa</p>
-</div>
-<div class="icon">
-<i class="fas fa-users"></i>
-</div>
-</div>
+    .dashboard-header{
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(135deg, #2563eb, #3b82f6, #60a5fa);
+        color: white;
+        padding: 40px;
+        border-radius: 28px;
+        margin-bottom: 35px;
+        box-shadow: 0 20px 45px rgba(37,99,235,0.25);
+        animation: fadeDown .7s ease;
+    }
+
+    .dashboard-header::before{
+        content: "";
+        position: absolute;
+        width: 250px;
+        height: 250px;
+        right: -70px;
+        top: -90px;
+        background: rgba(255,255,255,0.16);
+        border-radius: 50%;
+    }
+
+    .dashboard-header::after{
+        content: "";
+        position: absolute;
+        width: 160px;
+        height: 160px;
+        right: 120px;
+        bottom: -70px;
+        background: rgba(255,255,255,0.12);
+        border-radius: 50%;
+    }
+
+    .dashboard-header h2{
+        font-weight: 800;
+        font-size: 34px;
+        position: relative;
+        z-index: 2;
+    }
+
+    .dashboard-header p{
+        position: relative;
+        z-index: 2;
+        font-size: 16px;
+        opacity: .95;
+    }
+
+    .card-stat{
+        background: rgba(255,255,255,0.95);
+        border: 1px solid rgba(226,232,240,0.9);
+        border-radius: 24px;
+        padding: 28px;
+        box-shadow: 0 12px 30px rgba(15,23,42,0.07);
+        transition: all .35s ease;
+        height: 100%;
+        animation: fadeUp .7s ease;
+    }
+
+    .card-stat:hover{
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 20px 45px rgba(15,23,42,0.12);
+    }
+
+    .card-stat h3{
+        font-size: 36px;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 3px;
+    }
+
+    .icon-box{
+        width: 68px;
+        height: 68px;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 30px;
+        margin-bottom: 18px;
+        box-shadow: 0 12px 25px rgba(15,23,42,0.15);
+        transition: .35s ease;
+    }
+
+    .card-stat:hover .icon-box,
+    .menu-card:hover .menu-icon{
+        transform: rotate(-6deg) scale(1.08);
+    }
+
+    .bg-blue{
+        background: linear-gradient(135deg, #2563eb, #60a5fa);
+    }
+
+    .bg-green{
+        background: linear-gradient(135deg, #16a34a, #4ade80);
+    }
+
+    .bg-orange{
+        background: linear-gradient(135deg, #f97316, #fbbf24);
+    }
+
+    .bg-purple{
+        background: linear-gradient(135deg, #7c3aed, #a78bfa);
+    }
+
+    .bg-red{
+        background: linear-gradient(135deg, #dc2626, #fb7185);
+    }
+
+    .bg-dark-custom{
+        background: linear-gradient(135deg, #0f172a, #475569);
+    }
+
+    .bg-cyan{
+        background: linear-gradient(135deg, #0891b2, #22d3ee);
+    }
+
+    .bg-gray{
+        background: linear-gradient(135deg, #64748b, #94a3b8);
+    }
+
+    .menu-card{
+        position: relative;
+        overflow: hidden;
+        background: white;
+        border: 1px solid rgba(226,232,240,0.85);
+        border-radius: 26px;
+        padding: 28px;
+        box-shadow: 0 12px 30px rgba(15,23,42,0.07);
+        height: 100%;
+        transition: all .35s ease;
+        animation: fadeUp .8s ease;
+    }
+
+    .menu-card::before{
+        content: "";
+        position: absolute;
+        width: 120px;
+        height: 120px;
+        right: -50px;
+        top: -50px;
+        background: #eff6ff;
+        border-radius: 50%;
+        transition: all .35s ease;
+    }
+
+    .menu-card:hover{
+        transform: translateY(-9px);
+        box-shadow: 0 22px 50px rgba(15,23,42,0.13);
+    }
+
+    .menu-card:hover::before{
+        width: 170px;
+        height: 170px;
+        background: #dbeafe;
+    }
+
+    .menu-icon{
+        width: 58px;
+        height: 58px;
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 26px;
+        margin-bottom: 18px;
+        position: relative;
+        z-index: 2;
+        transition: .35s ease;
+    }
+
+    .menu-card h5{
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 10px;
+        position: relative;
+        z-index: 2;
+    }
+
+    .menu-card p{
+        color: #64748b;
+        min-height: 48px;
+        position: relative;
+        z-index: 2;
+    }
+
+    .menu-card a{
+        text-decoration: none;
+        border-radius: 14px;
+        padding: 10px 18px;
+        font-weight: 700;
+        position: relative;
+        z-index: 2;
+        transition: .3s ease;
+    }
+
+    .menu-card a:hover{
+        transform: translateX(4px);
+    }
+
+    .info-card{
+        border: none;
+        border-radius: 26px;
+        box-shadow: 0 12px 30px rgba(15,23,42,0.07);
+        animation: fadeUp .9s ease;
+    }
+
+    .info-card .card-body{
+        padding: 30px;
+    }
+
+    .info-card h5{
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    @keyframes fadeDown{
+        from{
+            opacity: 0;
+            transform: translateY(-18px);
+        }
+        to{
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fadeUp{
+        from{
+            opacity: 0;
+            transform: translateY(25px);
+        }
+        to{
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @media(max-width:768px){
+
+        .dashboard-header{
+            padding: 28px;
+        }
+
+        .dashboard-header h2{
+            font-size: 27px;
+        }
+
+        .card-stat h3{
+            font-size: 30px;
+        }
+
+    }
+
+</style>
+
+<div class="admin-dashboard">
+
+    <!-- HEADER -->
+    <div class="dashboard-header">
+
+        <h2>
+            Dashboard Administrator
+        </h2>
+
+        <p class="mb-0">
+
+            Selamat datang
+            <b>{{ session['username'] }}</b>.
+            Anda memiliki akses penuh terhadap sistem rekomendasi jurusan.
+
+        </p>
+
+    </div>
+
+    <!-- STATISTIK -->
+    <div class="row g-4 mb-4">
+
+        <div class="col-md-3">
+
+            <div class="card-stat">
+
+                <div class="icon-box bg-blue">
+                    <i class="bi bi-people-fill"></i>
+                </div>
+
+                <h3>{{ total_siswa }}</h3>
+
+                <p class="text-muted mb-0">
+                    Total Siswa
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-3">
+
+            <div class="card-stat">
+
+                <div class="icon-box bg-green">
+                    <i class="bi bi-database-fill"></i>
+                </div>
+
+                <h3>{{ total_alumni }}</h3>
+
+                <p class="text-muted mb-0">
+                    Data Alumni
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-3">
+
+            <div class="card-stat">
+
+                <div class="icon-box bg-orange">
+                    <i class="bi bi-person-badge-fill"></i>
+                </div>
+
+                <h3>{{ total_guru }}</h3>
+
+                <p class="text-muted mb-0">
+                    Guru BK
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-3">
+
+            <div class="card-stat">
+
+                <div class="icon-box bg-purple">
+                    <i class="bi bi-bar-chart-fill"></i>
+                </div>
+
+                <h3>{{ total_hasil }}</h3>
+
+                <p class="text-muted mb-0">
+                    Hasil KNN
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- MENU CEPAT -->
+    <div class="row g-4">
+
+        <!-- DATA SISWA -->
+        <div class="col-md-4">
+
+            <div class="menu-card">
+
+                <div class="menu-icon bg-blue">
+                    <i class="bi bi-people-fill"></i>
+                </div>
+
+                <h5>
+                    Data Siswa
+                </h5>
+
+                <p>
+                    Kelola seluruh data siswa yang terdaftar pada sistem.
+                </p>
+
+                <a href="/admin/data_siswa" class="btn btn-primary">
+
+                    Buka Menu
+                    <i class="bi bi-arrow-right ms-1"></i>
+
+                </a>
+
+            </div>
+
+        </div>
+
+        <!-- DATA ALUMNI -->
+        <div class="col-md-4">
+
+            <div class="menu-card">
+
+                <div class="menu-icon bg-green">
+                    <i class="bi bi-database-fill"></i>
+                </div>
+
+                <h5>
+                    Data Alumni
+                </h5>
+
+                <p>
+                    Upload, edit, dan hapus data alumni sebagai data latih KNN.
+                </p>
+
+                <a href="/admin/input_alumni" class="btn btn-success">
+
+                    Buka Menu
+                    <i class="bi bi-arrow-right ms-1"></i>
+
+                </a>
+
+            </div>
+
+        </div>
+
+        <!-- NILAI SISWA -->
+        <div class="col-md-4">
+
+            <div class="menu-card">
+
+                <div class="menu-icon bg-orange">
+                    <i class="bi bi-journal-text"></i>
+                </div>
+
+                <h5>
+                    Nilai Siswa
+                </h5>
+
+                <p>
+                    Kelola data nilai siswa untuk proses rekomendasi jurusan.
+                </p>
+
+                <a href="{{ url_for('admin_data_siswa') }}" class="btn btn-primary">
+                    Buka Menu
+                    <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+
+            </div>
+
+        </div>
+
+        <!-- HASIL CHATBOT -->
+        <div class="col-md-4">
+
+            <div class="menu-card">
+
+                <div class="menu-icon bg-cyan">
+                    <i class="bi bi-robot"></i>
+                </div>
+
+                <h5>
+                    Hasil Chatbot
+                </h5>
+
+                <p>
+                    Lihat hasil minat bakat RIASEC yang telah diisi oleh siswa.
+                </p>
+
+                <a href="{{ url_for('admin_hasil_chatbot') }}" class="btn btn-info text-white">
+                    Lihat Data
+                    <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+
+            </div>
+
+        </div>
+
+        <!-- PROSES KNN -->
+        <div class="col-md-4">
+
+            <div class="menu-card">
+
+                <div class="menu-icon bg-red">
+                    <i class="bi bi-cpu-fill"></i>
+                </div>
+
+                <h5>
+                    Proses KNN
+                </h5>
+
+                <p>
+                    Jalankan proses klasifikasi jurusan menggunakan metode KNN.
+                </p>
+
+                <a href="{{ url_for('admin_proses_knn') }}" class="btn btn-danger">
+                    Mulai
+                    <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+
+            </div>
+
+        </div>
+
+        <!-- HASIL REKOMENDASI -->
+        <div class="col-md-4">
+
+            <div class="menu-card">
+
+                <div class="menu-icon bg-dark-custom">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </div>
+
+                <h5>
+                    Hasil Rekomendasi
+                </h5>
+
+                <p>
+                    Lihat hasil rekomendasi jurusan berdasarkan KNN dan RIASEC.
+                </p>
+
+                <a href="/admin/hasil_rekomendasi" class="btn btn-dark">
+
+                    Lihat Hasil
+                    <i class="bi bi-arrow-right ms-1"></i>
+
+                </a>
+
+            </div>
+
+        </div>
+
+        <!-- EVALUASI -->
+        <div class="col-md-4">
+
+            <div class="menu-card">
+
+                <div class="menu-icon bg-gray">
+                    <i class="bi bi-bar-chart-line-fill"></i>
+                </div>
+
+                <h5>
+                    Evaluasi Sistem
+                </h5>
+
+                <p>
+                    Evaluasi akurasi metode KNN berdasarkan data pengujian.
+                </p>
+
+                <a href="/admin/evaluasi_sistem" class="btn btn-secondary">
+
+                    Evaluasi
+                    <i class="bi bi-arrow-right ms-1"></i>
+
+                </a>
+
+            </div>
+
+        </div>
+
+        <!-- MANAJEMEN AKUN -->
+        <div class="col-md-4">
+
+            <div class="menu-card">
+
+                <div class="menu-icon bg-blue">
+                    <i class="bi bi-person-gear"></i>
+                </div>
+
+                <h5>
+                    Manajemen Akun
+                </h5>
+
+                <p>
+                    Kelola akun Admin, Guru BK, dan Siswa.
+                </p>
+
+                <a href="{{ url_for('manajemen_akun') }}" class="btn btn-primary">
+
+                    Kelola
+                    <i class="bi bi-arrow-right ms-1"></i>
+
+                </a>
+
+            </div>
+
+        </div>
+
+        <!-- LOG AKTIVITAS -->
+        <div class="col-md-4">
+
+            <div class="menu-card">
+
+                <div class="menu-icon bg-green">
+                    <i class="bi bi-clipboard-data-fill"></i>
+                </div>
+
+                <h5>
+                    Log Aktivitas
+                </h5>
+
+                <p>
+                    Pantau aktivitas pengguna sistem pada halaman admin.
+                </p>
+
+                <a href="{{ url_for('admin_log_aktivitas') }}" class="btn btn-success">
+                    Lihat Log
+                    <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- INFO SISTEM -->
+    <div class="card info-card mt-4">
+
+        <div class="card-body">
+
+            <h5>
+                <i class="bi bi-info-circle-fill text-primary me-1"></i>
+                Informasi Sistem
+            </h5>
+
+            <hr>
+
+            <p class="text-muted mb-0">
+
+                Sistem Rekomendasi Jurusan menggunakan metode
+                <b>K-Nearest Neighbor (KNN)</b> dengan memanfaatkan data alumni
+                sebagai data latih dan hasil chatbot <b>RIASEC</b> sebagai pendukung
+                pengambilan keputusan rekomendasi jurusan.
+
+            </p>
+
+        </div>
+
+    </div>
+
 </div>
 
-<div class="col-lg-3 col-6">
-<div class="small-box bg-success">
-<div class="inner">
-<h3>85%</h3>
-<p>Akurasi Model</p>
-</div>
-<div class="icon">
-<i class="fas fa-chart-line"></i>
-</div>
-</div>
-</div>
-
-<div class="col-lg-3 col-6">
-<div class="small-box bg-warning">
-<div class="inner">
-<h3>60</h3>
-<p>Data Alumni</p>
-</div>
-<div class="icon">
-<i class="fas fa-user-graduate"></i>
-</div>
-</div>
-</div>
-
-<div class="col-lg-3 col-6">
-<div class="small-box bg-danger">
-<div class="inner">
-<h3>3</h3>
-<p>Nilai K</p>
-</div>
-<div class="icon">
-<i class="fas fa-brain"></i>
-</div>
-</div>
-</div>
-
-</div>
-
-<div class="card shadow">
-<div class="card-header bg-primary text-white">
-<h3 class="card-title">
-Grafik Evaluasi Sistem
-</h3>
-</div>
-
-<div class="card-body">
-<canvas id="chartAdmin"></canvas>
-</div
+{% endblock %}

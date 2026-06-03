@@ -5,111 +5,90 @@
 <style>
 
     .topbar{
-
         background:white;
-
         border-radius:20px;
-
         padding:20px 30px;
-
         display:flex;
         justify-content:space-between;
         align-items:center;
-
         margin-bottom:30px;
-
-        box-shadow:
-        0 5px 15px rgba(0,0,0,0.05);
+        box-shadow:0 5px 15px rgba(0,0,0,0.05);
     }
 
     .welcome-title{
-
         font-size:38px;
         font-weight:700;
-
         color:#0f172a;
     }
 
     .welcome-subtitle{
-
         color:#64748b;
-
         font-size:16px;
     }
 
     .profile-box{
-
         display:flex;
         align-items:center;
     }
 
     .profile-circle{
-
         width:55px;
         height:55px;
-
         border-radius:50%;
-
         background:#2563eb;
-
         color:white;
-
         display:flex;
         justify-content:center;
         align-items:center;
-
         font-size:24px;
-
         margin-right:15px;
     }
 
     .profile-name{
-
         font-weight:600;
         color:#0f172a;
     }
 
     .profile-role{
-
         font-size:14px;
         color:#64748b;
     }
 
     .stats-card{
-
         background:white;
-
         border-radius:22px;
-
         padding:25px;
-
-        box-shadow:
-        0 5px 15px rgba(0,0,0,0.05);
-
+        box-shadow:0 5px 15px rgba(0,0,0,0.05);
         transition:0.3s;
+        height:100%;
     }
 
     .stats-card:hover{
-
         transform:translateY(-5px);
     }
 
     .stats-icon{
-
         width:70px;
         height:70px;
-
         border-radius:20px;
-
         display:flex;
         justify-content:center;
         align-items:center;
-
         color:white;
-
         font-size:30px;
-
         margin-bottom:20px;
+    }
+
+    .stats-title{
+        font-size:15px;
+        color:#64748b;
+        margin-bottom:5px;
+    }
+
+    .stats-value{
+        font-size:38px;
+        font-weight:700;
+        color:#0f172a;
     }
 
     .blue{
@@ -128,8 +107,20 @@
         background:#f97316;
     }
 
+    .action-btn{
+        margin-top:15px;
+        width:100%;
+        border-radius:12px;
+        font-weight:600;
+    }
+
+    .dashboard-section{
+        margin-top:30px;
+    }
+
 </style>
 
+<!-- TOPBAR -->
 <div class="topbar">
 
     <div>
@@ -161,6 +152,143 @@
             </div>
 
         </div>
+
+    </div>
+
+</div>
+
+<!-- STATISTIK -->
+<div class="row dashboard-section">
+
+    <!-- DATA SISWA -->
+    <div class="col-lg-3 col-md-6 mb-4">
+
+        <div class="stats-card">
+
+            <div class="stats-icon blue">
+                <i class="bi bi-people-fill"></i>
+            </div>
+
+            <div class="stats-title">
+                Total Siswa
+            </div>
+
+            <div class="stats-value">
+                {{ total_siswa }}
+            </div>
+
+            <a href="/input_nilai"
+               class="btn btn-primary action-btn">
+
+                Kelola Data
+
+            </a>
+
+        </div>
+
+    </div>
+
+    <!-- DATA ALUMNI -->
+    <div class="col-lg-3 col-md-6 mb-4">
+
+        <div class="stats-card">
+
+            <div class="stats-icon green">
+                <i class="bi bi-database-fill"></i>
+            </div>
+
+            <div class="stats-title">
+                Data Alumni
+            </div>
+
+            <div class="stats-value">
+                {{ total_alumni }}
+            </div>
+
+            <a href="/input_alumni"
+               class="btn btn-success action-btn">
+
+                Kelola Data
+
+            </a>
+
+        </div>
+
+    </div>
+
+    <!-- PROSES KNN -->
+    <div class="col-lg-3 col-md-6 mb-4">
+
+        <div class="stats-card">
+
+            <div class="stats-icon orange">
+                <i class="bi bi-cpu-fill"></i>
+            </div>
+
+            <div class="stats-title">
+                Proses KNN
+            </div>
+
+            <div class="stats-value">
+                KNN
+            </div>
+
+            <a href="/proses_knn"
+               class="btn btn-warning action-btn">
+
+                Mulai Proses
+
+            </a>
+
+        </div>
+
+    </div>
+
+    <!-- HASIL REKOMENDASI -->
+    <div class="col-lg-3 col-md-6 mb-4">
+
+        <div class="stats-card">
+
+            <div class="stats-icon purple">
+                <i class="bi bi-bar-chart-fill"></i>
+            </div>
+
+            <div class="stats-title">
+                Hasil Rekomendasi
+            </div>
+
+            <div class="stats-value">
+                {{ total_hasil }}
+            </div>
+
+            <a href="/hasil_rekomendasi"
+               class="btn btn-dark action-btn">
+
+                Lihat Hasil
+
+            </a>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- INFORMASI SISTEM -->
+<div class="card border-0 shadow-sm mt-3">
+
+    <div class="card-body p-4">
+
+        <h4 class="fw-bold">
+            Sistem Rekomendasi Jurusan
+        </h4>
+
+        <p class="text-muted mb-0">
+            Sistem ini menggunakan metode K-Nearest Neighbor (KNN)
+            untuk memberikan rekomendasi jurusan berdasarkan
+            data nilai akademik siswa dan data alumni sebagai
+            data latih.
+        </p>
 
     </div>
 

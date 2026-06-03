@@ -1,193 +1,390 @@
 <!DOCTYPE html>
+
 <html lang="id">
 
 <head>
 
-    <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
 
-    <title>
-        Sistem Rekomendasi Jurusan
-    </title>
+<title>
+    Sistem Rekomendasi Jurusan
+</title>
 
-    <!-- =========================================
-    BOOTSTRAP 5
-    ========================================== -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-          rel="stylesheet">
+<!-- Bootstrap 5 -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet">
 
-    <!-- =========================================
-    FONT AWESOME
-    ========================================== -->
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<!-- Bootstrap Icons -->
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
-    <!-- =========================================
-    GOOGLE FONT
-    ========================================== -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-          rel="stylesheet">
+<!-- Font Awesome -->
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-    <!-- =========================================
-    CUSTOM CSS
-    ========================================== -->
-    <style>
+<!-- Google Font -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet">
 
-        body{
-            background: #f4f7fc;
-            font-family: 'Poppins', sans-serif;
-        }
+<style>
 
-        /* =========================================
-        SIDEBAR
-        ========================================== */
+    *{
+        font-family:'Poppins',sans-serif;
+    }
+
+    body{
+        margin:0;
+        padding:0;
+        background:#f1f5f9;
+    }
+
+    /* =======================================
+    SIDEBAR
+    ======================================= */
+
+    .sidebar{
+
+        position:fixed;
+
+        top:0;
+        left:0;
+
+        width:280px;
+        height:100vh;
+
+        background:linear-gradient(
+            180deg,
+            #2563eb,
+            #1d4ed8
+        );
+
+        padding:25px 20px;
+
+        overflow-y:auto;
+
+        z-index:1000;
+    }
+
+    .logo{
+
+        display:flex;
+        align-items:center;
+
+        gap:15px;
+
+        color:white;
+
+        margin-bottom:40px;
+    }
+
+    .logo i{
+
+        font-size:40px;
+    }
+
+    .logo span{
+
+        font-size:18px;
+        font-weight:700;
+
+        line-height:1.3;
+    }
+
+    .sidebar a{
+
+        display:flex;
+        align-items:center;
+
+        gap:12px;
+
+        color:white;
+
+        text-decoration:none;
+
+        padding:14px 18px;
+
+        border-radius:14px;
+
+        margin-bottom:8px;
+
+        transition:.3s;
+
+        font-weight:500;
+    }
+
+    .sidebar a:hover{
+
+        background:rgba(255,255,255,.15);
+
+        color:white;
+
+        transform:translateX(5px);
+    }
+
+    .sidebar a i{
+
+        font-size:18px;
+    }
+
+    .logout-link{
+
+        margin-top:25px;
+    }
+
+    /* =======================================
+    MAIN CONTENT
+    ======================================= */
+
+    .main-content{
+
+        margin-left:280px;
+
+        padding:25px;
+    }
+
+    /* =======================================
+    TOPBAR
+    ======================================= */
+
+    .topbar{
+
+        background:white;
+
+        border-radius:22px;
+
+        padding:22px 28px;
+
+        margin-bottom:28px;
+
+        box-shadow:
+        0 8px 25px rgba(15,23,42,0.06);
+
+        border:1px solid #e2e8f0;
+    }
+
+    .topbar-profile-img{
+
+        width:58px;
+        height:58px;
+
+        border-radius:50%;
+
+        object-fit:cover;
+
+        border:3px solid #2563eb;
+
+        box-shadow:
+        0 8px 18px rgba(37,99,235,0.25);
+    }
+
+    .profile-icon{
+
+        width:58px;
+        height:58px;
+
+        border-radius:50%;
+
+        background:#2563eb;
+
+        color:white;
+
+        display:flex;
+        align-items:center;
+        justify-content:center;
+
+        font-size:24px;
+
+        box-shadow:
+        0 8px 18px rgba(37,99,235,0.25);
+    }
+
+    .topbar-username{
+
+        font-weight:700;
+        color:#0f172a;
+    }
+
+    /* =======================================
+    CARD
+    ======================================= */
+
+    .card{
+
+        border:none;
+
+        border-radius:20px;
+
+        box-shadow:
+        0 5px 20px rgba(0,0,0,.05);
+    }
+
+    /* =======================================
+    RESPONSIVE
+    ======================================= */
+
+    @media(max-width:992px){
 
         .sidebar{
-            width: 260px;
-            height: 100vh;
-            position: fixed;
-            top: 0;
-            left: 0;
-            background: linear-gradient(
-                180deg,
-                #0d6efd,
-                #0b5ed7
-            );
-            padding: 25px;
-            color: white;
-        }
 
-        .sidebar h3{
-            font-weight: 700;
-            margin-bottom: 40px;
-        }
+            width:100%;
+            height:auto;
 
-        .sidebar a{
-            display: block;
-            color: white;
-            text-decoration: none;
-            padding: 14px 18px;
-            margin-bottom: 12px;
-            border-radius: 12px;
-            transition: 0.3s;
-            font-weight: 500;
+            position:relative;
         }
-
-        .sidebar a:hover{
-            background: rgba(255,255,255,0.15);
-        }
-
-        .sidebar i{
-            margin-right: 10px;
-        }
-
-        /* =========================================
-        CONTENT
-        ========================================== */
 
         .main-content{
-            margin-left: 260px;
-            padding: 30px;
-        }
 
-        /* =========================================
-        NAVBAR
-        ========================================== */
+            margin-left:0;
+        }
 
         .topbar{
-            background: white;
-            padding: 20px 30px;
-            border-radius: 20px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
-            margin-bottom: 30px;
+
+            flex-direction:column;
+            align-items:flex-start !important;
+            gap:18px;
         }
 
-        /* =========================================
-        CARD
-        ========================================== */
+    }
 
-        .card{
-            border: none;
-            border-radius: 20px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
-        }
+</style>
 
-        /* =========================================
-        RESPONSIVE
-        ========================================== */
-
-        @media(max-width:992px){
-
-            .sidebar{
-                width: 100%;
-                height: auto;
-                position: relative;
-            }
-
-            .main-content{
-                margin-left: 0;
-            }
-
-        }
-
-    </style>
 
 </head>
 
 <body>
 
-<!-- =========================================
-SIDEBAR
-========================================== -->
-
 <div class="sidebar">
 
-    <h3>
-        <i class="fa-solid fa-graduation-cap"></i>
-        KNN Jurusan
-    </h3>
+
+<div class="logo">
+
+    <i class="bi bi-mortarboard-fill"></i>
+
+    <span>
+        KNN<br>
+        Jurusan
+    </span>
+
+</div>
+
+{% if session.get('id_role') == 1 %}
+
+<a href="{{ url_for('dashboard_admin') }}">
+    <i class="bi bi-house-fill"></i>
+    Dashboard
+</a>
+
+<a href="{{ url_for('admin_data_siswa') }}">
+    <i class="bi bi-people-fill"></i>
+    Data Siswa
+</a>
+
+<a href="/admin/input_alumni">
+    <i class="bi bi-database-fill"></i>
+    Data Alumni
+</a>
+
+<a href="{{ url_for('admin_nilai_siswa') }}">
+    <i class="bi bi-journal-text"></i>
+    Nilai Siswa
+</a>
+
+<a href="{{ url_for('admin_hasil_chatbot') }}">
+    <i class="bi bi-robot"></i>
+    Hasil Chatbot
+</a>
+
+<a href="{{ url_for('admin_proses_knn') }}">
+    <i class="bi bi-cpu-fill"></i>
+    Proses KNN
+</a>
+
+<a href="{{ url_for('admin_hasil_rekomendasi') }}">
+    <i class="bi bi-graph-up-arrow"></i>
+    Hasil Rekomendasi
+</a>
+
+<a href="/admin/evaluasi_sistem">
+    <i class="bi bi-bar-chart-fill"></i>
+    Evaluasi Sistem
+</a>
+
+<a href="{{ url_for('manajemen_akun') }}">
+    <i class="bi bi-person-gear"></i>
+    Manajemen Akun
+</a>
+
+<a href="{{ url_for('admin_log_aktivitas') }}">
+    <i class="bi bi-clipboard-data"></i>
+    Log Aktivitas
+</a>
+
+{% elif session.get('id_role') == 2 %}
 
     <a href="/dashboard_guru">
-        <i class="fa-solid fa-house"></i>
+        <i class="bi bi-house-fill"></i>
         Dashboard
     </a>
 
     <a href="/input_nilai">
-        <i class="fa-solid fa-file-excel"></i>
+        <i class="bi bi-file-earmark-text"></i>
         Input Nilai Siswa
     </a>
 
     <a href="/input_alumni">
-        <i class="fa-solid fa-database"></i>
+        <i class="bi bi-database-fill"></i>
         Input Data Alumni
     </a>
 
     <a href="/proses_knn">
-        <i class="fa-solid fa-brain"></i>
+        <i class="bi bi-cpu-fill"></i>
         Proses KNN
     </a>
 
     <a href="/hasil_rekomendasi">
-        <i class="fa-solid fa-chart-line"></i>
+        <i class="bi bi-graph-up-arrow"></i>
         Hasil Rekomendasi
     </a>
 
-    <a href="/logout">
-        <i class="fa-solid fa-right-from-bracket"></i>
-        Logout
+    <a href="/profil_guru">
+        <i class="bi bi-person-circle"></i>
+        Profil Guru
     </a>
+
+{% elif session.get('id_role') == 3 %}
+
+    <a href="/dashboard_siswa">
+        <i class="bi bi-house-fill"></i>
+        Dashboard
+    </a>
+
+    <a href="/dashboard_siswa">
+        <i class="bi bi-chat-dots-fill"></i>
+        Chatbot RIASEC
+    </a>
+
+    <a href="/profil_siswa">
+        <i class="bi bi-person-fill"></i>
+        Profil
+    </a>
+
+{% endif %}
+
+<a href="/logout" class="logout-link">
+
+    <i class="bi bi-box-arrow-right"></i>
+
+    Logout
+
+</a>
 
 </div>
 
-<!-- =========================================
-MAIN CONTENT
-========================================== -->
-
 <div class="main-content">
 
-    <!-- TOPBAR -->
     <div class="topbar d-flex justify-content-between align-items-center">
 
         <div>
@@ -202,23 +399,36 @@ MAIN CONTENT
 
         </div>
 
-        <div>
+        <div class="d-flex align-items-center gap-3">
 
-            <i class="fa-solid fa-user-circle fa-2x text-primary"></i>
+            <div class="topbar-username">
+                {{ session.get('username') }}
+            </div>
+
+            {% if session.get('foto_profil') %}
+
+                <img
+                    src="{{ url_for('static', filename='uploads/profil/' ~ session.get('foto_profil')) }}"
+                    alt="Foto Profil"
+                    class="topbar-profile-img"
+                >
+
+            {% else %}
+
+                <div class="profile-icon">
+                    <i class="bi bi-person-fill"></i>
+                </div>
+
+            {% endif %}
 
         </div>
 
     </div>
 
-    <!-- CONTENT -->
     {% block content %}
     {% endblock %}
 
 </div>
-
-<!-- =========================================
-BOOTSTRAP JS
-========================================== -->
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 

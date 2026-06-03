@@ -1,0 +1,421 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}
+Hasil Chatbot
+{% endblock %}
+
+{% block content %}
+
+<style>
+    .content{
+        padding: 30px;
+    }
+
+    .topbar-page{
+        background: white;
+        border-radius: 24px;
+        padding: 28px 30px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(15,23,42,0.07);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .topbar-title{
+        font-size: 34px;
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .topbar-subtitle{
+        color: #64748b;
+        margin-top: 5px;
+    }
+
+    .topbar-icon{
+        width: 60px;
+        height: 60px;
+        border-radius: 20px;
+        background: linear-gradient(135deg, #0891b2, #22d3ee);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        box-shadow: 0 12px 25px rgba(8,145,178,0.25);
+    }
+
+    .card-custom{
+        background: white;
+        border-radius: 24px;
+        padding: 28px;
+        box-shadow: 0 10px 30px rgba(15,23,42,0.07);
+        margin-bottom: 30px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .stats-box{
+        background: linear-gradient(135deg, #0891b2, #22d3ee);
+        color: white;
+        border-radius: 22px;
+        padding: 24px;
+        box-shadow: 0 12px 28px rgba(8,145,178,0.18);
+    }
+
+    .stats-title{
+        font-size: 15px;
+        opacity: .9;
+    }
+
+    .stats-value{
+        font-size: 38px;
+        font-weight: 800;
+    }
+
+    .section-title{
+        font-size: 22px;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 20px;
+    }
+
+    .form-control{
+        border-radius: 14px;
+        padding: 12px 15px;
+        border: 1px solid #cbd5e1;
+    }
+
+    .btn-search{
+        background: #0f172a;
+        color: white;
+        border: none;
+        border-radius: 14px;
+        padding: 12px 18px;
+        font-weight: 700;
+    }
+
+    .btn-search:hover{
+        background: #1e293b;
+        color: white;
+    }
+
+    .btn-reset{
+        background: #e2e8f0;
+        color: #0f172a;
+        border: none;
+        border-radius: 14px;
+        padding: 12px 18px;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+    }
+
+    .btn-reset:hover{
+        background: #cbd5e1;
+        color: #0f172a;
+    }
+
+    .btn-danger-custom{
+        background: #dc2626;
+        color: white;
+        border-radius: 10px;
+        padding: 8px 12px;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-danger-custom:hover{
+        background: #b91c1c;
+        color: white;
+    }
+
+    .table{
+        border-radius: 18px;
+        overflow: hidden;
+    }
+
+    .table thead{
+        background: #ecfeff;
+    }
+
+    .table th{
+        color: #0f172a;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .table td{
+        vertical-align: middle;
+    }
+
+    .badge-custom{
+        padding: 8px 12px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 700;
+        display: inline-block;
+    }
+
+    .badge-riasec{
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .badge-mapel{
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .badge-pt{
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .detail-mapel{
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 12px;
+        white-space: pre-line;
+        line-height: 1.6;
+        min-width: 220px;
+    }
+
+    .alert{
+        border-radius: 14px;
+        font-weight: 500;
+    }
+
+    @media(max-width:992px){
+        .topbar-page{
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 20px;
+        }
+
+        .topbar-title{
+            font-size: 28px;
+        }
+    }
+</style>
+
+<div class="content">
+
+    <div class="topbar-page">
+
+        <div>
+            <div class="topbar-title">
+                Hasil Chatbot RIASEC
+            </div>
+
+            <div class="topbar-subtitle">
+                Menampilkan data hasil minat bakat siswa dari chatbot RIASEC.
+            </div>
+        </div>
+
+        <div class="topbar-icon">
+            <i class="bi bi-robot"></i>
+        </div>
+
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+
+        {% if messages %}
+
+            {% for category, message in messages %}
+
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+
+                    {{ message }}
+
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+
+                </div>
+
+            {% endfor %}
+
+        {% endif %}
+
+    {% endwith %}
+
+    <div class="row g-4 mb-4">
+
+        <div class="col-lg-4">
+
+            <div class="stats-box">
+
+                <div class="stats-title">
+                    Total Hasil Chatbot
+                </div>
+
+                <div class="stats-value">
+                    {{ total_chatbot }}
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="card-custom">
+
+        <div class="section-title">
+            Cari Hasil Chatbot
+        </div>
+
+        <form action="{{ url_for('admin_hasil_chatbot') }}" method="GET">
+
+            <div class="row g-3">
+
+                <div class="col-lg-8">
+
+                    <input
+                        type="text"
+                        name="keyword"
+                        class="form-control"
+                        placeholder="Cari berdasarkan NIS, nama siswa, kelas, minat bakat, kelompok mapel..."
+                        value="{{ keyword }}"
+                    >
+
+                </div>
+
+                <div class="col-lg-2 d-grid">
+
+                    <button type="submit" class="btn btn-search">
+
+                        <i class="bi bi-search me-1"></i>
+                        Cari
+
+                    </button>
+
+                </div>
+
+                <div class="col-lg-2 d-grid">
+
+                    <a href="{{ url_for('admin_hasil_chatbot') }}" class="btn-reset">
+
+                        <i class="bi bi-arrow-clockwise me-1"></i>
+                        Reset
+
+                    </a>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+
+    <div class="card-custom">
+
+        <div class="section-title">
+            Data Hasil Chatbot
+        </div>
+
+        <div class="table-responsive">
+
+            <table class="table table-bordered align-middle">
+
+                <thead>
+
+                    <tr>
+                        <th>No</th>
+                        <th>NIS</th>
+                        <th>Nama Siswa</th>
+                        <th>Kelas</th>
+                        <th>Minat Bakat</th>
+                        <th>Kelompok Mapel</th>
+                        <th>Detail Mapel</th>
+                        <th>Lanjut PT</th>
+                        <th>Tanggal</th>
+                        <th>Aksi</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% if data_chatbot %}
+
+                        {% for h in data_chatbot %}
+
+                            <tr>
+
+                                <td>{{ loop.index }}</td>
+
+                                <td>{{ h[1] }}</td>
+
+                                <td>{{ h[2] }}</td>
+
+                                <td>{{ h[3] }}</td>
+
+                                <td>
+                                    <span class="badge-custom badge-riasec">
+                                        {{ h[4] }}
+                                    </span>
+                                </td>
+
+                                <td>
+                                    <span class="badge-custom badge-mapel">
+                                        {{ h[5] }}
+                                    </span>
+                                </td>
+
+                                <td>
+                                    <div class="detail-mapel">
+                                        {{ h[6] }}
+                                    </div>
+                                </td>
+
+                                <td>
+                                    <span class="badge-custom badge-pt">
+                                        {{ h[7] }}
+                                    </span>
+                                </td>
+
+                                <td>
+                                    {{ h[8].strftime('%d-%m-%Y %H:%M') if h[8] else '-' }}
+                                </td>
+
+                                <td>
+                                    <a
+                                        href="/admin/hapus_hasil_chatbot/{{ h[0] }}"
+                                        class="btn-danger-custom"
+                                        onclick="return confirm('Yakin ingin menghapus hasil chatbot ini?')"
+                                    >
+                                        <i class="bi bi-trash"></i>
+                                        Hapus
+                                    </a>
+                                </td>
+
+                            </tr>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                        <tr>
+                            <td colspan="10" class="text-center text-muted">
+                                Data hasil chatbot belum tersedia
+                            </td>
+                        </tr>
+
+                    {% endif %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

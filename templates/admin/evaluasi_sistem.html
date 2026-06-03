@@ -1,0 +1,852 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}
+Evaluasi Sistem
+{% endblock %}
+
+{% block content %}
+
+<style>
+
+    .content{
+        padding: 30px;
+    }
+
+    .topbar{
+        background: linear-gradient(135deg, #0f172a, #334155);
+        color: white;
+        border-radius: 25px;
+        padding: 30px;
+        margin-bottom: 30px;
+        box-shadow: 0 15px 35px rgba(15,23,42,0.18);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        animation: fadeDown .6s ease;
+    }
+
+    .topbar-title{
+        font-size: 34px;
+        font-weight: 800;
+    }
+
+    .topbar-subtitle{
+        color: #cbd5e1;
+        margin-top: 5px;
+    }
+
+    .profile{
+        display: flex;
+        align-items: center;
+    }
+
+    .profile-icon{
+        width: 55px;
+        height: 55px;
+        border-radius: 18px;
+        background: rgba(255,255,255,0.18);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        font-size: 25px;
+        margin-right: 15px;
+    }
+
+    .card-custom{
+        background: white;
+        border-radius: 25px;
+        padding: 28px;
+        box-shadow: 0 10px 30px rgba(15,23,42,0.08);
+        margin-bottom: 30px;
+        border: 1px solid #e2e8f0;
+        animation: fadeUp .7s ease;
+    }
+
+    .stats-box{
+        border-radius: 24px;
+        padding: 28px;
+        color: white;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 12px 28px rgba(15,23,42,0.12);
+        transition: .35s ease;
+    }
+
+    .stats-box:hover{
+        transform: translateY(-7px);
+    }
+
+    .stats-box::after{
+        content: "";
+        position: absolute;
+        width: 130px;
+        height: 130px;
+        right: -40px;
+        top: -40px;
+        background: rgba(255,255,255,0.18);
+        border-radius: 50%;
+    }
+
+    .stats-title{
+        font-size: 15px;
+        opacity: .9;
+        position: relative;
+        z-index: 2;
+    }
+
+    .stats-value{
+        font-size: 38px;
+        font-weight: 800;
+        position: relative;
+        z-index: 2;
+    }
+
+    .stats-icon{
+        font-size: 35px;
+        margin-bottom: 10px;
+        position: relative;
+        z-index: 2;
+    }
+
+    .blue{
+        background: linear-gradient(135deg, #2563eb, #60a5fa);
+    }
+
+    .green{
+        background: linear-gradient(135deg, #16a34a, #4ade80);
+    }
+
+    .orange{
+        background: linear-gradient(135deg, #f97316, #fbbf24);
+    }
+
+    .purple{
+        background: linear-gradient(135deg, #7c3aed, #a78bfa);
+    }
+
+    .red{
+        background: linear-gradient(135deg, #dc2626, #fb7185);
+    }
+
+    .dark{
+        background: linear-gradient(135deg, #0f172a, #475569);
+    }
+
+    .cyan{
+        background: linear-gradient(135deg, #0891b2, #22d3ee);
+    }
+
+    .indigo{
+        background: linear-gradient(135deg, #4f46e5, #818cf8);
+    }
+
+    .section-title{
+        font-size: 23px;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 20px;
+    }
+
+    .chart-container{
+        width: 100%;
+        height: 430px;
+    }
+
+    .table{
+        border-radius: 18px;
+        overflow: hidden;
+    }
+
+    .table thead{
+        background: #f1f5f9;
+    }
+
+    .table th{
+        color: #0f172a;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .table td{
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    .badge-custom{
+        padding: 8px 13px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 13px;
+        display: inline-block;
+    }
+
+    .badge-high{
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .badge-medium{
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .badge-low{
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .badge-jurusan{
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .info-box{
+        background: #f8fafc;
+        border: 1px dashed #cbd5e1;
+        border-radius: 18px;
+        padding: 18px;
+        color: #475569;
+        line-height: 1.7;
+    }
+
+    .metric-note{
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #1e3a8a;
+        border-radius: 18px;
+        padding: 18px;
+        line-height: 1.7;
+    }
+
+    @keyframes fadeDown{
+        from{
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to{
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fadeUp{
+        from{
+            opacity: 0;
+            transform: translateY(25px);
+        }
+        to{
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @media(max-width:992px){
+
+        .topbar{
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 20px;
+        }
+
+        .topbar-title{
+            font-size: 28px;
+        }
+
+    }
+
+</style>
+
+<div class="content">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+
+        <div>
+
+            <div class="topbar-title">
+                Evaluasi Sistem
+            </div>
+
+            <div class="topbar-subtitle">
+                Analisis hasil rekomendasi jurusan berdasarkan confidence, rata-rata jarak, distribusi hasil KNN, dan metrik evaluasi.
+            </div>
+
+        </div>
+
+        <div class="profile">
+
+            <div class="profile-icon">
+                <i class="bi bi-bar-chart-fill"></i>
+            </div>
+
+            <div>
+
+                <div class="fw-bold">
+                    {{ session['username'] }}
+                </div>
+
+                <div class="text-light">
+                    Administrator
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- STATISTIK UTAMA -->
+    <div class="row g-4 mb-4">
+
+        <div class="col-lg-3 col-md-6">
+
+            <div class="stats-box blue">
+
+                <div class="stats-icon">
+                    <i class="bi bi-clipboard-data-fill"></i>
+                </div>
+
+                <div class="stats-title">
+                    Total Hasil KNN
+                </div>
+
+                <div class="stats-value">
+                    {{ total_hasil }}
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+
+            <div class="stats-box green">
+
+                <div class="stats-icon">
+                    <i class="bi bi-people-fill"></i>
+                </div>
+
+                <div class="stats-title">
+                    Total Siswa Direkomendasikan
+                </div>
+
+                <div class="stats-value">
+                    {{ total_siswa }}
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+
+            <div class="stats-box orange">
+
+                <div class="stats-icon">
+                    <i class="bi bi-percent"></i>
+                </div>
+
+                <div class="stats-title">
+                    Rata-rata Confidence
+                </div>
+
+                <div class="stats-value">
+                    {{ rata_confidence }}%
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+
+            <div class="stats-box purple">
+
+                <div class="stats-icon">
+                    <i class="bi bi-rulers"></i>
+                </div>
+
+                <div class="stats-title">
+                    Rata-rata Jarak
+                </div>
+
+                <div class="stats-value">
+                    {{ rata_jarak }}
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- STATISTIK CONFIDENCE -->
+    <div class="row g-4 mb-4">
+
+        <div class="col-lg-4">
+
+            <div class="stats-box green">
+
+                <div class="stats-icon">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+
+                <div class="stats-title">
+                    Confidence Tinggi ≥ 70%
+                </div>
+
+                <div class="stats-value">
+                    {{ confidence_tinggi }}
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-4">
+
+            <div class="stats-box orange">
+
+                <div class="stats-icon">
+                    <i class="bi bi-exclamation-circle-fill"></i>
+                </div>
+
+                <div class="stats-title">
+                    Confidence Sedang 40% - 69%
+                </div>
+
+                <div class="stats-value">
+                    {{ confidence_sedang }}
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-4">
+
+            <div class="stats-box red">
+
+                <div class="stats-icon">
+                    <i class="bi bi-x-circle-fill"></i>
+                </div>
+
+                <div class="stats-title">
+                    Confidence Rendah &lt; 40%
+                </div>
+
+                <div class="stats-value">
+                    {{ confidence_rendah }}
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- METRIK EVALUASI -->
+    <div class="row g-4 mb-4">
+
+        <div class="col-lg-3 col-md-6">
+
+            <div class="stats-box cyan">
+
+                <div class="stats-icon">
+                    <i class="bi bi-bullseye"></i>
+                </div>
+
+                <div class="stats-title">
+                    Accuracy
+                </div>
+
+                <div class="stats-value">
+                    {{ accuracy }}%
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+
+            <div class="stats-box indigo">
+
+                <div class="stats-icon">
+                    <i class="bi bi-check2-circle"></i>
+                </div>
+
+                <div class="stats-title">
+                    Precision
+                </div>
+
+                <div class="stats-value">
+                    {{ precision }}%
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+
+            <div class="stats-box dark">
+
+                <div class="stats-icon">
+                    <i class="bi bi-arrow-repeat"></i>
+                </div>
+
+                <div class="stats-title">
+                    Recall
+                </div>
+
+                <div class="stats-value">
+                    {{ recall }}%
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+
+            <div class="stats-box red">
+
+                <div class="stats-icon">
+                    <i class="bi bi-activity"></i>
+                </div>
+
+                <div class="stats-title">
+                    F1-Score
+                </div>
+
+                <div class="stats-value">
+                    {{ f1_score }}%
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- INFORMASI EVALUASI -->
+    <div class="card-custom">
+
+        <div class="section-title">
+            Keterangan Evaluasi
+        </div>
+
+        <div class="info-box mb-3">
+
+            <b>Confidence</b> menunjukkan tingkat keyakinan sistem berdasarkan dominasi label jurusan dari tetangga terdekat.
+            Semakin tinggi confidence, semakin kuat hasil rekomendasi yang diberikan.
+            <br><br>
+            <b>Rata-rata jarak</b> menunjukkan rata-rata kedekatan data siswa dengan data alumni terdekat.
+            Semakin kecil jaraknya, semakin mirip data siswa dengan data latih alumni.
+
+        </div>
+
+        <div class="metric-note">
+
+            <b>Accuracy, Precision, Recall, dan F1-Score</b> dihitung menggunakan data alumni sebagai data evaluasi.
+            Sistem menguji setiap data alumni terhadap data alumni lainnya, lalu membandingkan hasil prediksi dengan
+            jurusan asli pada kolom <b>hasil_jurusan</b>.
+            <br><br>
+            Jumlah data evaluasi:
+            <b>{{ jumlah_data_evaluasi }}</b> data alumni.
+            <br>
+            Nilai K evaluasi:
+            <b>{{ nilai_k_evaluasi }}</b>.
+
+        </div>
+
+    </div>
+
+    <!-- GRAFIK -->
+    <div class="row g-4">
+
+        <div class="col-lg-7">
+
+            <div class="card-custom">
+
+                <div class="section-title">
+                    Grafik Distribusi Jurusan
+                </div>
+
+                <div class="chart-container">
+
+                    <canvas id="chartJurusan"></canvas>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-5">
+
+            <div class="card-custom">
+
+                <div class="section-title">
+                    Grafik Confidence
+                </div>
+
+                <div class="chart-container">
+
+                    <canvas id="chartConfidence"></canvas>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- TABEL DETAIL -->
+    <div class="card-custom">
+
+        <div class="section-title">
+            Detail Data Evaluasi
+        </div>
+
+        <div class="table-responsive">
+
+            <table class="table table-bordered align-middle">
+
+                <thead>
+
+                    <tr>
+
+                        <th>No</th>
+                        <th>NIS</th>
+                        <th>Nama Siswa</th>
+                        <th>Kelas</th>
+                        <th>Hasil Jurusan</th>
+                        <th>K</th>
+                        <th>Jumlah Tetangga</th>
+                        <th>Rata Jarak</th>
+                        <th>Confidence</th>
+                        <th>Kategori</th>
+                        <th>Tanggal</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% if data_evaluasi %}
+
+                        {% for e in data_evaluasi %}
+
+                            <tr>
+
+                                <td>
+                                    {{ loop.index }}
+                                </td>
+
+                                <td>
+                                    {{ e[0] }}
+                                </td>
+
+                                <td>
+                                    {{ e[1] }}
+                                </td>
+
+                                <td>
+                                    {{ e[2] }}
+                                </td>
+
+                                <td>
+                                    <span class="badge-custom badge-jurusan">
+                                        {{ e[3] }}
+                                    </span>
+                                </td>
+
+                                <td>
+                                    {{ e[4] }}
+                                </td>
+
+                                <td>
+                                    {{ e[5] }}
+                                </td>
+
+                                <td>
+                                    {{ "%.4f"|format(e[6]) }}
+                                </td>
+
+                                <td>
+                                    {{ "%.2f"|format(e[7]) }}%
+                                </td>
+
+                                <td>
+
+                                    {% if e[7] >= 70 %}
+
+                                        <span class="badge-custom badge-high">
+                                            Tinggi
+                                        </span>
+
+                                    {% elif e[7] >= 40 %}
+
+                                        <span class="badge-custom badge-medium">
+                                            Sedang
+                                        </span>
+
+                                    {% else %}
+
+                                        <span class="badge-custom badge-low">
+                                            Rendah
+                                        </span>
+
+                                    {% endif %}
+
+                                </td>
+
+                                <td>
+                                    {{ e[8].strftime('%d-%m-%Y %H:%M') if e[8] else '-' }}
+                                </td>
+
+                            </tr>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                        <tr>
+
+                            <td colspan="11" class="text-center text-muted">
+                                Data evaluasi belum tersedia
+                            </td>
+
+                        </tr>
+
+                    {% endif %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- CHART JS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+
+    const labelsJurusan = JSON.parse('{{ labels_jurusan | tojson | safe }}');
+    const valuesJurusan = JSON.parse('{{ values_jurusan | tojson | safe }}');
+
+    const ctxJurusan = document.getElementById('chartJurusan');
+
+    new Chart(ctxJurusan, {
+
+        type: 'bar',
+
+        data: {
+
+            labels: labelsJurusan,
+
+            datasets: [{
+
+                label: 'Jumlah Siswa',
+
+                data: valuesJurusan,
+
+                borderWidth: 1,
+
+                borderRadius: 10
+
+            }]
+
+        },
+
+        options: {
+
+            responsive: true,
+
+            maintainAspectRatio: false,
+
+            plugins: {
+
+                legend: {
+                    display: true
+                }
+
+            },
+
+            scales: {
+
+                y: {
+
+                    beginAtZero: true,
+
+                    ticks: {
+                        precision: 0
+                    }
+
+                }
+
+            }
+
+        }
+
+    });
+
+    const dataConfidence = JSON.parse('{{ [confidence_tinggi, confidence_sedang, confidence_rendah] | tojson | safe }}');
+
+    const ctxConfidence = document.getElementById('chartConfidence');
+
+    new Chart(ctxConfidence, {
+
+        type: 'doughnut',
+
+        data: {
+
+            labels: [
+                'Tinggi',
+                'Sedang',
+                'Rendah'
+            ],
+
+            datasets: [{
+
+                label: 'Confidence',
+
+                data: dataConfidence,
+
+                borderWidth: 2
+
+            }]
+
+        },
+
+        options: {
+
+            responsive: true,
+
+            maintainAspectRatio: false,
+
+            plugins: {
+
+                legend: {
+                    position: 'bottom'
+                }
+
+            }
+
+        }
+
+    });
+
+</script>
+
+{% endblock %}

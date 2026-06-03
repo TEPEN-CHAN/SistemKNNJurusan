@@ -5,143 +5,245 @@
 <style>
 
     .main-content{
-        padding: 40px;
+        padding: 35px;
+        max-width: 980px;
+        margin-left: auto;
+        margin-right: auto;
+        transform: translateX(100px);
+    }
+
+    @media(max-width: 768px){
+
+        .main-content{
+            padding: 20px 14px;
+            transform: none;
+        }
+
     }
 
     .top-card{
-        background: linear-gradient(
-            90deg,
-            #2563eb,
-            #3b82f6
-        );
-        border-radius: 25px;
-        padding: 40px;
-        color: white;
-        margin-bottom: 35px;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 22px;
+        padding: 32px 36px;
+        margin-bottom: 28px;
+        box-shadow: 0 10px 28px rgba(15,23,42,0.06);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
     }
 
     .top-card h1{
-        font-size: 42px;
-        font-weight: 700;
+        font-size: 34px;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 8px;
     }
 
     .top-card p{
-        font-size: 18px;
-        opacity: .9;
-        margin-top: 10px;
+        font-size: 15px;
+        color: #64748b;
+        margin: 0;
+        line-height: 1.7;
     }
 
-    .process-card{
-        background: white;
-        border-radius: 25px;
-        padding: 40px;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-    }
-
-    .process-icon{
-        width: 100px;
-        height: 100px;
-        border-radius: 25px;
-        background: #dbeafe;
+    .top-icon{
+        width: 62px;
+        height: 62px;
+        border-radius: 18px;
+        background: #eff6ff;
         color: #2563eb;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 50px;
-        margin: auto;
-        margin-bottom: 25px;
+        font-size: 30px;
+        flex-shrink: 0;
+    }
+
+    .process-card{
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 22px;
+        padding: 36px;
+        box-shadow: 0 10px 28px rgba(15,23,42,0.06);
+    }
+
+    .process-header{
+        text-align: center;
+        margin-bottom: 32px;
+    }
+
+    .process-icon{
+        width: 82px;
+        height: 82px;
+        border-radius: 22px;
+        background: #eff6ff;
+        color: #2563eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 42px;
+        margin: 0 auto 20px;
     }
 
     .process-title{
-        text-align: center;
-        font-size: 30px;
-        font-weight: 700;
-        margin-bottom: 10px;
+        font-size: 28px;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 8px;
     }
 
     .process-subtitle{
-        text-align: center;
-        color: #6b7280;
-        margin-bottom: 35px;
+        color: #64748b;
+        font-size: 15px;
+        line-height: 1.7;
+        max-width: 620px;
+        margin: 0 auto;
     }
 
     .info-box{
-        background: #f9fafb;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
         border-radius: 18px;
-        padding: 25px;
-        margin-bottom: 30px;
+        padding: 24px;
+        margin-bottom: 24px;
     }
 
     .info-box h5{
-        font-weight: 700;
-        margin-bottom: 15px;
+        font-size: 18px;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 16px;
     }
 
     .info-box ul{
-        padding-left: 20px;
+        padding-left: 0;
+        margin: 0;
+        list-style: none;
     }
 
     .info-box li{
-        margin-bottom: 10px;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        color: #475569;
+        margin-bottom: 13px;
+        line-height: 1.6;
+        font-size: 15px;
     }
 
-    .btn-process{
-        background: linear-gradient(
-            90deg,
-            #2563eb,
-            #3b82f6
-        );
-        border: none;
-        padding: 16px;
-        border-radius: 15px;
+    .info-box li:last-child{
+        margin-bottom: 0;
+    }
+
+    .info-box li i{
+        color: #2563eb;
         font-size: 18px;
-        font-weight: 600;
-    }
-
-    .btn-process:hover{
-        opacity: .9;
+        margin-top: 2px;
     }
 
     .alert-custom{
-        border-radius: 18px;
-        padding: 18px;
+        border-radius: 16px;
+        padding: 18px 20px;
+        border: 1px solid #fde68a;
+        background: #fffbeb;
+        color: #92400e;
+        line-height: 1.7;
+        margin-bottom: 24px;
+    }
+
+    .btn-process{
+        background: #2563eb;
+        border: none;
+        padding: 15px;
+        border-radius: 14px;
+        font-size: 16px;
+        font-weight: 800;
+        box-shadow: 0 10px 22px rgba(37,99,235,0.20);
+        transition: .25s ease;
+    }
+
+    .btn-process:hover{
+        background: #1d4ed8;
+        transform: translateY(-2px);
+        box-shadow: 0 14px 28px rgba(37,99,235,0.25);
+    }
+
+    @media(max-width: 768px){
+
+        .main-content{
+            padding: 20px 14px;
+        }
+
+        .top-card{
+            padding: 26px;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .top-card h1{
+            font-size: 27px;
+        }
+
+        .process-card{
+            padding: 26px;
+        }
+
+        .process-title{
+            font-size: 23px;
+        }
+
+        .process-icon{
+            width: 72px;
+            height: 72px;
+            font-size: 36px;
+        }
+
     }
 
 </style>
 
-<!-- =========================
-     MAIN CONTENT
-========================== -->
 <div class="main-content">
 
     <!-- HEADER -->
     <div class="top-card">
 
-        <h1>
-            Proses Perhitungan KNN
-        </h1>
+        <div>
 
-        <p>
-            Jalankan proses klasifikasi K-Nearest Neighbor
-            untuk menghasilkan rekomendasi jurusan siswa.
-        </p>
+            <h1>
+                Proses Perhitungan KNN
+            </h1>
+
+            <p>
+                Jalankan proses klasifikasi K-Nearest Neighbor untuk menghasilkan rekomendasi jurusan siswa.
+            </p>
+
+        </div>
+
+        <div class="top-icon">
+            <i class="bi bi-diagram-3-fill"></i>
+        </div>
 
     </div>
 
     <!-- PROCESS CARD -->
     <div class="process-card">
 
-        <div class="process-icon">
-            <i class="bi bi-cpu-fill"></i>
-        </div>
+        <div class="process-header">
 
-        <div class="process-title">
-            Jalankan Algoritma KNN
-        </div>
+            <div class="process-icon">
+                <i class="bi bi-cpu-fill"></i>
+            </div>
 
-        <div class="process-subtitle">
-            Sistem akan menghitung jarak Euclidean Distance
-            antara data siswa dan data alumni.
+            <div class="process-title">
+                Jalankan Algoritma KNN
+            </div>
+
+            <div class="process-subtitle">
+                Sistem akan menghitung jarak Euclidean Distance antara data siswa dan data alumni.
+            </div>
+
         </div>
 
         <!-- INFO -->
@@ -154,23 +256,28 @@
             <ul>
 
                 <li>
-                    Mengambil data nilai siswa
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span>Mengambil data nilai siswa</span>
                 </li>
 
                 <li>
-                    Mengambil data alumni sebagai data latih
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span>Mengambil data alumni sebagai data latih</span>
                 </li>
 
                 <li>
-                    Menghitung Euclidean Distance
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span>Menghitung Euclidean Distance</span>
                 </li>
 
                 <li>
-                    Mengambil tetangga terdekat (K=3)
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span>Mengambil tetangga terdekat (K=3)</span>
                 </li>
 
                 <li>
-                    Menentukan hasil rekomendasi jurusan
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span>Menentukan hasil rekomendasi jurusan</span>
                 </li>
 
             </ul>
@@ -178,24 +285,20 @@
         </div>
 
         <!-- ALERT -->
-        <div class="alert alert-warning alert-custom">
+        <div class="alert-custom">
 
             <strong>Perhatian:</strong>
-
-            Pastikan data siswa dan data alumni
-            sudah diupload sebelum menjalankan
-            proses KNN.
+            Pastikan data siswa dan data alumni sudah diupload sebelum menjalankan proses KNN.
 
         </div>
 
         <!-- BUTTON -->
-        <div class="mt-4">
+        <div>
 
-            <a href="/proses_knn"
+            <a href="/proses_semua_knn"
                class="btn btn-primary btn-process w-100">
 
                 <i class="bi bi-play-circle-fill me-2"></i>
-
                 Mulai Proses KNN
 
             </a>

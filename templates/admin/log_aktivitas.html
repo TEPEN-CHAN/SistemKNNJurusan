@@ -1,0 +1,425 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}
+Log Aktivitas
+{% endblock %}
+
+{% block content %}
+
+<style>
+    .content{
+        padding: 30px;
+    }
+
+    .topbar-page{
+        background: white;
+        border-radius: 24px;
+        padding: 28px 30px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(15,23,42,0.07);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .topbar-title{
+        font-size: 34px;
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .topbar-subtitle{
+        color: #64748b;
+        margin-top: 5px;
+    }
+
+    .topbar-icon{
+        width: 60px;
+        height: 60px;
+        border-radius: 20px;
+        background: linear-gradient(135deg, #16a34a, #4ade80);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        box-shadow: 0 12px 25px rgba(22,163,74,0.25);
+    }
+
+    .card-custom{
+        background: white;
+        border-radius: 24px;
+        padding: 28px;
+        box-shadow: 0 10px 30px rgba(15,23,42,0.07);
+        margin-bottom: 30px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .section-title{
+        font-size: 22px;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 20px;
+    }
+
+    .stats-box{
+        background: linear-gradient(135deg, #16a34a, #4ade80);
+        color: white;
+        border-radius: 22px;
+        padding: 24px;
+        box-shadow: 0 12px 28px rgba(22,163,74,0.18);
+    }
+
+    .stats-title{
+        font-size: 15px;
+        opacity: .9;
+    }
+
+    .stats-value{
+        font-size: 38px;
+        font-weight: 800;
+    }
+
+    .form-control{
+        border-radius: 14px;
+        padding: 12px 15px;
+        border: 1px solid #cbd5e1;
+    }
+
+    .btn-search{
+        background: #0f172a;
+        color: white;
+        border: none;
+        border-radius: 14px;
+        padding: 12px 18px;
+        font-weight: 700;
+    }
+
+    .btn-search:hover{
+        background: #1e293b;
+        color: white;
+    }
+
+    .btn-reset{
+        background: #e2e8f0;
+        color: #0f172a;
+        border: none;
+        border-radius: 14px;
+        padding: 12px 18px;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+    }
+
+    .btn-reset:hover{
+        background: #cbd5e1;
+        color: #0f172a;
+    }
+
+    .btn-danger-custom{
+        background: #dc2626;
+        color: white;
+        border-radius: 14px;
+        padding: 12px 18px;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-danger-custom:hover{
+        background: #b91c1c;
+        color: white;
+    }
+
+    .table{
+        border-radius: 18px;
+        overflow: hidden;
+    }
+
+    .table thead{
+        background: #f0fdf4;
+    }
+
+    .table th{
+        color: #0f172a;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .table td{
+        vertical-align: middle;
+    }
+
+    .badge-role{
+        padding: 8px 12px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 700;
+        display: inline-block;
+    }
+
+    .badge-admin{
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .badge-guru{
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .badge-siswa{
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .aktivitas-box{
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 12px;
+        line-height: 1.6;
+        min-width: 260px;
+    }
+
+    .alert{
+        border-radius: 14px;
+        font-weight: 500;
+    }
+
+    @media(max-width:992px){
+        .topbar-page{
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 20px;
+        }
+
+        .topbar-title{
+            font-size: 28px;
+        }
+    }
+</style>
+
+<div class="content">
+
+    <div class="topbar-page">
+
+        <div>
+            <div class="topbar-title">
+                Log Aktivitas
+            </div>
+
+            <div class="topbar-subtitle">
+                Pantau riwayat aktivitas pengguna di sistem rekomendasi jurusan.
+            </div>
+        </div>
+
+        <div class="topbar-icon">
+            <i class="bi bi-clipboard-data-fill"></i>
+        </div>
+
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+
+        {% if messages %}
+
+            {% for category, message in messages %}
+
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+
+                    {{ message }}
+
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+
+                </div>
+
+            {% endfor %}
+
+        {% endif %}
+
+    {% endwith %}
+
+    <div class="row g-4 mb-4">
+
+        <div class="col-lg-4">
+
+            <div class="stats-box">
+
+                <div class="stats-title">
+                    Total Log Aktivitas
+                </div>
+
+                <div class="stats-value">
+                    {{ total_log }}
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="card-custom">
+
+        <div class="section-title">
+            Cari Log Aktivitas
+        </div>
+
+        <form action="{{ url_for('admin_log_aktivitas') }}" method="GET">
+
+            <div class="row g-3">
+
+                <div class="col-lg-8">
+
+                    <input
+                        type="text"
+                        name="keyword"
+                        class="form-control"
+                        placeholder="Cari berdasarkan username, role, atau aktivitas"
+                        value="{{ keyword }}"
+                    >
+
+                </div>
+
+                <div class="col-lg-2 d-grid">
+
+                    <button type="submit" class="btn btn-search">
+
+                        <i class="bi bi-search me-1"></i>
+                        Cari
+
+                    </button>
+
+                </div>
+
+                <div class="col-lg-2 d-grid">
+
+                    <a href="{{ url_for('admin_log_aktivitas') }}" class="btn-reset">
+
+                        <i class="bi bi-arrow-clockwise me-1"></i>
+                        Reset
+
+                    </a>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+
+    <div class="card-custom">
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+
+            <div class="section-title mb-0">
+                Data Log Aktivitas
+            </div>
+
+            <a
+                href="{{ url_for('admin_hapus_semua_log') }}"
+                class="btn-danger-custom"
+                onclick="return confirm('Yakin ingin menghapus semua log aktivitas?')"
+            >
+                <i class="bi bi-trash me-1"></i>
+                Hapus Semua
+            </a>
+
+        </div>
+
+        <div class="table-responsive">
+
+            <table class="table table-bordered align-middle">
+
+                <thead>
+
+                    <tr>
+                        <th>No</th>
+                        <th>Username</th>
+                        <th>Role</th>
+                        <th>Aktivitas</th>
+                        <th>Tanggal</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% if data_log %}
+
+                        {% for log in data_log %}
+
+                            <tr>
+
+                                <td>{{ loop.index }}</td>
+
+                                <td>{{ log[1] }}</td>
+
+                                <td>
+
+                                    {% if log[2] == 'Admin' %}
+
+                                        <span class="badge-role badge-admin">
+                                            {{ log[2] }}
+                                        </span>
+
+                                    {% elif log[2] == 'Guru BK' %}
+
+                                        <span class="badge-role badge-guru">
+                                            {{ log[2] }}
+                                        </span>
+
+                                    {% elif log[2] == 'Siswa' %}
+
+                                        <span class="badge-role badge-siswa">
+                                            {{ log[2] }}
+                                        </span>
+
+                                    {% else %}
+
+                                        <span class="badge-role badge-admin">
+                                            {{ log[2] }}
+                                        </span>
+
+                                    {% endif %}
+
+                                </td>
+
+                                <td>
+                                    <div class="aktivitas-box">
+                                        {{ log[3] }}
+                                    </div>
+                                </td>
+
+                                <td>
+                                    {{ log[4].strftime('%d-%m-%Y %H:%M') if log[4] else '-' }}
+                                </td>
+
+                            </tr>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                        <tr>
+                            <td colspan="5" class="text-center text-muted">
+                                Data log aktivitas belum tersedia
+                            </td>
+                        </tr>
+
+                    {% endif %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
