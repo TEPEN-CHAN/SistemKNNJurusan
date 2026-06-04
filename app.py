@@ -1,5 +1,9 @@
-import cloudinary
-import cloudinary.uploader
+try:
+    import cloudinary
+    import cloudinary.uploader
+except Exception:
+    cloudinary = None
+
 from flask import Flask, render_template, request, redirect, session, jsonify, g, send_file, flash
 import pymysql
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -17,7 +21,41 @@ except Exception:
 
 from werkzeug.utils import secure_filename
 import pandas as pd
-import config
+
+try:
+    import config
+except Exception:
+    class config:
+        MYSQL_HOST = None
+        MYSQL_USER = None
+        MYSQL_PASSWORD = None
+        MYSQL_DB = None
+        MYSQL_PORT = None
+        SECRET_KEY = None
+        CLOUDINARY_CLOUD_NAME = None
+        CLOUDINARY_API_KEY = None
+        CLOUDINARY_API_SECRET = None
+
+# =========================================================
+# HELPER ENV CONFIG
+# =========================================================
+def get_config_value(name, default=None):
+    value = getattr(config, name, None)
+
+    if value is None or value == '':
+        value = os.getenv(name, default)
+
+    return value
+
+
+def get_config_int(name, default=3306):
+    value = get_config_value(name, default)
+
+    try:
+        return int(value)
+    except Exception:
+        return int(default)
+
 
 # =========================================================
 # INISIALISASI APP
@@ -27,19 +65,20 @@ app = Flask(__name__)
 # =========================================================
 # CONFIG DATABASE
 # =========================================================
-app.config['MYSQL_HOST'] = getattr(config, 'MYSQL_HOST', None) or os.getenv('MYSQL_HOST')
-app.config['MYSQL_USER'] = getattr(config, 'MYSQL_USER', None) or os.getenv('MYSQL_USER')
-app.config['MYSQL_PASSWORD'] = getattr(config, 'MYSQL_PASSWORD', None) or os.getenv('MYSQL_PASSWORD')
-app.config['MYSQL_DB'] = getattr(config, 'MYSQL_DB', None) or os.getenv('MYSQL_DB')
-app.config['MYSQL_PORT'] = int(getattr(config, 'MYSQL_PORT', None) or os.getenv('MYSQL_PORT', 3306))
-app.secret_key = getattr(config, 'SECRET_KEY', None) or os.getenv('SECRET_KEY', 'default-secret-key')
+app.config['MYSQL_HOST'] = get_config_value('MYSQL_HOST')
+app.config['MYSQL_USER'] = get_config_value('MYSQL_USER')
+app.config['MYSQL_PASSWORD'] = get_config_value('MYSQL_PASSWORD')
+app.config['MYSQL_DB'] = get_config_value('MYSQL_DB')
+app.config['MYSQL_PORT'] = get_config_int('MYSQL_PORT', 3306)
+app.secret_key = get_config_value('SECRET_KEY', 'default-secret-key')
 
-cloudinary.config(
-    cloud_name=getattr(config, 'CLOUDINARY_CLOUD_NAME', None) or os.getenv('CLOUDINARY_CLOUD_NAME'),
-    api_key=getattr(config, 'CLOUDINARY_API_KEY', None) or os.getenv('CLOUDINARY_API_KEY'),
-    api_secret=getattr(config, 'CLOUDINARY_API_SECRET', None) or os.getenv('CLOUDINARY_API_SECRET'),
-    secure=True
-)
+if cloudinary:
+    cloudinary.config(
+        cloud_name=get_config_value('CLOUDINARY_CLOUD_NAME'),
+        api_key=get_config_value('CLOUDINARY_API_KEY'),
+        api_secret=get_config_value('CLOUDINARY_API_SECRET'),
+        secure=True
+    )
 
 # =========================================================
 # KONEKSI DATABASE MYSQL DENGAN PYMYSQL
@@ -58,28 +97,40 @@ class MySQLConnection:
 
         if 'mysql_connection' not in g:
 
-            required_config = [
-                self.app.config.get('MYSQL_HOST'),
-                self.app.config.get('MYSQL_USER'),
-                self.app.config.get('MYSQL_DB')
+            required_config = {
+                'MYSQL_HOST': self.app.config.get('MYSQL_HOST'),
+                'MYSQL_USER': self.app.config.get('MYSQL_USER'),
+                'MYSQL_PASSWORD': self.app.config.get('MYSQL_PASSWORD'),
+                'MYSQL_DB': self.app.config.get('MYSQL_DB'),
+                'MYSQL_PORT': self.app.config.get('MYSQL_PORT')
+            }
+
+            missing_config = [
+                key for key, value in required_config.items()
+                if value is None or value == ''
             ]
 
-            if not all(required_config):
+            if missing_config:
                 raise RuntimeError(
-                    'Konfigurasi database belum lengkap. Pastikan MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DB, dan MYSQL_PORT sudah diisi.'
+                    'Konfigurasi database belum lengkap. Variabel yang belum diisi: '
+                    + ', '.join(missing_config)
                 )
 
-            g.mysql_connection = pymysql.connect(
-                host=self.app.config['MYSQL_HOST'],
-                user=self.app.config['MYSQL_USER'],
-                password=self.app.config['MYSQL_PASSWORD'],
-                database=self.app.config['MYSQL_DB'],
-                port=int(self.app.config.get('MYSQL_PORT', 3306)),
-                charset='utf8mb4',
-                cursorclass=pymysql.cursors.Cursor,
-                autocommit=False,
-                ssl={}
-            )
+            connect_kwargs = {
+                'host': self.app.config['MYSQL_HOST'],
+                'user': self.app.config['MYSQL_USER'],
+                'password': self.app.config['MYSQL_PASSWORD'],
+                'database': self.app.config['MYSQL_DB'],
+                'port': int(self.app.config.get('MYSQL_PORT', 3306)),
+                'charset': 'utf8mb4',
+                'cursorclass': pymysql.cursors.Cursor,
+                'autocommit': False
+            }
+
+            if 'aivencloud.com' in str(self.app.config.get('MYSQL_HOST', '')):
+                connect_kwargs['ssl'] = {}
+
+            g.mysql_connection = pymysql.connect(**connect_kwargs)
 
         return g.mysql_connection
 
@@ -255,9 +306,12 @@ def simpan_file_profil(file, prefix, id_ref):
 
         return False, None, 'Format foto harus PNG, JPG, JPEG, atau WEBP'
 
-    cloud_name = getattr(config, 'CLOUDINARY_CLOUD_NAME', None) or os.getenv('CLOUDINARY_CLOUD_NAME')
-    api_key = getattr(config, 'CLOUDINARY_API_KEY', None) or os.getenv('CLOUDINARY_API_KEY')
-    api_secret = getattr(config, 'CLOUDINARY_API_SECRET', None) or os.getenv('CLOUDINARY_API_SECRET')
+    if not cloudinary:
+        return False, None, 'Library Cloudinary belum terinstall. Jalankan pip install cloudinary dan tambahkan cloudinary ke requirements.txt.'
+
+    cloud_name = get_config_value('CLOUDINARY_CLOUD_NAME')
+    api_key = get_config_value('CLOUDINARY_API_KEY')
+    api_secret = get_config_value('CLOUDINARY_API_SECRET')
 
     if not cloud_name or not api_key or not api_secret:
 
@@ -962,6 +1016,7 @@ def dashboard_siswa():
         hasil_chatbot_lama=hasil_chatbot_lama,
         hasil_knn_lama=hasil_knn_lama
     )
+
 # =========================================================
 # INPUT DATA ALUMNI
 # =========================================================
@@ -2022,7 +2077,7 @@ def chatbot():
             lanjut_pt,
             DATE_FORMAT(
                 DATE_ADD(tanggal, INTERVAL 7 HOUR),
-                '%%d-%%m-%%Y %%H:%%i:%%s'
+                '%d-%m-%Y %H:%i:%s'
             ) AS tanggal_wib
         FROM hasil_chatbot
         WHERE nis=%s
@@ -2157,23 +2212,12 @@ Informatika
 
     # =====================================================
     # TAMPIL HALAMAN CHATBOT
+    # Project ini memakai dashboard_siswa.html sebagai halaman chatbot.
+    # Jadi GET /chatbot diarahkan ke dashboard siswa agar tidak mencari file chatbot.html.
     # =====================================================
     cur.close()
 
-    return render_template(
-        'siswa/chatbot.html',
-        siswa=siswa,
-        nama_siswa=nama_siswa,
-        nomor=1,
-        progress=0,
-        pertanyaan=pertanyaan_list[0]['text'],
-        hasil_riasec=None,
-        rekomendasi=None,
-        kelompok_mapel=None,
-        lanjut_kuliah=None,
-        detail_mapel=None,
-        hasil_chatbot_lama=hasil_chatbot_lama
-    )
+    return redirect('/dashboard_siswa')
 
 
 # =========================================
