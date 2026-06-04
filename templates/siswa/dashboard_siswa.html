@@ -104,6 +104,97 @@ Chatbot Konsultasi Jurusan SMA
         transform: translateY(-2px);
     }
 
+    .result-card{
+        margin-top: 24px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 24px;
+        padding: 26px;
+        box-shadow: 0 12px 30px rgba(15,23,42,0.08);
+        max-width: 820px;
+    }
+
+    .result-header{
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 22px;
+    }
+
+    .result-check{
+        width: 46px;
+        height: 46px;
+        border-radius: 16px;
+        background: #dcfce7;
+        color: #166534;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        flex-shrink: 0;
+    }
+
+    .result-title{
+        font-size: 22px;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 4px;
+    }
+
+    .result-subtitle{
+        color: #64748b;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+
+    .result-grid{
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 18px;
+    }
+
+    .result-item{
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        padding: 16px;
+    }
+
+    .result-item.full{
+        grid-column: 1 / -1;
+    }
+
+    .result-label{
+        display: block;
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+
+    .result-value{
+        display: inline-flex;
+        background: #eff6ff;
+        color: #1d4ed8;
+        padding: 8px 14px;
+        border-radius: 999px;
+        font-weight: 800;
+        font-size: 14px;
+        line-height: 1.4;
+    }
+
+    .result-mapel{
+        background: white;
+        color: #0f172a;
+        border-radius: 14px;
+        padding: 14px;
+        white-space: pre-line;
+        line-height: 1.8;
+        font-weight: 600;
+        border: 1px solid #e2e8f0;
+    }
+
     .message-row{
         display: flex;
         margin-bottom: 24px;
@@ -341,10 +432,24 @@ Chatbot Konsultasi Jurusan SMA
             font-size: 15px;
             border-radius: 14px;
         }
+
+        .result-grid{
+            grid-template-columns: 1fr;
+        }
+
+        .result-title{
+            font-size: 18px;
+        }
     }
 </style>
 
 <div class="chat-page">
+
+    <div
+        id="chatbotStatus"
+        data-filled="{% if hasil_chatbot_lama %}1{% else %}0{% endif %}"
+        style="display:none;">
+    </div>
 
     <div class="chat-header">
 
@@ -368,34 +473,115 @@ Chatbot Konsultasi Jurusan SMA
                     <i class="bi bi-stars"></i>
                 </div>
 
-                <div class="welcome-title">
-                    Halo, {{ siswa[1] }} 👋
-                </div>
+                {% if hasil_chatbot_lama %}
 
-                <p class="welcome-text">
-                    Saya adalah AI Konsultasi Jurusan SMA. Saya dapat membantu kamu melakukan tes minat bakat RIASEC,
-                    memahami kelompok mapel, memilih jurusan, serta berkonsultasi tentang kuliah dan karir.
-                    <br><br>
-                    Ketik <b>MULAI</b> untuk memulai tes minat bakat.
-                </p>
+                    <div class="welcome-title">
+                        Halo, {{ siswa[1] }} 👋
+                    </div>
 
-                <div class="quick-actions">
-                    <button type="button" class="quick-btn" onclick="quickSend('MULAI')">
-                        Mulai Tes RIASEC
-                    </button>
+                    <p class="welcome-text">
+                        Anda telah mengisi chatbot RIASEC dan ini hasil rekomendasi Anda.
+                    </p>
 
-                    <button type="button" class="quick-btn" onclick="quickSend('Apa itu RIASEC?')">
-                        Apa itu RIASEC?
-                    </button>
+                    <div class="result-card">
 
-                    <button type="button" class="quick-btn" onclick="quickSend('Jurusan IPA cocok untuk siapa?')">
-                        Tanya Jurusan IPA
-                    </button>
+                        <div class="result-header">
 
-                    <button type="button" class="quick-btn" onclick="quickSend('Saya suka desain')">
-                        Saya suka desain
-                    </button>
-                </div>
+                            <div class="result-check">
+                                <i class="bi bi-check-circle-fill"></i>
+                            </div>
+
+                            <div>
+                                <div class="result-title">
+                                    Hasil Rekomendasi RIASEC
+                                </div>
+
+                                <div class="result-subtitle">
+                                    Data ini diambil dari hasil pengisian chatbot RIASEC yang sudah kamu simpan sebelumnya.
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="result-grid">
+
+                            <div class="result-item">
+                                <span class="result-label">Minat Bakat</span>
+                                <span class="result-value">{{ hasil_chatbot_lama[0] }}</span>
+                            </div>
+
+                            <div class="result-item">
+                                <span class="result-label">Kelompok Mapel</span>
+                                <span class="result-value">{{ hasil_chatbot_lama[1] }}</span>
+                            </div>
+
+                            <div class="result-item">
+                                <span class="result-label">Lanjut Perguruan Tinggi</span>
+                                <span class="result-value">{{ hasil_chatbot_lama[3] }}</span>
+                            </div>
+
+                            <div class="result-item">
+                                <span class="result-label">Tanggal Mengisi</span>
+                                <span class="result-value">{{ hasil_chatbot_lama[4] }}</span>
+                            </div>
+
+                            <div class="result-item full">
+                                <span class="result-label">Rekomendasi Mapel</span>
+                                <div class="result-mapel">
+                                    {{ hasil_chatbot_lama[2] }}
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="quick-actions">
+                        <button type="button" class="quick-btn" onclick="quickSend('Apa itu RIASEC?')">
+                            Apa itu RIASEC?
+                        </button>
+
+                        <button type="button" class="quick-btn" onclick="quickSend('Jurusan apa yang cocok dengan minat saya?')">
+                            Tanya Jurusan
+                        </button>
+
+                        <button type="button" class="quick-btn" onclick="quickSend('Saya ingin konsultasi karir')">
+                            Konsultasi Karir
+                        </button>
+                    </div>
+
+                {% else %}
+
+                    <div class="welcome-title">
+                        Halo, {{ siswa[1] }} 👋
+                    </div>
+
+                    <p class="welcome-text">
+                        Saya adalah AI Konsultasi Jurusan SMA. Saya dapat membantu kamu melakukan tes minat bakat RIASEC,
+                        memahami kelompok mapel, memilih jurusan, serta berkonsultasi tentang kuliah dan karir.
+                        <br><br>
+                        Ketik <b>MULAI</b> untuk memulai tes minat bakat.
+                    </p>
+
+                    <div class="quick-actions">
+                        <button type="button" class="quick-btn" onclick="quickSend('MULAI')">
+                            Mulai Tes RIASEC
+                        </button>
+
+                        <button type="button" class="quick-btn" onclick="quickSend('Apa itu RIASEC?')">
+                            Apa itu RIASEC?
+                        </button>
+
+                        <button type="button" class="quick-btn" onclick="quickSend('Jurusan IPA cocok untuk siapa?')">
+                            Tanya Jurusan IPA
+                        </button>
+
+                        <button type="button" class="quick-btn" onclick="quickSend('Saya suka desain')">
+                            Saya suka desain
+                        </button>
+                    </div>
+
+                {% endif %}
 
             </div>
 
@@ -438,6 +624,14 @@ Chatbot Konsultasi Jurusan SMA
     var sendButton = document.getElementById('sendButton');
     var welcomeCard = document.getElementById('welcomeCard');
     var chatContainer = document.querySelector('.chat-container');
+
+    var chatbotStatus = document.getElementById('chatbotStatus');
+
+    var alreadyFilledChatbot = false;
+
+    if(chatbotStatus){
+        alreadyFilledChatbot = chatbotStatus.getAttribute('data-filled') === '1';
+    }
 
     var testStarted = false;
     var currentQuestion = 0;
@@ -492,7 +686,9 @@ Chatbot Konsultasi Jurusan SMA
         teknik: "Jurusan teknik membutuhkan logika dan kemampuan Matematika yang kuat.",
         akuntansi: "Akuntansi cocok untuk siswa yang suka berhitung dan administrasi.",
         desain: "Bidang desain sangat cocok untuk tipe ARTISTIC dalam RIASEC.",
-        riasec: "RIASEC terdiri dari Realistic, Investigative, Artistic, Social, Enterprising, dan Conventional."
+        riasec: "RIASEC terdiri dari Realistic, Investigative, Artistic, Social, Enterprising, dan Conventional.",
+        karir: "Karir yang cocok bisa dilihat dari minat RIASEC, kemampuan akademik, dan rencana lanjut kuliah.",
+        jurusan: "Pemilihan jurusan sebaiknya mempertimbangkan minat, nilai mata pelajaran, dan rencana karir."
     };
 
     function scrollBottom(){
@@ -591,6 +787,15 @@ Chatbot Konsultasi Jurusan SMA
     }
 
     function startQuestions(){
+        if(alreadyFilledChatbot){
+            addMessage(
+                "Anda telah mengisi chatbot RIASEC sebelumnya.\n\nHasil rekomendasi Anda sudah ditampilkan pada halaman ini.",
+                'bot'
+            );
+
+            return;
+        }
+
         testStarted = true;
         currentQuestion = 0;
         waitingCollegeAnswer = false;
@@ -723,6 +928,15 @@ Chatbot Konsultasi Jurusan SMA
     }
 
     function saveToDatabase(){
+        if(alreadyFilledChatbot){
+            addMessage(
+                "Data tidak disimpan ulang karena Anda telah mengisi chatbot RIASEC sebelumnya.",
+                'bot'
+            );
+
+            return;
+        }
+
         fetch('/chatbot', {
             method: 'POST',
             headers: {
@@ -733,6 +947,45 @@ Chatbot Konsultasi Jurusan SMA
                 kelompok_mapel: kelompokMapel,
                 status_kuliah: statusKuliah
             })
+        })
+        .then(function(response){
+            return response.json();
+        })
+        .then(function(data){
+            if(data.status === 'success'){
+                alreadyFilledChatbot = true;
+
+                if(chatbotStatus){
+                    chatbotStatus.setAttribute('data-filled', '1');
+                }
+
+                addMessage(
+                    "✅ Data hasil chatbot RIASEC kamu berhasil disimpan.",
+                    'bot'
+                );
+            }else if(data.status === 'already_exists'){
+                alreadyFilledChatbot = true;
+
+                if(chatbotStatus){
+                    chatbotStatus.setAttribute('data-filled', '1');
+                }
+
+                addMessage(
+                    "Anda telah mengisi chatbot RIASEC sebelumnya.\n\nHasil rekomendasi kamu sudah tersimpan.",
+                    'bot'
+                );
+            }else{
+                addMessage(
+                    "Terjadi kendala saat menyimpan hasil chatbot. Silakan coba lagi.",
+                    'bot'
+                );
+            }
+        })
+        .catch(function(){
+            addMessage(
+                "Terjadi error koneksi saat menyimpan hasil chatbot.",
+                'bot'
+            );
         });
     }
 

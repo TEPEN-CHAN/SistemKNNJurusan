@@ -318,8 +318,8 @@ def fetch_hasil_knn_data():
             hasil_knn.nis,
             siswa.nama_siswa,
             siswa.kelas,
-            COALESCE(hasil_chatbot.minat_bakat, 'BELUM MENGISI') AS minat_bakat,
-            COALESCE(hasil_chatbot.kelompok_mapel, 'BELUM MENGISI') AS kelompok_mapel,
+            COALESCE(chatbot_terakhir.minat_bakat, 'BELUM MENGISI') AS minat_bakat,
+            COALESCE(chatbot_terakhir.kelompok_mapel, 'BELUM MENGISI') AS kelompok_mapel,
             hasil_knn.hasil_jurusan,
             hasil_knn.nilai_k,
             hasil_knn.rata_jarak,
@@ -333,8 +333,18 @@ def fetch_hasil_knn_data():
         JOIN siswa
             ON hasil_knn.nis = siswa.nis
 
-        LEFT JOIN hasil_chatbot
-            ON hasil_knn.nis = hasil_chatbot.nis
+        LEFT JOIN (
+            SELECT hc.*
+            FROM hasil_chatbot hc
+            INNER JOIN (
+                SELECT nis, MAX(id) AS max_id
+                FROM hasil_chatbot
+                GROUP BY nis
+            ) latest
+                ON hc.nis = latest.nis
+                AND hc.id = latest.max_id
+        ) chatbot_terakhir
+            ON hasil_knn.nis = chatbot_terakhir.nis
 
         ORDER BY hasil_knn.id_hasil DESC
     """)
@@ -1223,6 +1233,8 @@ def input_nilai():
                 kelompok_mapel
             FROM hasil_chatbot
             WHERE nis=%s
+            ORDER BY id DESC
+            LIMIT 1
         """, [nis])
 
         hasil_chatbot = cur.fetchone()
@@ -1595,140 +1607,166 @@ def proses_semua_knn():
 
     cur = mysql.connection.cursor()
 
-    # =====================================================
-    # DATA SISWA
-    # =====================================================
-    cur.execute("""
-        SELECT *
-        FROM input_siswa
-        WHERE status_proses='belum'
-    """)
+    try:
 
-    semua_siswa = cur.fetchall()
+        nilai_k = 3
 
-    # =====================================================
-    # DATA ALUMNI
-    # =====================================================
-    cur.execute("""
-        SELECT *
-        FROM alumni
-    """)
+        # =====================================================
+        # DATA SISWA UJI
+        # Urutan fitur dibuat sama dengan data latih:
+        # Pancasila, PKWU, Matematika, Bahasa Indonesia, Bahasa Inggris
+        # =====================================================
+        cur.execute("""
+            SELECT
+                id_input,
+                nis,
+                nilai_pancasila,
+                nilai_pkwu,
+                nilai_matematika,
+                nilai_indonesia,
+                nilai_inggris
+            FROM input_siswa
+            WHERE status_proses='belum'
+        """)
 
-    alumni = cur.fetchall()
+        semua_siswa = cur.fetchall()
 
-    if len(alumni) == 0:
+        if len(semua_siswa) == 0:
+
+            flash('Tidak ada data siswa yang siap diproses KNN', 'warning')
+
+            cur.close()
+
+            return redirect('/proses_knn')
+
+        # =====================================================
+        # DATA ALUMNI / DATA LATIH
+        # =====================================================
+        cur.execute("""
+            SELECT
+                nilai_pancasila,
+                nilai_pkwu,
+                nilai_matematika,
+                nilai_bahasaindo,
+                nilai_bahasaingg,
+                hasil_jurusan
+            FROM alumni
+            WHERE hasil_jurusan IS NOT NULL
+            AND hasil_jurusan != ''
+        """)
+
+        alumni = cur.fetchall()
+
+        if len(alumni) == 0:
+
+            flash('Data alumni belum tersedia', 'danger')
+
+            cur.close()
+
+            return redirect('/proses_knn')
+
+        if nilai_k > len(alumni):
+            nilai_k = len(alumni)
+
+        data_latih = []
+        label_latih = []
+
+        for a in alumni:
+
+            fitur = [
+                float(a[0]),
+                float(a[1]),
+                float(a[2]),
+                float(a[3]),
+                float(a[4])
+            ]
+
+            data_latih.append(fitur)
+            label_latih.append(a[5])
+
+        jumlah_diproses = 0
+
+        # =====================================================
+        # LOOP PROSES KNN
+        # =====================================================
+        for siswa_uji in semua_siswa:
+
+            id_input = siswa_uji[0]
+            nis = siswa_uji[1]
+
+            fitur_uji = [
+                float(siswa_uji[2]),
+                float(siswa_uji[3]),
+                float(siswa_uji[4]),
+                float(siswa_uji[5]),
+                float(siswa_uji[6])
+            ]
+
+            hasil_knn = knn_predict(
+                data_latih,
+                label_latih,
+                fitur_uji,
+                k=nilai_k
+            )
+
+            nama_jurusan = hasil_knn['hasil']
+            confidence = hasil_knn['confidence']
+            neighbors = hasil_knn.get('neighbors', [])
+
+            rata_jarak = (
+                sum(float(n['distance']) for n in neighbors) / len(neighbors)
+            ) if neighbors else 0
+
+            # Hapus hasil lama siswa agar tidak dobel saat proses ulang.
+            cur.execute("""
+                DELETE FROM hasil_knn
+                WHERE nis=%s
+            """, [nis])
+
+            cur.execute("""
+                INSERT INTO hasil_knn(
+                    nis,
+                    hasil_jurusan,
+                    nilai_k,
+                    jumlah_tetangga,
+                    rata_jarak,
+                    confidence,
+                    tanggal
+                )
+                VALUES(%s,%s,%s,%s,%s,%s,%s)
+            """, (
+                nis,
+                nama_jurusan,
+                nilai_k,
+                len(neighbors),
+                round(rata_jarak, 4),
+                confidence,
+                datetime.now()
+            ))
+
+            cur.execute("""
+                UPDATE input_siswa
+                SET status_proses='sudah'
+                WHERE id_input=%s
+            """, [id_input])
+
+            jumlah_diproses += 1
+
+        mysql.connection.commit()
+
+        simpan_log(f'Menjalankan proses KNN guru dengan K={nilai_k} untuk {jumlah_diproses} siswa')
+
+        flash(f'Proses KNN berhasil. {jumlah_diproses} siswa diproses dengan K={nilai_k}', 'success')
+
+    except Exception as e:
+
+        mysql.connection.rollback()
+
+        flash(f'Gagal memproses KNN: {str(e)}', 'danger')
+
+    finally:
 
         cur.close()
-
-        return "Data alumni belum tersedia"
-
-    # =====================================================
-    # DATA LATIH
-    # =====================================================
-    data_latih = []
-    label_latih = []
-
-    for a in alumni:
-
-        fitur = [
-
-            float(a[2]),
-            float(a[3]),
-            float(a[4]),
-            float(a[5]),
-            float(a[6])
-
-        ]
-
-        data_latih.append(fitur)
-
-        label_latih.append(a[9])
-
-    # =====================================================
-    # LOOP PROSES KNN
-    # =====================================================
-    for siswa in semua_siswa:
-
-        nis = siswa[1]
-
-        fitur_uji = [
-
-        float(siswa[2]),
-        float(siswa[3]),
-        float(siswa[4]),
-        float(siswa[5]),
-        float(siswa[6])
-
-    ]
-        hasil_knn = knn_predict(
-            data_latih,
-            label_latih,
-            fitur_uji,
-            k=3
-        )
-
-        nama_jurusan = hasil_knn['hasil']
-        confidence = hasil_knn['confidence']
-
-        neighbors = hasil_knn['neighbors']
-        print("\n========== DEBUG KNN ==========")
-        print("NIS :", nis)
-        print("FITUR UJI :", fitur_uji)
-        print("HASIL KNN :", hasil_knn)
-        print("CONFIDENCE :", confidence)
-        print("NEIGHBORS :", neighbors)
-        print("================================\n")
-        
-        rata_jarak = (
-            sum(float(n['distance']) for n in neighbors)
-            / len(neighbors)
-        ) if neighbors else 0
-
-        # =================================================
-        # HAPUS HASIL LAMA SISWA AGAR TIDAK DOBEL
-        # =================================================
-        cur.execute("""
-            DELETE FROM hasil_knn
-            WHERE nis=%s
-        """, [nis])
-
-        # =================================================
-        # SIMPAN HASIL
-        # =================================================
-        cur.execute("""
-            INSERT INTO hasil_knn(
-                nis,
-                hasil_jurusan,
-                nilai_k,
-                jumlah_tetangga,
-                rata_jarak,
-                confidence,
-                tanggal
-            )
-            VALUES(%s,%s,%s,%s,%s,%s,%s)
-        """, (
-            nis,
-            nama_jurusan,
-            3,
-            len(neighbors),
-            round(rata_jarak, 4),
-            confidence,
-            datetime.now()
-        ))
-        # =================================================
-        # UPDATE STATUS
-        # =================================================
-        cur.execute("""
-            UPDATE input_siswa
-            SET status_proses='sudah'
-            WHERE nis=%s
-        """, [nis])
-
-    mysql.connection.commit()
-
-    simpan_log(f'Menjalankan proses KNN untuk {len(semua_siswa)} siswa')
-
-    cur.close()
 
     return redirect('/hasil_rekomendasi')
 
@@ -1883,222 +1921,143 @@ def chatbot():
     # =====================================================
     # LIST PERTANYAAN
     # =====================================================
-
     pertanyaan_list = [
-
-        {
-            'text': 'Apakah kamu suka memperbaiki mesin atau alat elektronik?',
-            'kategori': 'REALISTIC'
-        },
-
-        {
-            'text': 'Apakah kamu suka melakukan penelitian atau eksperimen?',
-            'kategori': 'INVESTIGATIVE'
-        },
-
-        {
-            'text': 'Apakah kamu suka menggambar atau membuat desain?',
-            'kategori': 'ARTISTIC'
-        },
-
-        {
-            'text': 'Apakah kamu suka membantu dan mengajar orang lain?',
-            'kategori': 'SOCIAL'
-        },
-
-        {
-            'text': 'Apakah kamu suka memimpin organisasi atau bisnis?',
-            'kategori': 'ENTERPRISING'
-        },
-
-        {
-            'text': 'Apakah kamu suka mengatur data dan administrasi?',
-            'kategori': 'CONVENTIONAL'
-        }
-
+        {'text': 'Apakah kamu suka memperbaiki mesin atau alat elektronik?', 'kategori': 'REALISTIC'},
+        {'text': 'Apakah kamu suka melakukan penelitian atau eksperimen?', 'kategori': 'INVESTIGATIVE'},
+        {'text': 'Apakah kamu suka menggambar atau membuat desain?', 'kategori': 'ARTISTIC'},
+        {'text': 'Apakah kamu suka membantu dan mengajar orang lain?', 'kategori': 'SOCIAL'},
+        {'text': 'Apakah kamu suka memimpin organisasi atau bisnis?', 'kategori': 'ENTERPRISING'},
+        {'text': 'Apakah kamu suka mengatur data dan administrasi?', 'kategori': 'CONVENTIONAL'}
     ]
 
-    # =====================================================
-    # SESSION SISWA
-    # =====================================================
-
     nis = session['id_ref']
-
     cur = mysql.connection.cursor()
 
     # =====================================================
     # AMBIL DATA SISWA
     # =====================================================
-
     cur.execute("""
-
         SELECT
             nis,
             nama_siswa,
             kelas
-
         FROM siswa
-
         WHERE nis=%s
-
     """, [nis])
 
     siswa = cur.fetchone()
 
-    # =====================================================
-    # VALIDASI DATA SISWA
-    # =====================================================
-
     if not siswa:
-
         cur.close()
-
         return "Data siswa tidak ditemukan"
 
     nama_siswa = siswa[1]
     kelas = siswa[2]
 
     # =====================================================
-    # METHOD POST DARI JAVASCRIPT
+    # CEK APAKAH SISWA SUDAH PERNAH MENGISI CHATBOT
     # =====================================================
+    cur.execute("""
+        SELECT
+            minat_bakat,
+            kelompok_mapel,
+            detail_mapel,
+            lanjut_pt,
+            DATE_FORMAT(
+                DATE_ADD(tanggal, INTERVAL 7 HOUR),
+                '%%d-%%m-%%Y %%H:%%i:%%s'
+            ) AS tanggal_wib
+        FROM hasil_chatbot
+        WHERE nis=%s
+        ORDER BY id DESC
+        LIMIT 1
+    """, [nis])
 
+    hasil_chatbot_lama = cur.fetchone()
+
+    # =====================================================
+    # SIMPAN HASIL CHATBOT DARI JAVASCRIPT
+    # =====================================================
     if request.method == 'POST':
 
-        data = request.get_json()
+        # Jika sudah pernah isi, jangan timpa hasil lama.
+        if hasil_chatbot_lama:
+            cur.close()
+            return jsonify({
+                'status': 'already_exists',
+                'message': 'Anda telah mengisi chatbot RIASEC sebelumnya. Hasil rekomendasi sudah tersedia.',
+                'hasil': {
+                    'minat_bakat': hasil_chatbot_lama[0],
+                    'kelompok_mapel': hasil_chatbot_lama[1],
+                    'detail_mapel': hasil_chatbot_lama[2],
+                    'lanjut_pt': hasil_chatbot_lama[3],
+                    'tanggal': hasil_chatbot_lama[4]
+                }
+            })
 
-        # =================================================
-        # AMBIL DATA JSON
-        # =================================================
+        data = request.get_json(silent=True) or {}
 
         rekomendasi = data.get('minat_bakat')
         kelompok_mapel = data.get('kelompok_mapel')
         lanjut_kuliah = data.get('status_kuliah')
 
-        # =================================================
-        # DETAIL MAPEL
-        # =================================================
+        if not rekomendasi or not kelompok_mapel or not lanjut_kuliah:
+            cur.close()
+            return jsonify({
+                'status': 'error',
+                'message': 'Data chatbot tidak lengkap'
+            }), 400
 
-        detail_mapel = ''
-
-        if rekomendasi == 'REALISTIC':
-
-            detail_mapel = '''
+        detail_mapel_by_riasec = {
+            'REALISTIC': """
 Biologi
 Ekonomi
 PKWu
 Bahasa Inggris Tingkat Lanjut
 Informatika
-'''
-
-        elif rekomendasi == 'INVESTIGATIVE':
-
-            detail_mapel = '''
+""",
+            'INVESTIGATIVE': """
 Matematika Tingkat Lanjut
 Ekonomi
 PKWu
 Biologi
 Fisika
-'''
-
-        elif rekomendasi == 'ARTISTIC':
-
-            detail_mapel = '''
+""",
+            'ARTISTIC': """
 Seni Musik
 Seni Rupa
 Bahasa Inggris
 Desain
 Multimedia
-'''
-
-        elif rekomendasi == 'SOCIAL':
-
-            detail_mapel = '''
+""",
+            'SOCIAL': """
 Sosiologi
 Geografi
 Bahasa Indonesia
 Ekonomi
 PPKn
-'''
-
-        elif rekomendasi == 'ENTERPRISING':
-
-            detail_mapel = '''
+""",
+            'ENTERPRISING': """
 Ekonomi
 Matematika
 PKWu
 Bahasa Inggris
 Bisnis Digital
-'''
-
-        elif rekomendasi == 'CONVENTIONAL':
-
-            detail_mapel = '''
+""",
+            'CONVENTIONAL': """
 Akuntansi
 Ekonomi
 Administrasi
 Matematika
 Informatika
-'''
+"""
+        }
 
-        # =================================================
-        # CEK DATA SUDAH ADA / BELUM
-        # =================================================
+        detail_mapel = detail_mapel_by_riasec.get(rekomendasi, '')
 
-        cur.execute("""
-
-            SELECT id
-            FROM hasil_chatbot
-            WHERE nis=%s
-
-        """, [nis])
-
-        cek_data = cur.fetchone()
-
-        # =================================================
-        # UPDATE DATA
-        # =================================================
-
-        if cek_data:
-
+        try:
             cur.execute("""
-
-                UPDATE hasil_chatbot
-
-                SET
-
-                    nama_siswa=%s,
-                    kelas=%s,
-                    minat_bakat=%s,
-                    kelompok_mapel=%s,
-                    detail_mapel=%s,
-                    lanjut_pt=%s,
-                    tanggal=%s
-
-                WHERE nis=%s
-
-            """, (
-
-                nama_siswa,
-                kelas,
-                rekomendasi,
-                kelompok_mapel,
-                detail_mapel,
-                lanjut_kuliah,
-                datetime.now(),
-                nis
-
-            ))
-
-        # =================================================
-        # INSERT DATA
-        # =================================================
-
-        else:
-
-            cur.execute("""
-
                 INSERT INTO hasil_chatbot(
-
                     nis,
                     nama_siswa,
                     kelas,
@@ -2107,13 +2066,9 @@ Informatika
                     detail_mapel,
                     lanjut_pt,
                     tanggal
-
                 )
-
                 VALUES(%s,%s,%s,%s,%s,%s,%s,%s)
-
             """, (
-
                 nis,
                 nama_siswa,
                 kelas,
@@ -2122,56 +2077,45 @@ Informatika
                 detail_mapel,
                 lanjut_kuliah,
                 datetime.now()
-
             ))
 
-        # =================================================
-        # COMMIT DATABASE
-        # =================================================
+            mysql.connection.commit()
+            simpan_log(f'Menyimpan hasil chatbot RIASEC: {rekomendasi}')
 
-        mysql.connection.commit()
+            cur.close()
 
-        simpan_log(f'Menyimpan hasil chatbot RIASEC: {rekomendasi}')
+            return jsonify({
+                'status': 'success',
+                'message': 'Data chatbot berhasil disimpan'
+            })
 
-        cur.close()
+        except Exception as e:
+            mysql.connection.rollback()
+            cur.close()
 
-        return jsonify({
-
-            'status': 'success',
-            'message': 'Data chatbot berhasil disimpan'
-
-        })
+            return jsonify({
+                'status': 'error',
+                'message': f'Gagal menyimpan data chatbot: {str(e)}'
+            }), 500
 
     # =====================================================
     # TAMPIL HALAMAN CHATBOT
     # =====================================================
-
     cur.close()
 
     return render_template(
-
         'siswa/chatbot.html',
-
         siswa=siswa,
-
         nama_siswa=nama_siswa,
-
         nomor=1,
-
         progress=0,
-
         pertanyaan=pertanyaan_list[0]['text'],
-
         hasil_riasec=None,
-
         rekomendasi=None,
-
         kelompok_mapel=None,
-
         lanjut_kuliah=None,
-
-        detail_mapel=None
-
+        detail_mapel=None,
+        hasil_chatbot_lama=hasil_chatbot_lama
     )
 
 
@@ -2729,6 +2673,8 @@ def admin_nilai_siswa():
                 kelompok_mapel
             FROM hasil_chatbot
             WHERE nis=%s
+            ORDER BY id DESC
+            LIMIT 1
         """, [nis])
 
         hasil_chatbot = cur.fetchone()
@@ -3624,9 +3570,6 @@ def admin_proses_knn():
         SELECT COUNT(*)
         FROM input_siswa
 
-        LEFT JOIN hasil_chatbot
-            ON input_siswa.nis = hasil_chatbot.nis
-
         JOIN siswa
             ON input_siswa.nis = siswa.nis
 
@@ -3676,7 +3619,17 @@ def admin_proses_knn():
         JOIN siswa
             ON input_siswa.nis = siswa.nis
 
-        LEFT JOIN hasil_chatbot
+        LEFT JOIN (
+            SELECT hc.*
+            FROM hasil_chatbot hc
+            INNER JOIN (
+                SELECT nis, MAX(id) AS max_id
+                FROM hasil_chatbot
+                GROUP BY nis
+            ) latest
+                ON hc.nis = latest.nis
+                AND hc.id = latest.max_id
+        ) hasil_chatbot
             ON input_siswa.nis = hasil_chatbot.nis
 
         WHERE input_siswa.status_proses='belum'
@@ -3750,7 +3703,17 @@ def admin_proses_semua_knn():
             JOIN siswa
                 ON input_siswa.nis = siswa.nis
 
-            LEFT JOIN hasil_chatbot
+            LEFT JOIN (
+                SELECT hc.*
+                FROM hasil_chatbot hc
+                INNER JOIN (
+                    SELECT nis, MAX(id) AS max_id
+                    FROM hasil_chatbot
+                    GROUP BY nis
+                ) latest
+                    ON hc.nis = latest.nis
+                    AND hc.id = latest.max_id
+            ) hasil_chatbot
                 ON input_siswa.nis = hasil_chatbot.nis
 
             WHERE input_siswa.status_proses='belum'
@@ -3862,6 +3825,14 @@ def admin_proses_semua_knn():
                 sum(float(n['distance']) for n in neighbors)
                 / len(neighbors)
             ) if neighbors else 0
+
+            # =================================================
+            # HAPUS HASIL LAMA SISWA AGAR TIDAK DOBEL
+            # =================================================
+            cur.execute("""
+                DELETE FROM hasil_knn
+                WHERE nis=%s
+            """, [nis])
 
             # =================================================
             # SIMPAN HASIL KNN
