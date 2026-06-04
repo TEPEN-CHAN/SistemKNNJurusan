@@ -170,43 +170,66 @@ Data Siswa
         color: white;
     }
 
-    .table{
+    .table-responsive{
+        width: 100%;
+        overflow-x: auto;
         border-radius: 18px;
-        overflow: hidden;
     }
 
-    .table thead{
+    .table-data-siswa{
+        min-width: 900px;
+        margin-bottom: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .table-data-siswa thead th{
         background: #eff6ff;
-    }
-
-    .table th{
         color: #0f172a;
         font-weight: 800;
         white-space: nowrap;
-    }
-
-    .table td{
+        padding: 15px 14px;
         vertical-align: middle;
     }
 
+    .table-data-siswa tbody td{
+        vertical-align: middle;
+        padding: 14px;
+        color: #0f172a;
+    }
+
+    .table-data-siswa tbody tr:hover{
+        background: #f8fafc;
+    }
+
     .foto-siswa{
-        width: 48px;
-        height: 48px;
+        width: 52px;
+        height: 52px;
         border-radius: 50%;
         object-fit: cover;
         border: 3px solid #2563eb;
+        background: #eff6ff;
+        box-shadow: 0 8px 18px rgba(37,99,235,0.18);
     }
 
     .foto-placeholder{
-        width: 48px;
-        height: 48px;
+        width: 52px;
+        height: 52px;
         border-radius: 50%;
-        background: #2563eb;
+        background: linear-gradient(135deg, #2563eb, #60a5fa);
         color: white;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 800;
+        font-size: 18px;
+        box-shadow: 0 8px 18px rgba(37,99,235,0.18);
+    }
+
+    .aksi-group{
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
     }
 
     .alert{
@@ -435,17 +458,17 @@ Data Siswa
 
         <div class="table-responsive">
 
-            <table class="table table-bordered align-middle">
+            <table class="table table-bordered table-data-siswa align-middle">
 
                 <thead>
 
                     <tr>
-                        <th>No</th>
-                        <th>Foto</th>
-                        <th>NIS</th>
+                        <th style="width:70px;">No</th>
+                        <th style="width:90px;">Foto</th>
+                        <th style="width:130px;">NIS</th>
                         <th>Nama Siswa</th>
-                        <th>Kelas</th>
-                        <th>Aksi</th>
+                        <th style="width:140px;">Kelas</th>
+                        <th style="width:200px;">Aksi</th>
                     </tr>
 
                 </thead>
@@ -463,16 +486,28 @@ Data Siswa
                                 <td>
                                     {% if s[3] %}
 
-                                        <img
-                                            src="{{ url_for('static', filename='uploads/profil/' ~ s[3]) }}"
-                                            class="foto-siswa"
-                                            alt="Foto Siswa"
-                                        >
+                                        {% if s[3].startswith('http') %}
+
+                                            <img
+                                                src="{{ s[3] }}"
+                                                class="foto-siswa"
+                                                alt="Foto Siswa"
+                                            >
+
+                                        {% else %}
+
+                                            <img
+                                                src="{{ url_for('static', filename='uploads/profil/' ~ s[3]) }}"
+                                                class="foto-siswa"
+                                                alt="Foto Siswa"
+                                            >
+
+                                        {% endif %}
 
                                     {% else %}
 
                                         <div class="foto-placeholder">
-                                            {{ s[1][0]|upper }}
+                                            {{ s[1][0]|upper if s[1] else 'S' }}
                                         </div>
 
                                     {% endif %}
@@ -486,24 +521,28 @@ Data Siswa
 
                                 <td>
 
-                                    <button
-                                        type="button"
-                                        class="btn-warning-custom"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#editModal{{ loop.index }}"
-                                    >
-                                        <i class="bi bi-pencil-square"></i>
-                                        Edit
-                                    </button>
+                                    <div class="aksi-group">
 
-                                    <a
-                                        href="/admin/hapus_siswa/{{ s[0] }}"
-                                        class="btn-danger-custom"
-                                        onclick="return confirm('Yakin ingin menghapus siswa ini? Semua data terkait siswa juga akan dihapus.')"
-                                    >
-                                        <i class="bi bi-trash"></i>
-                                        Hapus
-                                    </a>
+                                        <button
+                                            type="button"
+                                            class="btn-warning-custom"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editModal{{ loop.index }}"
+                                        >
+                                            <i class="bi bi-pencil-square"></i>
+                                            Edit
+                                        </button>
+
+                                        <a
+                                            href="/admin/hapus_siswa/{{ s[0] }}"
+                                            class="btn-danger-custom"
+                                            onclick="return confirm('Yakin ingin menghapus siswa ini? Semua data terkait siswa juga akan dihapus.')"
+                                        >
+                                            <i class="bi bi-trash"></i>
+                                            Hapus
+                                        </a>
+
+                                    </div>
 
                                 </td>
 
@@ -604,7 +643,7 @@ Data Siswa
                     {% else %}
 
                         <tr>
-                            <td colspan="6" class="text-center text-muted">
+                            <td colspan="6" class="text-center text-muted py-4">
                                 Data siswa belum tersedia
                             </td>
                         </tr>
