@@ -881,7 +881,9 @@ def dashboard_guru():
     )
 
 # =========================================================
-# DASHBOARD SISWA
+# DASHBOARD SISWA / CHATBOT SISWA
+# Jika siswa sudah isi chatbot, tampilkan hasil chatbot + hasil KNN
+# dan siswa tidak bisa isi chatbot ulang
 # =========================================================
 @app.route('/dashboard_siswa')
 @login_required(roles=[3])
@@ -891,19 +893,74 @@ def dashboard_siswa():
 
     cur = mysql.connection.cursor()
 
+    # =====================================================
+    # AMBIL DATA SISWA
+    # =====================================================
     cur.execute("""
-        SELECT *
+        SELECT
+            nis,
+            nama_siswa,
+            kelas,
+            foto_profil
         FROM siswa
         WHERE nis=%s
     """, [nis])
 
     siswa = cur.fetchone()
 
+    if not siswa:
+        cur.close()
+        return "Data siswa tidak ditemukan"
+
+    # =====================================================
+    # CEK HASIL CHATBOT TERAKHIR
+    # =====================================================
+    cur.execute("""
+        SELECT
+            minat_bakat,
+            kelompok_mapel,
+            detail_mapel,
+            lanjut_pt,
+            DATE_FORMAT(
+                DATE_ADD(tanggal, INTERVAL 7 HOUR),
+                '%d-%m-%Y %H:%i:%s'
+            ) AS tanggal_wib
+        FROM hasil_chatbot
+        WHERE nis=%s
+        ORDER BY id DESC
+        LIMIT 1
+    """, [nis])
+
+    hasil_chatbot_lama = cur.fetchone()
+
+    # =====================================================
+    # CEK HASIL KNN TERAKHIR
+    # =====================================================
+    cur.execute("""
+        SELECT
+            hasil_jurusan,
+            nilai_k,
+            rata_jarak,
+            confidence,
+            DATE_FORMAT(
+                DATE_ADD(tanggal, INTERVAL 7 HOUR),
+                '%d-%m-%Y %H:%i:%s'
+            ) AS tanggal_wib
+        FROM hasil_knn
+        WHERE nis=%s
+        ORDER BY id_hasil DESC
+        LIMIT 1
+    """, [nis])
+
+    hasil_knn_lama = cur.fetchone()
+
     cur.close()
 
     return render_template(
         'siswa/dashboard_siswa.html',
-        siswa=siswa
+        siswa=siswa,
+        hasil_chatbot_lama=hasil_chatbot_lama,
+        hasil_knn_lama=hasil_knn_lama
     )
 # =========================================================
 # INPUT DATA ALUMNI

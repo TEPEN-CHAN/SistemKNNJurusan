@@ -480,7 +480,7 @@ Chatbot Konsultasi Jurusan SMA
                     </div>
 
                     <p class="welcome-text">
-                        Anda telah mengisi chatbot RIASEC dan ini hasil rekomendasi Anda.
+                        Anda telah mengisi chatbot RIASEC sebelumnya. Berikut hasil chatbot dan hasil rekomendasi KNN Anda.
                     </p>
 
                     <div class="result-card">
@@ -526,11 +526,49 @@ Chatbot Konsultasi Jurusan SMA
                             </div>
 
                             <div class="result-item full">
-                                <span class="result-label">Rekomendasi Mapel</span>
+                                <span class="result-label">Rekomendasi Mapel dari Chatbot</span>
                                 <div class="result-mapel">
                                     {{ hasil_chatbot_lama[2] }}
                                 </div>
                             </div>
+
+                            {% if hasil_knn_lama %}
+
+                                <div class="result-item full">
+                                    <span class="result-label">Hasil Rekomendasi Jurusan KNN</span>
+                                    <span class="result-value">{{ hasil_knn_lama[0] }}</span>
+                                </div>
+
+                                <div class="result-item">
+                                    <span class="result-label">Nilai K</span>
+                                    <span class="result-value">{{ hasil_knn_lama[1] }}</span>
+                                </div>
+
+                                <div class="result-item">
+                                    <span class="result-label">Rata-rata Jarak</span>
+                                    <span class="result-value">{{ "%.4f"|format(hasil_knn_lama[2]|float) }}</span>
+                                </div>
+
+                                <div class="result-item">
+                                    <span class="result-label">Confidence KNN</span>
+                                    <span class="result-value">{{ "%.2f"|format(hasil_knn_lama[3]|float) }}%</span>
+                                </div>
+
+                                <div class="result-item">
+                                    <span class="result-label">Tanggal Proses KNN</span>
+                                    <span class="result-value">{{ hasil_knn_lama[4] }}</span>
+                                </div>
+
+                            {% else %}
+
+                                <div class="result-item full">
+                                    <span class="result-label">Hasil Rekomendasi Jurusan KNN</span>
+                                    <div class="result-mapel">
+                                        Hasil rekomendasi KNN belum tersedia. Guru BK atau Admin perlu menginput nilai siswa dan menjalankan proses KNN terlebih dahulu.
+                                    </div>
+                                </div>
+
+                            {% endif %}
 
                         </div>
 
@@ -789,7 +827,7 @@ Chatbot Konsultasi Jurusan SMA
     function startQuestions(){
         if(alreadyFilledChatbot){
             addMessage(
-                "Anda telah mengisi chatbot RIASEC sebelumnya.\n\nHasil rekomendasi Anda sudah ditampilkan pada halaman ini.",
+                "Anda telah mengisi chatbot RIASEC sebelumnya.\n\nHasil chatbot dan hasil rekomendasi KNN Anda sudah ditampilkan pada halaman ini.",
                 'bot'
             );
 
