@@ -1,9 +1,5 @@
-try:
-    import cloudinary
-    import cloudinary.uploader
-except Exception:
-    cloudinary = None
-
+import cloudinary
+import cloudinary.uploader
 from flask import Flask, render_template, request, redirect, session, jsonify, g, send_file, flash
 import pymysql
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -21,41 +17,7 @@ except Exception:
 
 from werkzeug.utils import secure_filename
 import pandas as pd
-
-try:
-    import config
-except Exception:
-    class config:
-        MYSQL_HOST = None
-        MYSQL_USER = None
-        MYSQL_PASSWORD = None
-        MYSQL_DB = None
-        MYSQL_PORT = None
-        SECRET_KEY = None
-        CLOUDINARY_CLOUD_NAME = None
-        CLOUDINARY_API_KEY = None
-        CLOUDINARY_API_SECRET = None
-
-# =========================================================
-# HELPER ENV CONFIG
-# =========================================================
-def get_config_value(name, default=None):
-    value = getattr(config, name, None)
-
-    if value is None or value == '':
-        value = os.getenv(name, default)
-
-    return value
-
-
-def get_config_int(name, default=3306):
-    value = get_config_value(name, default)
-
-    try:
-        return int(value)
-    except Exception:
-        return int(default)
-
+import config
 
 # =========================================================
 # INISIALISASI APP
@@ -65,20 +27,19 @@ app = Flask(__name__)
 # =========================================================
 # CONFIG DATABASE
 # =========================================================
-app.config['MYSQL_HOST'] = get_config_value('MYSQL_HOST')
-app.config['MYSQL_USER'] = get_config_value('MYSQL_USER')
-app.config['MYSQL_PASSWORD'] = get_config_value('MYSQL_PASSWORD')
-app.config['MYSQL_DB'] = get_config_value('MYSQL_DB')
-app.config['MYSQL_PORT'] = get_config_int('MYSQL_PORT', 3306)
-app.secret_key = get_config_value('SECRET_KEY', 'default-secret-key')
+app.config['MYSQL_HOST'] = getattr(config, 'MYSQL_HOST', None) or os.getenv('MYSQL_HOST')
+app.config['MYSQL_USER'] = getattr(config, 'MYSQL_USER', None) or os.getenv('MYSQL_USER')
+app.config['MYSQL_PASSWORD'] = getattr(config, 'MYSQL_PASSWORD', None) or os.getenv('MYSQL_PASSWORD')
+app.config['MYSQL_DB'] = getattr(config, 'MYSQL_DB', None) or os.getenv('MYSQL_DB')
+app.config['MYSQL_PORT'] = int(getattr(config, 'MYSQL_PORT', None) or os.getenv('MYSQL_PORT', 3306))
+app.secret_key = getattr(config, 'SECRET_KEY', None) or os.getenv('SECRET_KEY', 'default-secret-key')
 
-if cloudinary:
-    cloudinary.config(
-        cloud_name=get_config_value('CLOUDINARY_CLOUD_NAME'),
-        api_key=get_config_value('CLOUDINARY_API_KEY'),
-        api_secret=get_config_value('CLOUDINARY_API_SECRET'),
-        secure=True
-    )
+cloudinary.config(
+    cloud_name=getattr(config, 'CLOUDINARY_CLOUD_NAME', None) or os.getenv('CLOUDINARY_CLOUD_NAME'),
+    api_key=getattr(config, 'CLOUDINARY_API_KEY', None) or os.getenv('CLOUDINARY_API_KEY'),
+    api_secret=getattr(config, 'CLOUDINARY_API_SECRET', None) or os.getenv('CLOUDINARY_API_SECRET'),
+    secure=True
+)
 
 # =========================================================
 # KONEKSI DATABASE MYSQL DENGAN PYMYSQL
@@ -97,40 +58,28 @@ class MySQLConnection:
 
         if 'mysql_connection' not in g:
 
-            required_config = {
-                'MYSQL_HOST': self.app.config.get('MYSQL_HOST'),
-                'MYSQL_USER': self.app.config.get('MYSQL_USER'),
-                'MYSQL_PASSWORD': self.app.config.get('MYSQL_PASSWORD'),
-                'MYSQL_DB': self.app.config.get('MYSQL_DB'),
-                'MYSQL_PORT': self.app.config.get('MYSQL_PORT')
-            }
-
-            missing_config = [
-                key for key, value in required_config.items()
-                if value is None or value == ''
+            required_config = [
+                self.app.config.get('MYSQL_HOST'),
+                self.app.config.get('MYSQL_USER'),
+                self.app.config.get('MYSQL_DB')
             ]
 
-            if missing_config:
+            if not all(required_config):
                 raise RuntimeError(
-                    'Konfigurasi database belum lengkap. Variabel yang belum diisi: '
-                    + ', '.join(missing_config)
+                    'Konfigurasi database belum lengkap. Pastikan MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DB, dan MYSQL_PORT sudah diisi.'
                 )
 
-            connect_kwargs = {
-                'host': self.app.config['MYSQL_HOST'],
-                'user': self.app.config['MYSQL_USER'],
-                'password': self.app.config['MYSQL_PASSWORD'],
-                'database': self.app.config['MYSQL_DB'],
-                'port': int(self.app.config.get('MYSQL_PORT', 3306)),
-                'charset': 'utf8mb4',
-                'cursorclass': pymysql.cursors.Cursor,
-                'autocommit': False
-            }
-
-            if 'aivencloud.com' in str(self.app.config.get('MYSQL_HOST', '')):
-                connect_kwargs['ssl'] = {}
-
-            g.mysql_connection = pymysql.connect(**connect_kwargs)
+            g.mysql_connection = pymysql.connect(
+                host=self.app.config['MYSQL_HOST'],
+                user=self.app.config['MYSQL_USER'],
+                password=self.app.config['MYSQL_PASSWORD'],
+                database=self.app.config['MYSQL_DB'],
+                port=int(self.app.config.get('MYSQL_PORT', 3306)),
+                charset='utf8mb4',
+                cursorclass=pymysql.cursors.Cursor,
+                autocommit=False,
+                ssl={}
+            )
 
         return g.mysql_connection
 
@@ -306,12 +255,9 @@ def simpan_file_profil(file, prefix, id_ref):
 
         return False, None, 'Format foto harus PNG, JPG, JPEG, atau WEBP'
 
-    if not cloudinary:
-        return False, None, 'Library Cloudinary belum terinstall. Jalankan pip install cloudinary dan tambahkan cloudinary ke requirements.txt.'
-
-    cloud_name = get_config_value('CLOUDINARY_CLOUD_NAME')
-    api_key = get_config_value('CLOUDINARY_API_KEY')
-    api_secret = get_config_value('CLOUDINARY_API_SECRET')
+    cloud_name = getattr(config, 'CLOUDINARY_CLOUD_NAME', None) or os.getenv('CLOUDINARY_CLOUD_NAME')
+    api_key = getattr(config, 'CLOUDINARY_API_KEY', None) or os.getenv('CLOUDINARY_API_KEY')
+    api_secret = getattr(config, 'CLOUDINARY_API_SECRET', None) or os.getenv('CLOUDINARY_API_SECRET')
 
     if not cloud_name or not api_key or not api_secret:
 
@@ -935,9 +881,7 @@ def dashboard_guru():
     )
 
 # =========================================================
-# DASHBOARD SISWA / CHATBOT SISWA
-# Jika siswa sudah isi chatbot, tampilkan hasil chatbot + hasil KNN
-# dan siswa tidak bisa isi chatbot ulang
+# DASHBOARD SISWA
 # =========================================================
 @app.route('/dashboard_siswa')
 @login_required(roles=[3])
@@ -947,15 +891,8 @@ def dashboard_siswa():
 
     cur = mysql.connection.cursor()
 
-    # =====================================================
-    # AMBIL DATA SISWA
-    # =====================================================
     cur.execute("""
-        SELECT
-            nis,
-            nama_siswa,
-            kelas,
-            foto_profil
+        SELECT *
         FROM siswa
         WHERE nis=%s
     """, [nis])
@@ -963,11 +900,15 @@ def dashboard_siswa():
     siswa = cur.fetchone()
 
     if not siswa:
+
         cur.close()
+
         return "Data siswa tidak ditemukan"
 
     # =====================================================
-    # CEK HASIL CHATBOT TERAKHIR
+    # CEK HASIL CHATBOT SISWA TERAKHIR
+    # Jika data ada, dashboard akan menampilkan hasil dan
+    # tombol MULAI pada chatbot harus dibatasi dari HTML/JS.
     # =====================================================
     cur.execute("""
         SELECT
@@ -977,7 +918,7 @@ def dashboard_siswa():
             lanjut_pt,
             DATE_FORMAT(
                 DATE_ADD(tanggal, INTERVAL 7 HOUR),
-                '%d-%m-%Y %H:%i:%s'
+                '%%d-%%m-%%Y %%H:%%i:%%s'
             ) AS tanggal_wib
         FROM hasil_chatbot
         WHERE nis=%s
@@ -988,7 +929,9 @@ def dashboard_siswa():
     hasil_chatbot_lama = cur.fetchone()
 
     # =====================================================
-    # CEK HASIL KNN TERAKHIR
+    # CEK HASIL REKOMENDASI KNN TERAKHIR
+    # Data ini sama dengan hasil rekomendasi yang tampil
+    # pada role Guru/Admin di tabel hasil_knn.
     # =====================================================
     cur.execute("""
         SELECT
@@ -998,7 +941,7 @@ def dashboard_siswa():
             confidence,
             DATE_FORMAT(
                 DATE_ADD(tanggal, INTERVAL 7 HOUR),
-                '%d-%m-%Y %H:%i:%s'
+                '%%d-%%m-%%Y %%H:%%i:%%s'
             ) AS tanggal_wib
         FROM hasil_knn
         WHERE nis=%s
@@ -1016,7 +959,6 @@ def dashboard_siswa():
         hasil_chatbot_lama=hasil_chatbot_lama,
         hasil_knn_lama=hasil_knn_lama
     )
-
 # =========================================================
 # INPUT DATA ALUMNI
 # =========================================================
@@ -2077,7 +2019,7 @@ def chatbot():
             lanjut_pt,
             DATE_FORMAT(
                 DATE_ADD(tanggal, INTERVAL 7 HOUR),
-                '%d-%m-%Y %H:%i:%s'
+                '%%d-%%m-%%Y %%H:%%i:%%s'
             ) AS tanggal_wib
         FROM hasil_chatbot
         WHERE nis=%s
@@ -2088,22 +2030,62 @@ def chatbot():
     hasil_chatbot_lama = cur.fetchone()
 
     # =====================================================
+    # AMBIL HASIL REKOMENDASI KNN YANG ADA DI GURU/ADMIN
+    # =====================================================
+    cur.execute("""
+        SELECT
+            hasil_jurusan,
+            nilai_k,
+            rata_jarak,
+            confidence,
+            DATE_FORMAT(
+                DATE_ADD(tanggal, INTERVAL 7 HOUR),
+                '%%d-%%m-%%Y %%H:%%i:%%s'
+            ) AS tanggal_wib
+        FROM hasil_knn
+        WHERE nis=%s
+        ORDER BY id_hasil DESC
+        LIMIT 1
+    """, [nis])
+
+    hasil_knn_lama = cur.fetchone()
+
+    # =====================================================
+    # GET /chatbot diarahkan ke dashboard siswa
+    # Karena halaman chatbot kamu berada di dashboard_siswa.html
+    # =====================================================
+    if request.method == 'GET':
+
+        cur.close()
+
+        return redirect('/dashboard_siswa')
+
+    # =====================================================
     # SIMPAN HASIL CHATBOT DARI JAVASCRIPT
     # =====================================================
     if request.method == 'POST':
 
         # Jika sudah pernah isi, jangan timpa hasil lama.
+        # Kirim juga hasil KNN supaya frontend bisa menampilkan
+        # rekomendasi yang sama dengan halaman Guru/Admin.
         if hasil_chatbot_lama:
             cur.close()
             return jsonify({
                 'status': 'already_exists',
                 'message': 'Anda telah mengisi chatbot RIASEC sebelumnya. Hasil rekomendasi sudah tersedia.',
-                'hasil': {
+                'hasil_chatbot': {
                     'minat_bakat': hasil_chatbot_lama[0],
                     'kelompok_mapel': hasil_chatbot_lama[1],
                     'detail_mapel': hasil_chatbot_lama[2],
                     'lanjut_pt': hasil_chatbot_lama[3],
                     'tanggal': hasil_chatbot_lama[4]
+                },
+                'hasil_knn': {
+                    'hasil_jurusan': hasil_knn_lama[0] if hasil_knn_lama else None,
+                    'nilai_k': hasil_knn_lama[1] if hasil_knn_lama else None,
+                    'rata_jarak': hasil_knn_lama[2] if hasil_knn_lama else None,
+                    'confidence': hasil_knn_lama[3] if hasil_knn_lama else None,
+                    'tanggal': hasil_knn_lama[4] if hasil_knn_lama else None
                 }
             })
 
@@ -2209,16 +2191,6 @@ Informatika
                 'status': 'error',
                 'message': f'Gagal menyimpan data chatbot: {str(e)}'
             }), 500
-
-    # =====================================================
-    # TAMPIL HALAMAN CHATBOT
-    # Project ini memakai dashboard_siswa.html sebagai halaman chatbot.
-    # Jadi GET /chatbot diarahkan ke dashboard siswa agar tidak mencari file chatbot.html.
-    # =====================================================
-    cur.close()
-
-    return redirect('/dashboard_siswa')
-
 
 # =========================================
 # PROFIL SISWA
