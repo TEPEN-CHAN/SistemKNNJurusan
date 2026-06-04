@@ -35,6 +35,7 @@ Profil Guru BK
         object-fit: cover;
         border: 5px solid #2563eb;
         box-shadow: 0 10px 25px rgba(37,99,235,0.25);
+        background: #eff6ff;
     }
 
     .profile-placeholder{
@@ -156,11 +157,23 @@ Profil Guru BK
 
             {% if guru[5] %}
 
-                <img
-                    src="{{ url_for('static', filename='uploads/profil/' ~ guru[5]) }}"
-                    class="profile-photo"
-                    alt="Foto Profil"
-                >
+                {% if guru[5].startswith('http') %}
+
+                    <img
+                        src="{{ guru[5] }}"
+                        class="profile-photo"
+                        alt="Foto Profil"
+                    >
+
+                {% else %}
+
+                    <img
+                        src="{{ url_for('static', filename='uploads/profil/' ~ guru[5]) }}"
+                        class="profile-photo"
+                        alt="Foto Profil"
+                    >
+
+                {% endif %}
 
             {% else %}
 

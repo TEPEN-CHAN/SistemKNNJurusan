@@ -168,11 +168,23 @@ Profil Siswa
 
             {% if siswa[3] %}
 
-                <img
-                    src="{{ url_for('static', filename='uploads/profil/' ~ siswa[3]) }}"
-                    class="profile-photo"
-                    alt="Foto Profil"
-                >
+                {% if siswa[3].startswith('http') %}
+
+                    <img
+                        src="{{ siswa[3] }}"
+                        class="profile-photo"
+                        alt="Foto Profil"
+                    >
+
+                {% else %}
+
+                    <img
+                        src="{{ url_for('static', filename='uploads/profil/' ~ siswa[3]) }}"
+                        class="profile-photo"
+                        alt="Foto Profil"
+                    >
+
+                {% endif %}
 
             {% else %}
 

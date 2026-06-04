@@ -1,3 +1,5 @@
+import cloudinary
+import cloudinary.uploader
 from flask import Flask, render_template, request, redirect, session, jsonify, g, send_file, flash
 import pymysql
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -31,6 +33,13 @@ app.config['MYSQL_PASSWORD'] = getattr(config, 'MYSQL_PASSWORD', None) or os.get
 app.config['MYSQL_DB'] = getattr(config, 'MYSQL_DB', None) or os.getenv('MYSQL_DB')
 app.config['MYSQL_PORT'] = int(getattr(config, 'MYSQL_PORT', None) or os.getenv('MYSQL_PORT', 3306))
 app.secret_key = getattr(config, 'SECRET_KEY', None) or os.getenv('SECRET_KEY', 'default-secret-key')
+
+cloudinary.config(
+    cloud_name=getattr(config, 'CLOUDINARY_CLOUD_NAME', None) or os.getenv('CLOUDINARY_CLOUD_NAME'),
+    api_key=getattr(config, 'CLOUDINARY_API_KEY', None) or os.getenv('CLOUDINARY_API_KEY'),
+    api_secret=getattr(config, 'CLOUDINARY_API_SECRET', None) or os.getenv('CLOUDINARY_API_SECRET'),
+    secure=True
+)
 
 # =========================================================
 # KONEKSI DATABASE MYSQL DENGAN PYMYSQL
@@ -246,32 +255,35 @@ def simpan_file_profil(file, prefix, id_ref):
 
         return False, None, 'Format foto harus PNG, JPG, JPEG, atau WEBP'
 
-    # Vercel/serverless tidak mendukung penyimpanan file permanen di static/uploads.
-    # Route tetap aman dan tidak error. Untuk foto permanen gunakan Cloudinary/Supabase Storage.
-    if is_serverless_environment():
+    cloud_name = getattr(config, 'CLOUDINARY_CLOUD_NAME', None) or os.getenv('CLOUDINARY_CLOUD_NAME')
+    api_key = getattr(config, 'CLOUDINARY_API_KEY', None) or os.getenv('CLOUDINARY_API_KEY')
+    api_secret = getattr(config, 'CLOUDINARY_API_SECRET', None) or os.getenv('CLOUDINARY_API_SECRET')
 
-        return False, None, (
-            'Upload foto lokal tidak tersedia di serverless/Vercel. '
-            'Gunakan Cloudinary atau Supabase Storage agar foto tersimpan permanen.'
+    if not cloud_name or not api_key or not api_secret:
+
+        return False, None, 'Konfigurasi Cloudinary belum lengkap. Isi CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, dan CLOUDINARY_API_SECRET.'
+
+    try:
+
+        upload_result = cloudinary.uploader.upload(
+            file,
+            folder='sistem_knn_jurusan',
+            public_id=f'{prefix}_{id_ref}',
+            overwrite=True,
+            resource_type='image'
         )
 
-    filename_asli = secure_filename(file.filename)
-    ekstensi = filename_asli.rsplit('.', 1)[1].lower()
-    filename_baru = f"{prefix}_{id_ref}.{ekstensi}"
+        foto_url = upload_result.get('secure_url')
 
-    os.makedirs(
-        app.config['UPLOAD_FOLDER'],
-        exist_ok=True
-    )
+        if not foto_url:
 
-    upload_path = os.path.join(
-        app.config['UPLOAD_FOLDER'],
-        filename_baru
-    )
+            return False, None, 'Gagal mendapatkan URL foto dari Cloudinary'
 
-    file.save(upload_path)
+        return True, foto_url, 'Foto profil berhasil diperbarui'
 
-    return True, filename_baru, 'Foto profil berhasil diperbarui'
+    except Exception as e:
+
+        return False, None, f'Upload foto gagal: {str(e)}'
 
 
 def get_temp_excel_path(filename='data_alumni.xlsx'):
@@ -289,7 +301,7 @@ def redirect_alumni_page():
 
         return redirect('/input_alumni')
 
-    return redirect_alumni_page()
+    return redirect('/admin/input_alumni')
 
 
 # =========================================================
@@ -812,7 +824,7 @@ def admin_input_alumni():
 
             return "File belum dipilih"
 
-        if not file.filename.endswith('.xlsx'):
+        if not file.filename.lower().endswith('.xlsx'):
 
             return "Format file harus .xlsx"
 
@@ -1004,7 +1016,7 @@ def admin_hapus_alumni(id_alumni):
 
         cur.close()
 
-    return redirect('/admin/input_alumni')
+    return redirect_alumni_page()
 
 
 # =========================================================
@@ -1332,7 +1344,7 @@ def input_alumni():
 
             return "File belum dipilih"
 
-        if not file.filename.endswith('.xlsx'):
+        if not file.filename.lower().endswith('.xlsx'):
 
             return "Format file harus .xlsx"
 
@@ -2057,9 +2069,9 @@ def profil_siswa():
 
         file = request.files['foto_profil']
 
-        berhasil_upload, filename_baru, pesan_upload = simpan_file_profil(
+        berhasil_upload, foto_url, pesan_upload = simpan_file_profil(
             file,
-            'profil',
+            'profil_siswa',
             nis
         )
 
@@ -2076,12 +2088,12 @@ def profil_siswa():
             SET foto_profil=%s
             WHERE nis=%s
         """, (
-            filename_baru,
+            foto_url,
             nis
         ))
 
         mysql.connection.commit()
-        session['foto_profil'] = filename_baru
+        session['foto_profil'] = foto_url
 
         simpan_log('Memperbarui foto profil siswa')
 
@@ -3867,9 +3879,9 @@ def profil_guru():
 
         file = request.files['foto_profil']
 
-        berhasil_upload, filename_baru, pesan_upload = simpan_file_profil(
+        berhasil_upload, foto_url, pesan_upload = simpan_file_profil(
             file,
-            'guru',
+            'profil_guru',
             id_guru
         )
 
@@ -3886,13 +3898,15 @@ def profil_guru():
             SET foto_profil=%s
             WHERE id_guru=%s
         """, (
-            filename_baru,
+            foto_url,
             id_guru
         ))
 
         mysql.connection.commit()
 
-        session['foto_profil'] = filename_baru
+        session['foto_profil'] = foto_url
+
+        simpan_log('Memperbarui foto profil Guru BK')
 
         cur.close()
 
