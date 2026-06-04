@@ -147,6 +147,13 @@ Hasil Rekomendasi RIASEC
         margin-bottom: 0;
     }
 
+    .action-group{
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
     .btn-download{
         background: #16a34a;
         color: white;
@@ -168,6 +175,26 @@ Hasil Rekomendasi RIASEC
         transform: translateY(-2px);
     }
 
+    .btn-delete{
+        background: #dc2626;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 9px 13px;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: .3s;
+    }
+
+    .btn-delete:hover{
+        background: #b91c1c;
+        color: white;
+        transform: translateY(-2px);
+    }
+
     .chart-container{
         width: 100%;
         height: 420px;
@@ -181,7 +208,7 @@ Hasil Rekomendasi RIASEC
 
     .table-rekomendasi{
         width: 100%;
-        min-width: 1220px;
+        min-width: 1320px;
         margin-bottom: 0;
         border-collapse: separate;
         border-spacing: 0;
@@ -260,6 +287,11 @@ Hasil Rekomendasi RIASEC
         min-width: 180px;
     }
 
+    .col-aksi{
+        min-width: 120px;
+        text-align: center;
+    }
+
     .badge-custom{
         display: inline-flex;
         align-items: center;
@@ -305,6 +337,11 @@ Hasil Rekomendasi RIASEC
         padding: 8px 12px;
         font-weight: 800;
         white-space: nowrap;
+    }
+
+    .alert{
+        border-radius: 14px;
+        font-weight: 500;
     }
 
     .empty-data{
@@ -375,6 +412,24 @@ Hasil Rekomendasi RIASEC
         </div>
 
     </div>
+
+    <!-- FLASH MESSAGE -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+
+        {% if messages %}
+
+            {% for category, message in messages %}
+
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+
+            {% endfor %}
+
+        {% endif %}
+
+    {% endwith %}
 
     <!-- STATISTIK -->
     <div class="row g-4 mb-4">
@@ -467,10 +522,14 @@ Hasil Rekomendasi RIASEC
                 Data Hasil Rekomendasi
             </div>
 
-            <a href="/admin/download_hasil_rekomendasi" class="btn-download">
-                <i class="bi bi-file-earmark-excel-fill"></i>
-                Download Excel
-            </a>
+            <div class="action-group">
+
+                <a href="/admin/download_hasil_rekomendasi" class="btn-download">
+                    <i class="bi bi-file-earmark-excel-fill"></i>
+                    Download Excel
+                </a>
+
+            </div>
 
         </div>
 
@@ -492,6 +551,7 @@ Hasil Rekomendasi RIASEC
                         <th class="col-jarak">Rata Jarak</th>
                         <th class="col-confidence">Confidence</th>
                         <th class="col-tanggal">Tanggal WIB</th>
+                        <th class="col-aksi">Aksi</th>
                     </tr>
 
                 </thead>
@@ -509,51 +569,62 @@ Hasil Rekomendasi RIASEC
                                 </td>
 
                                 <td class="col-nis">
-                                    {{ h[0] }}
-                                </td>
-
-                                <td class="col-nama">
                                     {{ h[1] }}
                                 </td>
 
-                                <td class="col-kelas">
+                                <td class="col-nama">
                                     {{ h[2] }}
+                                </td>
+
+                                <td class="col-kelas">
+                                    {{ h[3] }}
                                 </td>
 
                                 <td class="col-minat">
                                     <span class="badge-custom badge-info">
-                                        {{ h[3] }}
+                                        {{ h[4] }}
                                     </span>
                                 </td>
 
                                 <td class="col-mapel">
                                     <span class="badge-custom badge-success">
-                                        {{ h[4] }}
+                                        {{ h[5] }}
                                     </span>
                                 </td>
 
                                 <td class="col-jurusan">
                                     <span class="jurusan-badge">
-                                        {{ h[5] }}
+                                        {{ h[6] }}
                                     </span>
                                 </td>
 
                                 <td class="col-k">
-                                    {{ h[6] }}
+                                    {{ h[7] }}
                                 </td>
 
                                 <td class="col-jarak">
-                                    {{ "%.4f"|format(h[7]|float) }}
+                                    {{ "%.4f"|format(h[8]|float) }}
                                 </td>
 
                                 <td class="col-confidence">
                                     <span class="confidence-badge">
-                                        {{ "%.2f"|format(h[8]|float) }}%
+                                        {{ "%.2f"|format(h[9]|float) }}%
                                     </span>
                                 </td>
 
                                 <td class="col-tanggal">
-                                    {{ h[9] if h[9] else '-' }}
+                                    {{ h[10] if h[10] else '-' }}
+                                </td>
+
+                                <td class="col-aksi">
+                                    <a
+                                        href="/admin/hapus_hasil_rekomendasi/{{ h[0] }}"
+                                        class="btn-delete"
+                                        onclick="return confirm('Yakin ingin menghapus hasil rekomendasi ini?')"
+                                    >
+                                        <i class="bi bi-trash"></i>
+                                        Hapus
+                                    </a>
                                 </td>
 
                             </tr>
@@ -563,7 +634,7 @@ Hasil Rekomendasi RIASEC
                     {% else %}
 
                         <tr>
-                            <td colspan="11" class="empty-data">
+                            <td colspan="12" class="empty-data">
                                 Belum ada hasil rekomendasi
                             </td>
                         </tr>

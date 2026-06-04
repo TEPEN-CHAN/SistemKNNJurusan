@@ -58,6 +58,7 @@ Hasil Rekomendasi RIASEC
         border-radius: 10px;
         font-weight: 600;
         white-space: nowrap;
+        display: inline-block;
     }
 
     .card-custom{
@@ -68,14 +69,21 @@ Hasil Rekomendasi RIASEC
         margin-bottom: 30px;
     }
 
-    .table thead{
-        background: #eff6ff;
+    .table-responsive{
+        width: 100%;
+        overflow-x: auto;
+        border-radius: 15px;
     }
 
     .table{
         border-radius: 15px;
         overflow: hidden;
-        min-width: 1150px;
+        min-width: 1250px;
+        margin-bottom: 0;
+    }
+
+    .table thead{
+        background: #eff6ff;
     }
 
     .table th{
@@ -176,6 +184,26 @@ Hasil Rekomendasi RIASEC
         transform: translateY(-2px);
     }
 
+    .btn-delete{
+        background: #dc2626;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 9px 13px;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: .3s;
+    }
+
+    .btn-delete:hover{
+        background: #b91c1c;
+        color: white;
+        transform: translateY(-2px);
+    }
+
     .confidence-badge{
         background: #fef3c7;
         color: #92400e;
@@ -254,6 +282,24 @@ Hasil Rekomendasi RIASEC
         </div>
 
     </div>
+
+    <!-- FLASH MESSAGE -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+
+        {% if messages %}
+
+            {% for category, message in messages %}
+
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+
+            {% endfor %}
+
+        {% endif %}
+
+    {% endwith %}
 
     <!-- STATISTIK -->
     <div class="row g-4 mb-4">
@@ -355,6 +401,7 @@ Hasil Rekomendasi RIASEC
                         <th>Rata Jarak</th>
                         <th>Confidence (%)</th>
                         <th>Tanggal WIB</th>
+                        <th>Aksi</th>
                     </tr>
 
                 </thead>
@@ -372,10 +419,6 @@ Hasil Rekomendasi RIASEC
                                 </td>
 
                                 <td>
-                                    {{ h[0] }}
-                                </td>
-
-                                <td>
                                     {{ h[1] }}
                                 </td>
 
@@ -384,39 +427,54 @@ Hasil Rekomendasi RIASEC
                                 </td>
 
                                 <td>
-                                    <span class="badge-custom badge-info">
-                                        {{ h[3] }}
-                                    </span>
+                                    {{ h[3] }}
                                 </td>
 
                                 <td>
-                                    <span class="badge-custom badge-success">
+                                    <span class="badge-custom badge-info">
                                         {{ h[4] }}
                                     </span>
                                 </td>
 
                                 <td>
-                                    <span class="jurusan-badge">
+                                    <span class="badge-custom badge-success">
                                         {{ h[5] }}
                                     </span>
                                 </td>
 
                                 <td>
-                                    {{ h[6] }}
-                                </td>
-
-                                <td>
-                                    {{ "%.4f"|format(h[7]|float) }}
-                                </td>
-
-                                <td>
-                                    <span class="confidence-badge">
-                                        {{ "%.2f"|format(h[8]|float) }} %
+                                    <span class="jurusan-badge">
+                                        {{ h[6] }}
                                     </span>
                                 </td>
 
                                 <td>
-                                    {{ h[9] if h[9] else '-' }}
+                                    {{ h[7] }}
+                                </td>
+
+                                <td>
+                                    {{ "%.4f"|format(h[8]|float) }}
+                                </td>
+
+                                <td>
+                                    <span class="confidence-badge">
+                                        {{ "%.2f"|format(h[9]|float) }} %
+                                    </span>
+                                </td>
+
+                                <td>
+                                    {{ h[10] if h[10] else '-' }}
+                                </td>
+
+                                <td>
+                                    <a
+                                        href="/hapus_hasil_rekomendasi/{{ h[0] }}"
+                                        class="btn-delete"
+                                        onclick="return confirm('Yakin ingin menghapus hasil rekomendasi ini?')"
+                                    >
+                                        <i class="bi bi-trash"></i>
+                                        Hapus
+                                    </a>
                                 </td>
 
                             </tr>
@@ -426,7 +484,7 @@ Hasil Rekomendasi RIASEC
                     {% else %}
 
                         <tr>
-                            <td colspan="11" class="empty-data">
+                            <td colspan="12" class="empty-data">
                                 Belum ada hasil rekomendasi
                             </td>
                         </tr>

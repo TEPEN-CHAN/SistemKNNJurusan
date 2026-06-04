@@ -314,6 +314,7 @@ def fetch_hasil_knn_data():
 
     cur.execute("""
         SELECT
+            hasil_knn.id_hasil,
             hasil_knn.nis,
             siswa.nama_siswa,
             siswa.kelas,
@@ -344,14 +345,13 @@ def fetch_hasil_knn_data():
 
     return hasil_data
 
-
 def hitung_grafik_jurusan(hasil_data):
 
     jurusan_count = {}
 
     for h in hasil_data:
 
-        jurusan = h[5] if h[5] else 'Belum Ada'
+        jurusan = h[6] if h[6] else 'Belum Ada'
 
         if jurusan in jurusan_count:
 
@@ -382,8 +382,12 @@ def buat_file_excel_hasil_rekomendasi(hasil_data, filename='hasil_rekomendasi_kn
         'Tanggal WIB'
     ]
 
+    # hasil_data dari fetch_hasil_knn_data membawa id_hasil pada index 0.
+    # id_hasil diperlukan untuk tombol hapus di tampilan, tetapi tidak perlu ditampilkan di file Excel.
+    data_excel = [row[1:] for row in hasil_data]
+
     df = pd.DataFrame(
-        hasil_data,
+        data_excel,
         columns=kolom
     )
 
@@ -395,6 +399,7 @@ def buat_file_excel_hasil_rekomendasi(hasil_data, filename='hasil_rekomendasi_kn
     )
 
     return file_path
+
 
 # =========================================================
 # DECORATOR LOGIN
@@ -1680,6 +1685,14 @@ def proses_semua_knn():
         ) if neighbors else 0
 
         # =================================================
+        # HAPUS HASIL LAMA SISWA AGAR TIDAK DOBEL
+        # =================================================
+        cur.execute("""
+            DELETE FROM hasil_knn
+            WHERE nis=%s
+        """, [nis])
+
+        # =================================================
         # SIMPAN HASIL
         # =================================================
         cur.execute("""
@@ -1754,7 +1767,7 @@ def hasil_rekomendasi():
     hasil_data = fetch_hasil_knn_data()
 
     total_hasil = len(hasil_data)
-    total_siswa = len(set([h[0] for h in hasil_data]))
+    total_siswa = len(set([h[1] for h in hasil_data]))
 
     labels, values = hitung_grafik_jurusan(hasil_data)
 
@@ -1766,7 +1779,74 @@ def hasil_rekomendasi():
         labels=labels,
         values=values
     )
+# =========================================================
+# HAPUS HASIL REKOMENDASI - GURU
+# =========================================================
+@app.route('/hapus_hasil_rekomendasi/<int:id_hasil>')
+@login_required(roles=[2])
+def hapus_hasil_rekomendasi_guru(id_hasil):
 
+    cur = mysql.connection.cursor()
+
+    try:
+
+        cur.execute("""
+            DELETE FROM hasil_knn
+            WHERE id_hasil=%s
+        """, [id_hasil])
+
+        mysql.connection.commit()
+
+        simpan_log(f'Guru BK menghapus hasil rekomendasi dengan ID {id_hasil}')
+
+        flash('Hasil rekomendasi berhasil dihapus', 'success')
+
+    except Exception as e:
+
+        mysql.connection.rollback()
+
+        flash(f'Gagal menghapus hasil rekomendasi: {str(e)}', 'danger')
+
+    finally:
+
+        cur.close()
+
+    return redirect('/hasil_rekomendasi')
+
+
+# =========================================================
+# HAPUS HASIL REKOMENDASI - ADMIN
+# =========================================================
+@app.route('/admin/hapus_hasil_rekomendasi/<int:id_hasil>')
+@login_required(roles=[1])
+def hapus_hasil_rekomendasi_admin(id_hasil):
+
+    cur = mysql.connection.cursor()
+
+    try:
+
+        cur.execute("""
+            DELETE FROM hasil_knn
+            WHERE id_hasil=%s
+        """, [id_hasil])
+
+        mysql.connection.commit()
+
+        simpan_log(f'Admin menghapus hasil rekomendasi dengan ID {id_hasil}')
+
+        flash('Hasil rekomendasi berhasil dihapus', 'success')
+
+    except Exception as e:
+
+        mysql.connection.rollback()
+
+        flash(f'Gagal menghapus hasil rekomendasi: {str(e)}', 'danger')
+
+    finally:
+
+        cur.close()
+
+    return redirect('/admin/hasil_rekomendasi')
 
 # =========================================================
 # DOWNLOAD HASIL REKOMENDASI - ADMIN DAN GURU
@@ -2884,7 +2964,7 @@ def admin_hasil_rekomendasi():
     hasil_data = fetch_hasil_knn_data()
 
     total_hasil = len(hasil_data)
-    total_siswa = len(set([h[0] for h in hasil_data]))
+    total_siswa = len(set([h[1] for h in hasil_data]))
 
     labels, values = hitung_grafik_jurusan(hasil_data)
 
@@ -3929,6 +4009,7 @@ def profil_guru():
         'guru/profil_guru.html',
         guru=guru
     )
+
 
 # =========================================================
 # LOGOUT
