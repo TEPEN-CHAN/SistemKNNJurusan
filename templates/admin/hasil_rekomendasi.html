@@ -131,11 +131,41 @@ Hasil Rekomendasi RIASEC
         margin-bottom: 30px;
     }
 
+    .section-header{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 15px;
+        flex-wrap: wrap;
+        margin-bottom: 22px;
+    }
+
     .section-title{
         font-size: 24px;
         font-weight: 800;
         color: #0f172a;
-        margin-bottom: 22px;
+        margin-bottom: 0;
+    }
+
+    .btn-download{
+        background: #16a34a;
+        color: white;
+        border: none;
+        border-radius: 14px;
+        padding: 12px 18px;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 8px 18px rgba(22,163,74,0.22);
+        transition: .3s;
+    }
+
+    .btn-download:hover{
+        background: #15803d;
+        color: white;
+        transform: translateY(-2px);
     }
 
     .chart-container{
@@ -414,8 +444,12 @@ Hasil Rekomendasi RIASEC
     <!-- GRAFIK -->
     <div class="card-custom">
 
-        <div class="section-title">
-            Grafik Hasil Jurusan
+        <div class="section-header">
+
+            <div class="section-title">
+                Grafik Hasil Jurusan
+            </div>
+
         </div>
 
         <div class="chart-container">
@@ -427,8 +461,17 @@ Hasil Rekomendasi RIASEC
     <!-- TABEL -->
     <div class="card-custom">
 
-        <div class="section-title">
-            Data Hasil Rekomendasi
+        <div class="section-header">
+
+            <div class="section-title">
+                Data Hasil Rekomendasi
+            </div>
+
+            <a href="/admin/download_hasil_rekomendasi" class="btn-download">
+                <i class="bi bi-file-earmark-excel-fill"></i>
+                Download Excel
+            </a>
+
         </div>
 
         <div class="table-responsive">
@@ -448,7 +491,7 @@ Hasil Rekomendasi RIASEC
                         <th class="col-k">K</th>
                         <th class="col-jarak">Rata Jarak</th>
                         <th class="col-confidence">Confidence</th>
-                        <th class="col-tanggal">Tanggal</th>
+                        <th class="col-tanggal">Tanggal WIB</th>
                     </tr>
 
                 </thead>
@@ -500,17 +543,17 @@ Hasil Rekomendasi RIASEC
                                 </td>
 
                                 <td class="col-jarak">
-                                    {{ h[7] }}
+                                    {{ "%.4f"|format(h[7]|float) }}
                                 </td>
 
                                 <td class="col-confidence">
                                     <span class="confidence-badge">
-                                        {{ h[8] }}%
+                                        {{ "%.2f"|format(h[8]|float) }}%
                                     </span>
                                 </td>
 
                                 <td class="col-tanggal">
-                                    {{ h[9] }}
+                                    {{ h[9] if h[9] else '-' }}
                                 </td>
 
                             </tr>

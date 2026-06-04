@@ -304,6 +304,98 @@ def redirect_alumni_page():
     return redirect('/admin/input_alumni')
 
 
+
+# =========================================================
+# HELPER HASIL KNN / WAKTU WIB
+# =========================================================
+def fetch_hasil_knn_data():
+
+    cur = mysql.connection.cursor()
+
+    cur.execute("""
+        SELECT
+            hasil_knn.nis,
+            siswa.nama_siswa,
+            siswa.kelas,
+            COALESCE(hasil_chatbot.minat_bakat, 'BELUM MENGISI') AS minat_bakat,
+            COALESCE(hasil_chatbot.kelompok_mapel, 'BELUM MENGISI') AS kelompok_mapel,
+            hasil_knn.hasil_jurusan,
+            hasil_knn.nilai_k,
+            hasil_knn.rata_jarak,
+            hasil_knn.confidence,
+            DATE_FORMAT(
+                DATE_ADD(hasil_knn.tanggal, INTERVAL 7 HOUR),
+                '%d-%m-%Y %H:%i:%s'
+            ) AS tanggal_wib
+        FROM hasil_knn
+
+        JOIN siswa
+            ON hasil_knn.nis = siswa.nis
+
+        LEFT JOIN hasil_chatbot
+            ON hasil_knn.nis = hasil_chatbot.nis
+
+        ORDER BY hasil_knn.id_hasil DESC
+    """)
+
+    hasil_data = cur.fetchall()
+
+    cur.close()
+
+    return hasil_data
+
+
+def hitung_grafik_jurusan(hasil_data):
+
+    jurusan_count = {}
+
+    for h in hasil_data:
+
+        jurusan = h[5] if h[5] else 'Belum Ada'
+
+        if jurusan in jurusan_count:
+
+            jurusan_count[jurusan] += 1
+
+        else:
+
+            jurusan_count[jurusan] = 1
+
+    labels = list(jurusan_count.keys())
+    values = list(jurusan_count.values())
+
+    return labels, values
+
+
+def buat_file_excel_hasil_rekomendasi(hasil_data, filename='hasil_rekomendasi_knn.xlsx'):
+
+    kolom = [
+        'NIS',
+        'Nama Siswa',
+        'Kelas',
+        'Minat Bakat',
+        'Kelompok Mapel',
+        'Hasil Jurusan',
+        'K',
+        'Rata Jarak',
+        'Confidence (%)',
+        'Tanggal WIB'
+    ]
+
+    df = pd.DataFrame(
+        hasil_data,
+        columns=kolom
+    )
+
+    file_path = get_temp_excel_path(filename)
+
+    df.to_excel(
+        file_path,
+        index=False
+    )
+
+    return file_path
+
 # =========================================================
 # DECORATOR LOGIN
 # =========================================================
@@ -1659,84 +1751,44 @@ def hasil():
 @login_required(roles=[2])
 def hasil_rekomendasi():
 
-    cur = mysql.connection.cursor()
+    hasil_data = fetch_hasil_knn_data()
 
-    # =========================================
-    # AMBIL DATA HASIL KNN
-    # =========================================
-    cur.execute("""
-
-        SELECT
-
-            hasil_knn.nis,
-            siswa.nama_siswa,
-            siswa.kelas,
-            COALESCE(hasil_chatbot.minat_bakat, 'BELUM MENGISI') AS minat_bakat,
-            COALESCE(hasil_chatbot.kelompok_mapel, 'BELUM MENGISI') AS kelompok_mapel,
-            hasil_knn.hasil_jurusan,
-            hasil_knn.nilai_k,
-            hasil_knn.rata_jarak,
-            hasil_knn.confidence,
-            hasil_knn.tanggal
-
-        FROM hasil_knn
-
-        JOIN siswa
-            ON hasil_knn.nis = siswa.nis
-
-        LEFT JOIN hasil_chatbot
-            ON hasil_knn.nis = hasil_chatbot.nis
-
-        ORDER BY hasil_knn.id_hasil DESC
-
-    """)
-
-    hasil_data = cur.fetchall()
-
-    # =========================================
-    # TOTAL
-    # =========================================
     total_hasil = len(hasil_data)
+    total_siswa = len(set([h[0] for h in hasil_data]))
 
-    total_siswa = len(hasil_data)
-
-    # =========================================
-    # DATA GRAFIK
-    # =========================================
-    jurusan_count = {}
-
-    for h in hasil_data:
-
-        jurusan = h[5]
-
-        if jurusan in jurusan_count:
-
-            jurusan_count[jurusan] += 1
-
-        else:
-
-            jurusan_count[jurusan] = 1
-
-    labels = list(jurusan_count.keys())
-
-    values = list(jurusan_count.values())
-
-    cur.close()
+    labels, values = hitung_grafik_jurusan(hasil_data)
 
     return render_template(
-
         'guru/hasil_rekomendasi.html',
-
         hasil_data=hasil_data,
-
         total_hasil=total_hasil,
-
         total_siswa=total_siswa,
-
         labels=labels,
-
         values=values
+    )
 
+
+# =========================================================
+# DOWNLOAD HASIL REKOMENDASI - ADMIN DAN GURU
+# =========================================================
+@app.route('/download_hasil_rekomendasi')
+@app.route('/admin/download_hasil_rekomendasi')
+@login_required(roles=[1, 2])
+def download_hasil_rekomendasi():
+
+    hasil_data = fetch_hasil_knn_data()
+
+    file_path = buat_file_excel_hasil_rekomendasi(
+        hasil_data,
+        'hasil_rekomendasi_knn_wib.xlsx'
+    )
+
+    simpan_log('Mendownload hasil rekomendasi KNN')
+
+    return send_file(
+        file_path,
+        as_attachment=True,
+        download_name='hasil_rekomendasi_knn_wib.xlsx'
     )
 
 
@@ -2829,85 +2881,22 @@ def admin_hapus_nilai_siswa(id_input):
 @login_required(roles=[1])
 def admin_hasil_rekomendasi():
 
-    cur = mysql.connection.cursor()
+    hasil_data = fetch_hasil_knn_data()
 
-    # =========================================
-    # AMBIL DATA HASIL KNN
-    # =========================================
-    cur.execute("""
-
-        SELECT
-
-            hasil_knn.nis,
-            siswa.nama_siswa,
-            siswa.kelas,
-            COALESCE(hasil_chatbot.minat_bakat, 'BELUM MENGISI') AS minat_bakat,
-            COALESCE(hasil_chatbot.kelompok_mapel, 'BELUM MENGISI') AS kelompok_mapel,
-            hasil_knn.hasil_jurusan,
-            hasil_knn.nilai_k,
-            hasil_knn.rata_jarak,
-            hasil_knn.confidence,
-            hasil_knn.tanggal
-
-        FROM hasil_knn
-
-        JOIN siswa
-            ON hasil_knn.nis = siswa.nis
-
-        LEFT JOIN hasil_chatbot
-            ON hasil_knn.nis = hasil_chatbot.nis
-
-        ORDER BY hasil_knn.id_hasil DESC
-
-    """)
-
-    hasil_data = cur.fetchall()
-
-    # =========================================
-    # TOTAL
-    # =========================================
     total_hasil = len(hasil_data)
+    total_siswa = len(set([h[0] for h in hasil_data]))
 
-    total_siswa = len(hasil_data)
-
-    # =========================================
-    # DATA GRAFIK
-    # =========================================
-    jurusan_count = {}
-
-    for h in hasil_data:
-
-        jurusan = h[5]
-
-        if jurusan in jurusan_count:
-
-            jurusan_count[jurusan] += 1
-
-        else:
-
-            jurusan_count[jurusan] = 1
-
-    labels = list(jurusan_count.keys())
-
-    values = list(jurusan_count.values())
-
-    cur.close()
+    labels, values = hitung_grafik_jurusan(hasil_data)
 
     return render_template(
-
         'admin/hasil_rekomendasi.html',
-
         hasil_data=hasil_data,
-
         total_hasil=total_hasil,
-
         total_siswa=total_siswa,
-
         labels=labels,
-
         values=values
-
     )
+
 # =========================================================
 # ADMIN - EVALUASI SISTEM
 # =========================================================
@@ -3004,7 +2993,10 @@ def admin_evaluasi_sistem():
             hasil_knn.jumlah_tetangga,
             hasil_knn.rata_jarak,
             hasil_knn.confidence,
-            hasil_knn.tanggal
+            DATE_FORMAT(
+                DATE_ADD(hasil_knn.tanggal, INTERVAL 7 HOUR),
+                '%d-%m-%Y %H:%i:%s'
+            ) AS tanggal_wib
         FROM hasil_knn
 
         JOIN siswa

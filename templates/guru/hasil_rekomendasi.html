@@ -13,130 +13,109 @@ Hasil Rekomendasi RIASEC
     }
 
     .topbar{
-
         background: white;
-
         border-radius: 20px;
-
         padding: 25px 30px;
-
         margin-bottom: 30px;
-
-        box-shadow:
-        0 5px 15px rgba(0,0,0,0.05);
-
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
 
     .topbar-title{
-
         font-size: 34px;
         font-weight: 700;
-
         color: #0f172a;
     }
 
     .topbar-subtitle{
-
         color: #64748b;
     }
 
     .profile{
-
         display: flex;
         align-items: center;
     }
 
     .profile-icon{
-
         width: 50px;
         height: 50px;
-
         border-radius: 50%;
-
         background: #2563eb;
-
         display: flex;
         justify-content: center;
         align-items: center;
-
         color: white;
-
         font-size: 22px;
-
         margin-right: 15px;
     }
 
     .jurusan-badge{
-
         background: #ede9fe;
         color: #6d28d9;
-
         padding: 8px 14px;
-
         border-radius: 10px;
-
         font-weight: 600;
+        white-space: nowrap;
     }
 
     .card-custom{
-
         background: white;
-
         border-radius: 25px;
-
         padding: 30px;
-
-        box-shadow:
-        0 5px 15px rgba(0,0,0,0.05);
-
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
         margin-bottom: 30px;
     }
 
     .table thead{
-
         background: #eff6ff;
     }
 
     .table{
-
         border-radius: 15px;
         overflow: hidden;
+        min-width: 1150px;
+    }
+
+    .table th{
+        white-space: nowrap;
+        vertical-align: middle;
+        font-weight: 800;
+        color: #0f172a;
+        padding: 14px 12px;
+    }
+
+    .table td{
+        vertical-align: middle;
+        padding: 14px 12px;
+        color: #0f172a;
+        white-space: nowrap;
     }
 
     .badge-custom{
-
         padding: 10px 15px;
-
         border-radius: 12px;
-
         font-size: 13px;
-
         font-weight: 600;
+        display: inline-block;
+        white-space: nowrap;
     }
 
     .badge-success{
-
         background: #dcfce7;
         color: #166534;
     }
 
     .badge-info{
-
         background: #dbeafe;
         color: #1d4ed8;
     }
 
     .stats-box{
-
         border-radius: 20px;
-
         padding: 25px;
-
         color: white;
-
         height: 100%;
     }
 
@@ -153,46 +132,85 @@ Hasil Rekomendasi RIASEC
     }
 
     .stats-title{
-
         font-size: 16px;
-
         opacity: 0.9;
     }
 
     .stats-value{
-
         font-size: 42px;
         font-weight: 700;
     }
 
-    .mapel-box{
-
-        background: #f8fafc;
-
-        border-radius: 14px;
-
-        padding: 12px;
-
-        font-size: 14px;
-
-        line-height: 1.7;
-
-        white-space: pre-line;
-    }
-
     .chart-container{
-
         width: 100%;
         height: 450px;
+    }
+
+    .table-header-action{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 15px;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+    }
+
+    .btn-download{
+        background: #16a34a;
+        color: white;
+        border: none;
+        border-radius: 14px;
+        padding: 12px 18px;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 8px 18px rgba(22,163,74,0.22);
+        transition: .3s;
+    }
+
+    .btn-download:hover{
+        background: #15803d;
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .confidence-badge{
+        background: #fef3c7;
+        color: #92400e;
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-weight: 700;
+        display: inline-block;
+        white-space: nowrap;
+    }
+
+    .empty-data{
+        padding: 30px;
+        text-align: center;
+        color: #64748b;
+        font-weight: 600;
     }
 
     @media(max-width:992px){
 
         .topbar{
-
             flex-direction: column;
             align-items: flex-start;
             gap: 20px;
+        }
+
+        .topbar-title{
+            font-size: 28px;
+        }
+
+        .content{
+            padding: 20px;
+        }
+
+        .chart-container{
+            height: 350px;
         }
     }
 
@@ -224,7 +242,7 @@ Hasil Rekomendasi RIASEC
             <div>
 
                 <div class="fw-bold">
-                    {{ session['username'] }}
+                    {{ session.get('username') }}
                 </div>
 
                 <div class="text-muted">
@@ -298,9 +316,7 @@ Hasil Rekomendasi RIASEC
         </h4>
 
         <div class="chart-container">
-
             <canvas id="chartJurusan"></canvas>
-
         </div>
 
     </div>
@@ -308,107 +324,116 @@ Hasil Rekomendasi RIASEC
     <!-- TABEL -->
     <div class="card-custom">
 
-        <h4 class="fw-bold mb-4">
-            Data Hasil Rekomendasi
-        </h4>
+        <div class="table-header-action">
+
+            <h4 class="fw-bold mb-0">
+                Data Hasil Rekomendasi
+            </h4>
+
+            <a href="/download_hasil_rekomendasi" class="btn-download">
+                <i class="bi bi-file-earmark-excel-fill"></i>
+                Download Excel
+            </a>
+
+        </div>
 
         <div class="table-responsive">
 
             <table class="table table-bordered align-middle">
 
-            <thead>
-            <tr>
+                <thead>
 
-                <th>No</th>
-                <th>NIS</th>
-                <th>Nama Siswa</th>
-                <th>Kelas</th>
-                <th>Minat Bakat</th>
-                <th>Kelompok Mapel</th>
-                <th>Hasil Jurusan</th>
-                <th>K</th>
-                <th>Rata Jarak</th>
-                <th>Confidence (%)</th>
-                <th>Tanggal</th>
+                    <tr>
+                        <th>No</th>
+                        <th>NIS</th>
+                        <th>Nama Siswa</th>
+                        <th>Kelas</th>
+                        <th>Minat Bakat</th>
+                        <th>Kelompok Mapel</th>
+                        <th>Hasil Jurusan</th>
+                        <th>K</th>
+                        <th>Rata Jarak</th>
+                        <th>Confidence (%)</th>
+                        <th>Tanggal WIB</th>
+                    </tr>
 
-            </tr>
-            </thead>
+                </thead>
 
                 <tbody>
 
-{% if hasil_data %}
+                    {% if hasil_data %}
 
-    {% for h in hasil_data %}
+                        {% for h in hasil_data %}
 
-    <tr>
+                            <tr>
 
-        <td>{{ loop.index }}</td>
+                                <td>
+                                    {{ loop.index }}
+                                </td>
 
-        <td>{{ h[0] }}</td>
+                                <td>
+                                    {{ h[0] }}
+                                </td>
 
-        <td>{{ h[1] }}</td>
+                                <td>
+                                    {{ h[1] }}
+                                </td>
 
-        <td>{{ h[2] }}</td>
+                                <td>
+                                    {{ h[2] }}
+                                </td>
 
-        <td>
+                                <td>
+                                    <span class="badge-custom badge-info">
+                                        {{ h[3] }}
+                                    </span>
+                                </td>
 
-            <span class="badge-custom badge-info">
-                {{ h[3] }}
-            </span>
+                                <td>
+                                    <span class="badge-custom badge-success">
+                                        {{ h[4] }}
+                                    </span>
+                                </td>
 
-        </td>
+                                <td>
+                                    <span class="jurusan-badge">
+                                        {{ h[5] }}
+                                    </span>
+                                </td>
 
-        <td>
+                                <td>
+                                    {{ h[6] }}
+                                </td>
 
-            <span class="badge-custom badge-success">
-                {{ h[4] }}
-            </span>
+                                <td>
+                                    {{ "%.4f"|format(h[7]|float) }}
+                                </td>
 
-        </td>
+                                <td>
+                                    <span class="confidence-badge">
+                                        {{ "%.2f"|format(h[8]|float) }} %
+                                    </span>
+                                </td>
 
-        <td>
+                                <td>
+                                    {{ h[9] if h[9] else '-' }}
+                                </td>
 
-            <span class="jurusan-badge">
+                            </tr>
 
-                {{ h[5] }}
+                        {% endfor %}
 
-            </span>
+                    {% else %}
 
-        </td>
+                        <tr>
+                            <td colspan="11" class="empty-data">
+                                Belum ada hasil rekomendasi
+                            </td>
+                        </tr>
 
-        <td>
-            {{ h[6] }}
-        </td>
+                    {% endif %}
 
-        <td>
-            {{ "%.4f"|format(h[7]) }}
-        </td>
-
-        <td>
-            {{ "%.2f"|format(h[8]) }} %
-        </td>
-
-        <td>
-            {{ h[9].strftime('%d-%m-%Y %H:%M') if h[9] else '-' }}
-        </td>
-
-    </tr>
-
-    {% endfor %}
-
-{% else %}
-
-    <tr>
-
-        <td colspan="11" class="text-center">
-            Belum ada hasil rekomendasi
-        </td>
-
-    </tr>
-
-{% endif %}
-
-</tbody>
+                </tbody>
 
             </table>
 
@@ -423,7 +448,7 @@ Hasil Rekomendasi RIASEC
 
 <script>
 
-const ctx = document.getElementById('chartJurusan');
+    const ctx = document.getElementById('chartJurusan');
 
     new Chart(ctx, {
 
@@ -439,7 +464,11 @@ const ctx = document.getElementById('chartJurusan');
 
                 data: JSON.parse('{{ values | tojson | safe }}'),
 
-                borderWidth: 1
+                borderWidth: 1,
+
+                borderRadius: 12,
+
+                barThickness: 60
 
             }]
         },
@@ -453,12 +482,16 @@ const ctx = document.getElementById('chartJurusan');
             scales: {
 
                 y: {
-
-                    beginAtZero: true
-
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
                 }
+
             }
+
         }
+
     });
 
 </script>
