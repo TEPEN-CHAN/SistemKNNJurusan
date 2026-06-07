@@ -35,12 +35,35 @@
 
     *{
         font-family:'Poppins',sans-serif;
+        box-sizing:border-box;
+    }
+
+    html{
+        width:100%;
+        overflow-x:hidden;
     }
 
     body{
         margin:0;
         padding:0;
         background:#f1f5f9;
+        color:#0f172a;
+        overflow-x:hidden;
+    }
+
+    img,
+    svg,
+    video,
+    canvas{
+        max-width:100%;
+    }
+
+    a,
+    button,
+    input,
+    select,
+    textarea{
+        min-width:0;
     }
 
     /* =======================================
@@ -56,10 +79,11 @@
         background:linear-gradient(180deg,#2563eb,#1d4ed8);
         padding:25px 20px;
         overflow-y:auto;
-        z-index:1000;
+        z-index:1040;
+        transition:transform .28s ease;
     }
 
-    .logo{
+    .sidebar-logo{
         display:flex;
         align-items:center;
         gap:15px;
@@ -67,11 +91,11 @@
         margin-bottom:40px;
     }
 
-    .logo i{
+    .sidebar-logo i{
         font-size:40px;
     }
 
-    .logo span{
+    .sidebar-logo span{
         font-size:18px;
         font-weight:700;
         line-height:1.3;
@@ -108,25 +132,59 @@
        MAIN CONTENT
     ======================================= */
 
-    .main-content{
+    .app-main-content{
         margin-left:280px;
         padding:25px;
+        min-width:0;
+        max-width:calc(100vw - 280px);
+    }
+
+    .page-content{
+        min-width:0;
     }
 
     /* =======================================
        TOPBAR
     ======================================= */
 
-    .topbar{
+    .app-topbar{
         background:white;
         border-radius:22px;
         padding:22px 28px;
         margin-bottom:28px;
         box-shadow:0 8px 25px rgba(15,23,42,0.06);
         border:1px solid #e2e8f0;
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap:18px;
+        min-width:0;
     }
 
-    .topbar-profile-img{
+    .app-title-wrap{
+        min-width:0;
+    }
+
+    .app-title{
+        font-weight:700;
+        margin-bottom:0;
+        overflow-wrap:anywhere;
+    }
+
+    .app-subtitle{
+        display:block;
+        overflow-wrap:anywhere;
+    }
+
+    .app-user{
+        display:flex;
+        align-items:center;
+        gap:12px;
+        min-width:0;
+        flex-shrink:0;
+    }
+
+    .app-topbar-profile-img{
         width:58px;
         height:58px;
         border-radius:50%;
@@ -136,7 +194,7 @@
         box-shadow:0 8px 18px rgba(37,99,235,0.25);
     }
 
-    .profile-icon{
+    .app-profile-icon{
         width:58px;
         height:58px;
         border-radius:50%;
@@ -149,9 +207,37 @@
         box-shadow:0 8px 18px rgba(37,99,235,0.25);
     }
 
-    .topbar-username{
+    .app-topbar-username{
         font-weight:700;
         color:#0f172a;
+        overflow:hidden;
+        text-overflow:ellipsis;
+        white-space:nowrap;
+        max-width:220px;
+    }
+
+    .mobile-menu-btn{
+        display:none;
+        width:44px;
+        height:44px;
+        border:0;
+        border-radius:14px;
+        background:#eff6ff;
+        color:#2563eb;
+        align-items:center;
+        justify-content:center;
+        font-size:23px;
+        flex:0 0 auto;
+    }
+
+    .sidebar-overlay{
+        position:fixed;
+        inset:0;
+        background:rgba(15,23,42,.48);
+        opacity:0;
+        visibility:hidden;
+        z-index:1030;
+        transition:opacity .28s ease, visibility .28s ease;
     }
 
     /* =======================================
@@ -164,6 +250,64 @@
         box-shadow:0 5px 20px rgba(0,0,0,.05);
     }
 
+    .table-responsive{
+        width:100%;
+        max-width:100%;
+        overflow-x:auto;
+        -webkit-overflow-scrolling:touch;
+    }
+
+    .table-responsive > table,
+    .table-responsive > .table{
+        margin-bottom:0;
+    }
+
+    .app-main-content .table-responsive .table,
+    .app-main-content .table-responsive table{
+        width:max-content;
+        min-width:100%;
+    }
+
+    .app-main-content .dataTables_wrapper{
+        max-width:100%;
+        overflow-x:auto;
+    }
+
+    .app-main-content,
+    .app-main-content .content,
+    .app-main-content .page-wrapper,
+    .app-main-content .admin-dashboard{
+        width:100%;
+        min-width:0;
+    }
+
+    .app-main-content p,
+    .app-main-content h1,
+    .app-main-content h2,
+    .app-main-content h3,
+    .app-main-content h4,
+    .app-main-content h5,
+    .app-main-content h6,
+    .app-main-content td,
+    .app-main-content th,
+    .app-main-content .btn{
+        overflow-wrap:anywhere;
+    }
+
+    .app-main-content .row{
+        min-width:0;
+    }
+
+    .app-main-content [class*="col-"]{
+        min-width:0;
+    }
+
+    .form-control,
+    .form-select,
+    .btn{
+        max-width:100%;
+    }
+
     /* =======================================
        RESPONSIVE
     ======================================= */
@@ -171,21 +315,187 @@
     @media(max-width:992px){
 
         .sidebar{
-            width:100%;
-            height:auto;
-            position:relative;
+            width:320px;
+            max-width:84vw;
+            height:100vh;
+            height:100dvh;
+            transform:translateX(-105%);
+            box-shadow:20px 0 45px rgba(15,23,42,.24);
         }
 
-        .main-content{
+        body.sidebar-open{
+            overflow:hidden;
+        }
+
+        body.sidebar-open .sidebar{
+            transform:translateX(0);
+        }
+
+        body.sidebar-open .sidebar-overlay{
+            opacity:1;
+            visibility:visible;
+        }
+
+        .mobile-menu-btn{
+            display:inline-flex;
+        }
+
+        .app-main-content{
             margin-left:0;
+            max-width:100vw;
+            padding:16px;
         }
 
-        .topbar{
-            flex-direction:column;
+        .app-topbar{
+            border-radius:18px;
+            padding:16px;
+            align-items:flex-start;
+        }
+
+        .app-title-wrap{
+            flex:1;
+        }
+
+        .app-title{
+            font-size:20px;
+            line-height:1.35;
+        }
+
+        .app-user{
+            margin-left:auto;
+        }
+
+        .app-topbar-profile-img,
+        .app-profile-icon{
+            width:46px;
+            height:46px;
+            border-width:2px;
+            font-size:20px;
+        }
+
+        .app-topbar-username{
+            max-width:150px;
+            font-size:14px;
+        }
+
+    }
+
+    @media(max-width:768px){
+
+        .app-main-content{
+            padding:12px;
+        }
+
+        .app-topbar{
+            gap:12px;
+            margin-bottom:18px;
+        }
+
+        .app-subtitle{
+            font-size:12px;
+            line-height:1.5;
+        }
+
+        .app-main-content .content,
+        .app-main-content .page-wrapper,
+        .app-main-content .admin-dashboard{
+            padding:0 !important;
+        }
+
+        .app-main-content .topbar,
+        .app-main-content .topbar-page,
+        .app-main-content .page-header,
+        .app-main-content .dashboard-header{
+            flex-direction:column !important;
             align-items:flex-start !important;
-            gap:18px;
+            gap:14px !important;
+            padding:20px !important;
+            border-radius:18px !important;
+            margin-bottom:18px !important;
         }
 
+        .app-main-content .topbar-title,
+        .app-main-content .page-title,
+        .app-main-content .dashboard-header h2,
+        .app-main-content .welcome-title{
+            font-size:clamp(22px,7vw,28px) !important;
+            line-height:1.25 !important;
+        }
+
+        .app-main-content .topbar-subtitle,
+        .app-main-content .page-subtitle,
+        .app-main-content .dashboard-header p{
+            font-size:14px !important;
+            line-height:1.6 !important;
+        }
+
+        .app-main-content .card,
+        .app-main-content .card-custom,
+        .app-main-content .card-stat,
+        .app-main-content .stats-card,
+        .app-main-content .menu-card,
+        .app-main-content .profile-card,
+        .app-main-content .process-card,
+        .app-main-content .top-card,
+        .app-main-content .info-card,
+        .app-main-content .result-card{
+            border-radius:18px !important;
+        }
+
+        .app-main-content .card-custom,
+        .app-main-content .card-stat,
+        .app-main-content .stats-card,
+        .app-main-content .menu-card,
+        .app-main-content .info-card .card-body,
+        .app-main-content .result-card{
+            padding:20px !important;
+        }
+
+        .app-main-content .btn,
+        .app-main-content [class*="btn-"]{
+            white-space:normal;
+        }
+
+        .app-main-content .table-responsive{
+            border-radius:14px;
+            margin-left:0;
+            margin-right:0;
+        }
+
+        .app-main-content table{
+            font-size:13px;
+        }
+
+        .app-main-content th,
+        .app-main-content td{
+            padding:.7rem .65rem !important;
+        }
+    }
+
+    @media(max-width:480px){
+
+        .app-topbar{
+            flex-wrap:wrap;
+        }
+
+        .app-user{
+            width:100%;
+            justify-content:flex-end;
+        }
+
+        .app-topbar-username{
+            max-width:calc(100vw - 96px);
+        }
+
+        .sidebar{
+            width:88vw;
+            padding:22px 16px;
+        }
+
+        .sidebar a{
+            padding:13px 14px;
+            border-radius:12px;
+        }
     }
 
 </style>
@@ -194,9 +504,9 @@
 
 <body>
 
-<div class="sidebar">
+<div class="sidebar" id="sidebar">
 
-    <div class="logo">
+    <div class="sidebar-logo">
 
         <i class="bi bi-mortarboard-fill"></i>
 
@@ -312,25 +622,38 @@
 
 </div>
 
-<div class="main-content">
+<div class="sidebar-overlay" data-sidebar-close></div>
 
-    <div class="topbar d-flex justify-content-between align-items-center">
+<div class="app-main-content">
 
-        <div>
+    <div class="app-topbar">
 
-            <h4 class="fw-bold mb-0">
+        <button
+            type="button"
+            class="mobile-menu-btn"
+            aria-label="Buka menu"
+            aria-controls="sidebar"
+            aria-expanded="false"
+            data-sidebar-toggle
+        >
+            <i class="bi bi-list"></i>
+        </button>
+
+        <div class="app-title-wrap">
+
+            <h4 class="app-title">
                 Sistem Rekomendasi Jurusan
             </h4>
 
-            <small class="text-muted">
+            <small class="text-muted app-subtitle">
                 Metode K-Nearest Neighbor (KNN)
             </small>
 
         </div>
 
-        <div class="d-flex align-items-center gap-3">
+        <div class="app-user">
 
-            <div class="topbar-username">
+            <div class="app-topbar-username">
                 {{ session.get('username') }}
             </div>
 
@@ -343,7 +666,7 @@
                     <img
                         src="{{ foto_profil }}"
                         alt="Foto Profil"
-                        class="topbar-profile-img"
+                        class="app-topbar-profile-img"
                     >
 
                 {% else %}
@@ -351,14 +674,14 @@
                     <img
                         src="{{ url_for('static', filename='uploads/profil/' ~ foto_profil) }}"
                         alt="Foto Profil"
-                        class="topbar-profile-img"
+                        class="app-topbar-profile-img"
                     >
 
                 {% endif %}
 
             {% else %}
 
-                <div class="profile-icon">
+                <div class="app-profile-icon">
                     <i class="bi bi-person-fill"></i>
                 </div>
 
@@ -368,12 +691,63 @@
 
     </div>
 
-    {% block content %}
-    {% endblock %}
+    <div class="page-content">
+        {% block content %}
+        {% endblock %}
+    </div>
 
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    (function(){
+        var body = document.body;
+        var toggle = document.querySelector('[data-sidebar-toggle]');
+        var closeTargets = document.querySelectorAll('[data-sidebar-close]');
+        var sidebarLinks = document.querySelectorAll('.sidebar a');
+
+        function setSidebar(open){
+            body.classList.toggle('sidebar-open', open);
+
+            if(toggle){
+                toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            }
+        }
+
+        if(toggle){
+            toggle.addEventListener('click', function(){
+                setSidebar(!body.classList.contains('sidebar-open'));
+            });
+        }
+
+        closeTargets.forEach(function(target){
+            target.addEventListener('click', function(){
+                setSidebar(false);
+            });
+        });
+
+        sidebarLinks.forEach(function(link){
+            link.addEventListener('click', function(){
+                if(window.matchMedia('(max-width: 992px)').matches){
+                    setSidebar(false);
+                }
+            });
+        });
+
+        window.addEventListener('keydown', function(event){
+            if(event.key === 'Escape'){
+                setSidebar(false);
+            }
+        });
+
+        window.addEventListener('resize', function(){
+            if(!window.matchMedia('(max-width: 992px)').matches){
+                setSidebar(false);
+            }
+        });
+    })();
+</script>
 
 </body>
 
