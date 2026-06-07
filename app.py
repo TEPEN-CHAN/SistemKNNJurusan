@@ -3217,91 +3217,98 @@ def admin_evaluasi_sistem():
     # Satu data alumni diuji, data alumni lainnya jadi data latih
     # =====================================================
     nilai_k_evaluasi = 3
+    jumlah_data_evaluasi = 0
+    metrik = {
+        'accuracy': 0,
+        'precision': 0,
+        'recall': 0,
+        'f1_score': 0
+    }
 
-    cur.execute("""
-        SELECT
-            nilai_pancasila,
-            nilai_pkwu,
-            nilai_matematika,
-            nilai_bahasaindo,
-            nilai_bahasaingg,
-            minat_bakat,
-            lanjut_pt,
-            hasil_jurusan
-        FROM alumni
-        WHERE hasil_jurusan IS NOT NULL
-        AND hasil_jurusan != ''
-    """)
+    try:
 
-    data_alumni = cur.fetchall()
+        cur.execute("""
+            SELECT
+                nilai_pancasila,
+                nilai_pkwu,
+                nilai_matematika,
+                nilai_bahasaindo,
+                nilai_bahasaingg,
+                minat_bakat,
+                lanjut_pt,
+                hasil_jurusan
+            FROM alumni
+            WHERE hasil_jurusan IS NOT NULL
+            AND hasil_jurusan != ''
+        """)
 
-    y_true = []
-    y_pred = []
+        data_alumni = cur.fetchall()
 
-    jumlah_data_evaluasi = len(data_alumni)
+        y_true = []
+        y_pred = []
 
-    if jumlah_data_evaluasi > 1:
+        jumlah_data_evaluasi = len(data_alumni)
 
-        for i in range(jumlah_data_evaluasi):
+        if jumlah_data_evaluasi > 1:
 
-            fitur_uji = buat_fitur_knn(
-                data_alumni[i][0],
-                data_alumni[i][1],
-                data_alumni[i][2],
-                data_alumni[i][3],
-                data_alumni[i][4],
-                data_alumni[i][5],
-                data_alumni[i][6]
-            )
+            for i in range(jumlah_data_evaluasi):
 
-            label_asli = data_alumni[i][7]
+                fitur_uji = buat_fitur_knn(
+                    data_alumni[i][0],
+                    data_alumni[i][1],
+                    data_alumni[i][2],
+                    data_alumni[i][3],
+                    data_alumni[i][4],
+                    data_alumni[i][5],
+                    data_alumni[i][6]
+                )
 
-            data_latih = []
-            label_latih = []
+                label_asli = data_alumni[i][7]
 
-            for j in range(jumlah_data_evaluasi):
+                data_latih = []
+                label_latih = []
 
-                if i != j:
+                for j in range(jumlah_data_evaluasi):
 
-                    fitur_latih = buat_fitur_knn(
-                        data_alumni[j][0],
-                        data_alumni[j][1],
-                        data_alumni[j][2],
-                        data_alumni[j][3],
-                        data_alumni[j][4],
-                        data_alumni[j][5],
-                        data_alumni[j][6]
-                    )
+                    if i != j:
 
-                    data_latih.append(fitur_latih)
-                    label_latih.append(data_alumni[j][7])
+                        fitur_latih = buat_fitur_knn(
+                            data_alumni[j][0],
+                            data_alumni[j][1],
+                            data_alumni[j][2],
+                            data_alumni[j][3],
+                            data_alumni[j][4],
+                            data_alumni[j][5],
+                            data_alumni[j][6]
+                        )
 
-            k_dipakai = nilai_k_evaluasi
+                        data_latih.append(fitur_latih)
+                        label_latih.append(data_alumni[j][7])
 
-            if k_dipakai > len(data_latih):
+                k_dipakai = nilai_k_evaluasi
 
-                k_dipakai = len(data_latih)
+                if k_dipakai > len(data_latih):
 
-            hasil_prediksi = knn_predict(
-                data_latih,
-                label_latih,
-                fitur_uji,
-                k=k_dipakai
-            )
+                    k_dipakai = len(data_latih)
 
-            y_true.append(label_asli)
-            y_pred.append(hasil_prediksi['hasil'])
+                hasil_prediksi = knn_predict(
+                    data_latih,
+                    label_latih,
+                    fitur_uji,
+                    k=k_dipakai
+                )
 
-        metrik = hitung_metrik_evaluasi(y_true, y_pred)
+                y_true.append(label_asli)
+                y_pred.append(hasil_prediksi['hasil'])
 
-    else:
+            metrik = hitung_metrik_evaluasi(y_true, y_pred)
 
-        metrik = {
-            'accuracy': 0,
-            'precision': 0,
-            'recall': 0,
-            'f1_score': 0
-        }
+    except Exception as e:
+
+        flash(
+            f'Gagal menghitung metrik evaluasi KNN: {str(e)}',
+            'warning'
+        )
 
     cur.close()
 
