@@ -169,6 +169,119 @@ def hitung_metrik_evaluasi(y_true, y_pred):
         'recall': round((recall_total / jumlah_label) * 100, 2),
         'f1_score': round((f1_total / jumlah_label) * 100, 2)
     }
+
+
+# =========================================================
+# HELPER FITUR KNN
+# Variabel skripsi:
+# 1. Mapel      = nilai Pancasila, PKWU, Matematika,
+#                 Bahasa Indonesia, Bahasa Inggris
+# 2. Minat bakat = 0 / 1
+# 3. Lanjut PT   = 0 / 1
+# =========================================================
+def to_float(value, default=0):
+
+    try:
+
+        if value is None:
+
+            return default
+
+        return float(str(value).replace(',', '.').strip())
+
+    except:
+
+        return default
+
+
+def encode_minat_bakat(value):
+
+    if value is None:
+
+        return 0
+
+    nilai = str(value).strip().upper()
+
+    if nilai == '':
+
+        return 0
+
+    try:
+
+        return 1 if float(nilai.replace(',', '.')) >= 1 else 0
+
+    except:
+
+        pass
+
+    nilai_tidak = {
+        '0',
+        'TIDAK',
+        'TIDAK ADA',
+        'BELUM',
+        'BELUM MENGISI',
+        'NONE',
+        '-'
+    }
+
+    if nilai in nilai_tidak:
+
+        return 0
+
+    return 1
+
+
+def encode_lanjut_pt(value):
+
+    if value is None:
+
+        return 0
+
+    nilai = str(value).strip().upper()
+
+    if nilai == '':
+
+        return 0
+
+    try:
+
+        return 1 if float(nilai.replace(',', '.')) >= 1 else 0
+
+    except:
+
+        pass
+
+    nilai_ya = {
+        '1',
+        'IYA',
+        'YA',
+        'YES',
+        'LANJUT',
+        'MELANJUTKAN'
+    }
+
+    return 1 if nilai in nilai_ya else 0
+
+
+def buat_fitur_knn(
+    nilai_pancasila,
+    nilai_pkwu,
+    nilai_matematika,
+    nilai_bahasa_indonesia,
+    nilai_bahasa_inggris,
+    minat_bakat,
+    lanjut_pt
+):
+
+    return [
+        to_float(nilai_pancasila),
+        to_float(nilai_pkwu),
+        to_float(nilai_matematika),
+        to_float(nilai_bahasa_indonesia),
+        to_float(nilai_bahasa_inggris),
+        encode_minat_bakat(minat_bakat),
+        encode_lanjut_pt(lanjut_pt)
+    ]
 # =========================================================
 # SIMPAN LOG AKTIVITAS
 # =========================================================
@@ -1284,7 +1397,8 @@ def input_nilai():
         cur.execute("""
             SELECT
                 minat_bakat,
-                kelompok_mapel
+                kelompok_mapel,
+                lanjut_pt
             FROM hasil_chatbot
             WHERE nis=%s
             ORDER BY id DESC
@@ -1297,6 +1411,7 @@ def input_nilai():
 
             minat_bakat = 'BELUM MENGISI'
             kelompok_mapel = 'BELUM MENGISI'
+            lanjut_pt = 'BELUM MENGISI'
 
             flash(
                 'Siswa belum mengisi chatbot RIASEC. Nilai tetap disimpan, tetapi minat bakat diset BELUM MENGISI.',
@@ -1307,17 +1422,7 @@ def input_nilai():
 
             minat_bakat = hasil_chatbot[0]
             kelompok_mapel = hasil_chatbot[1]
-
-        # ============================================
-        # KONVERSI LANJUT PT
-        # ============================================
-        if kelompok_mapel == 'Kelompok Mapel 1':
-
-            lanjut_pt = 'IYA'
-
-        else:
-
-            lanjut_pt = 'MUNGKIN'
+            lanjut_pt = hasil_chatbot[2] if hasil_chatbot[2] else 'BELUM MENGISI'
 
         # ============================================
         # CEK APAKAH DATA NILAI SISWA SUDAH ADA
@@ -1667,8 +1772,8 @@ def proses_semua_knn():
 
         # =====================================================
         # DATA SISWA UJI
-        # Urutan fitur dibuat sama dengan data latih:
-        # Pancasila, PKWU, Matematika, Bahasa Indonesia, Bahasa Inggris
+        # Fitur KNN:
+        # mapel, minat bakat, lanjut PT
         # =====================================================
         cur.execute("""
             SELECT
@@ -1678,7 +1783,9 @@ def proses_semua_knn():
                 nilai_pkwu,
                 nilai_matematika,
                 nilai_indonesia,
-                nilai_inggris
+                nilai_inggris,
+                minat_bakat,
+                lanjut_pt
             FROM input_siswa
             WHERE status_proses='belum'
         """)
@@ -1703,6 +1810,8 @@ def proses_semua_knn():
                 nilai_matematika,
                 nilai_bahasaindo,
                 nilai_bahasaingg,
+                minat_bakat,
+                lanjut_pt,
                 hasil_jurusan
             FROM alumni
             WHERE hasil_jurusan IS NOT NULL
@@ -1727,16 +1836,18 @@ def proses_semua_knn():
 
         for a in alumni:
 
-            fitur = [
-                float(a[0]),
-                float(a[1]),
-                float(a[2]),
-                float(a[3]),
-                float(a[4])
-            ]
+            fitur = buat_fitur_knn(
+                a[0],
+                a[1],
+                a[2],
+                a[3],
+                a[4],
+                a[5],
+                a[6]
+            )
 
             data_latih.append(fitur)
-            label_latih.append(a[5])
+            label_latih.append(a[7])
 
         jumlah_diproses = 0
 
@@ -1748,13 +1859,15 @@ def proses_semua_knn():
             id_input = siswa_uji[0]
             nis = siswa_uji[1]
 
-            fitur_uji = [
-                float(siswa_uji[2]),
-                float(siswa_uji[3]),
-                float(siswa_uji[4]),
-                float(siswa_uji[5]),
-                float(siswa_uji[6])
-            ]
+            fitur_uji = buat_fitur_knn(
+                siswa_uji[2],
+                siswa_uji[3],
+                siswa_uji[4],
+                siswa_uji[5],
+                siswa_uji[6],
+                siswa_uji[7],
+                siswa_uji[8]
+            )
 
             hasil_knn = knn_predict(
                 data_latih,
@@ -2743,7 +2856,8 @@ def admin_nilai_siswa():
         cur.execute("""
             SELECT
                 minat_bakat,
-                kelompok_mapel
+                kelompok_mapel,
+                lanjut_pt
             FROM hasil_chatbot
             WHERE nis=%s
             ORDER BY id DESC
@@ -2756,6 +2870,7 @@ def admin_nilai_siswa():
 
             minat_bakat = 'BELUM MENGISI'
             kelompok_mapel = 'BELUM MENGISI'
+            lanjut_pt = 'BELUM MENGISI'
 
             flash(
                 'Siswa belum mengisi chatbot RIASEC. Nilai tetap disimpan, tetapi minat bakat diset BELUM MENGISI.',
@@ -2766,17 +2881,7 @@ def admin_nilai_siswa():
 
             minat_bakat = hasil_chatbot[0]
             kelompok_mapel = hasil_chatbot[1]
-
-        # =================================================
-        # KONVERSI LANJUT PT
-        # =================================================
-        if kelompok_mapel == 'Kelompok Mapel 1':
-
-            lanjut_pt = 'IYA'
-
-        else:
-
-            lanjut_pt = 'MUNGKIN'
+            lanjut_pt = hasil_chatbot[2] if hasil_chatbot[2] else 'BELUM MENGISI'
 
         # =================================================
         # CEK APAKAH NILAI SISWA SUDAH ADA
@@ -3120,6 +3225,8 @@ def admin_evaluasi_sistem():
             nilai_matematika,
             nilai_bahasaindo,
             nilai_bahasaingg,
+            minat_bakat,
+            lanjut_pt,
             hasil_jurusan
         FROM alumni
         WHERE hasil_jurusan IS NOT NULL
@@ -3137,15 +3244,17 @@ def admin_evaluasi_sistem():
 
         for i in range(jumlah_data_evaluasi):
 
-            fitur_uji = [
-                float(data_alumni[i][0]),
-                float(data_alumni[i][1]),
-                float(data_alumni[i][2]),
-                float(data_alumni[i][3]),
-                float(data_alumni[i][4])
-            ]
+            fitur_uji = buat_fitur_knn(
+                data_alumni[i][0],
+                data_alumni[i][1],
+                data_alumni[i][2],
+                data_alumni[i][3],
+                data_alumni[i][4],
+                data_alumni[i][5],
+                data_alumni[i][6]
+            )
 
-            label_asli = data_alumni[i][5]
+            label_asli = data_alumni[i][7]
 
             data_latih = []
             label_latih = []
@@ -3154,16 +3263,18 @@ def admin_evaluasi_sistem():
 
                 if i != j:
 
-                    fitur_latih = [
-                        float(data_alumni[j][0]),
-                        float(data_alumni[j][1]),
-                        float(data_alumni[j][2]),
-                        float(data_alumni[j][3]),
-                        float(data_alumni[j][4])
-                    ]
+                    fitur_latih = buat_fitur_knn(
+                        data_alumni[j][0],
+                        data_alumni[j][1],
+                        data_alumni[j][2],
+                        data_alumni[j][3],
+                        data_alumni[j][4],
+                        data_alumni[j][5],
+                        data_alumni[j][6]
+                    )
 
                     data_latih.append(fitur_latih)
-                    label_latih.append(data_alumni[j][5])
+                    label_latih.append(data_alumni[j][7])
 
             k_dipakai = nilai_k_evaluasi
 
@@ -3679,8 +3790,8 @@ def admin_proses_knn():
             input_siswa.nis,
             siswa.nama_siswa,
             siswa.kelas,
-            COALESCE(hasil_chatbot.minat_bakat, 'BELUM MENGISI') AS minat_bakat,
-            COALESCE(hasil_chatbot.kelompok_mapel, 'BELUM MENGISI') AS kelompok_mapel,
+            COALESCE(input_siswa.minat_bakat, hasil_chatbot.minat_bakat, 'BELUM MENGISI') AS minat_bakat,
+            COALESCE(input_siswa.lanjut_pt, hasil_chatbot.lanjut_pt, 'BELUM MENGISI') AS lanjut_pt,
             input_siswa.nilai_pancasila,
             input_siswa.nilai_pkwu,
             input_siswa.nilai_matematika,
@@ -3762,8 +3873,8 @@ def admin_proses_semua_knn():
                 input_siswa.nis,
                 siswa.nama_siswa,
                 siswa.kelas,
-                COALESCE(hasil_chatbot.minat_bakat, 'BELUM MENGISI') AS minat_bakat,
-                COALESCE(hasil_chatbot.kelompok_mapel, 'BELUM MENGISI') AS kelompok_mapel,
+                COALESCE(input_siswa.minat_bakat, hasil_chatbot.minat_bakat, 'BELUM MENGISI') AS minat_bakat,
+                COALESCE(input_siswa.lanjut_pt, hasil_chatbot.lanjut_pt, 'BELUM MENGISI') AS lanjut_pt,
 
                 input_siswa.nilai_pancasila,
                 input_siswa.nilai_pkwu,
@@ -3814,6 +3925,8 @@ def admin_proses_semua_knn():
                 nilai_matematika,
                 nilai_bahasaindo,
                 nilai_bahasaingg,
+                minat_bakat,
+                lanjut_pt,
                 hasil_jurusan
             FROM alumni
             WHERE hasil_jurusan IS NOT NULL
@@ -3845,25 +3958,27 @@ def admin_proses_semua_knn():
 
         # =================================================
         # SUSUN DATA LATIH
-        # Urutan fitur disamakan:
-        # Pancasila, PKWU, Matematika, Bahasa Indonesia, Bahasa Inggris
+        # Fitur KNN:
+        # mapel, minat bakat, lanjut PT
         # =================================================
         data_latih = []
         label_latih = []
 
         for a in alumni:
 
-            fitur_latih = [
-                float(a[2]),
-                float(a[3]),
-                float(a[4]),
-                float(a[5]),
-                float(a[6])
-            ]
+            fitur_latih = buat_fitur_knn(
+                a[2],
+                a[3],
+                a[4],
+                a[5],
+                a[6],
+                a[7],
+                a[8]
+            )
 
             data_latih.append(fitur_latih)
 
-            label_latih.append(a[7])
+            label_latih.append(a[9])
 
         jumlah_diproses = 0
 
@@ -3875,13 +3990,15 @@ def admin_proses_semua_knn():
             id_input = siswa_uji[0]
             nis = siswa_uji[1]
 
-            fitur_uji = [
-                float(siswa_uji[6]),
-                float(siswa_uji[7]),
-                float(siswa_uji[8]),
-                float(siswa_uji[9]),
-                float(siswa_uji[10])
-            ]
+            fitur_uji = buat_fitur_knn(
+                siswa_uji[6],
+                siswa_uji[7],
+                siswa_uji[8],
+                siswa_uji[9],
+                siswa_uji[10],
+                siswa_uji[4],
+                siswa_uji[5]
+            )
 
             hasil_knn = knn_predict(
                 data_latih,
