@@ -2215,52 +2215,33 @@ def chatbot():
                 'message': 'Data chatbot tidak lengkap'
             }), 400
 
-        detail_mapel_by_riasec = {
-            'REALISTIC': """
-Biologi
-Ekonomi
-PKWu
-Bahasa Inggris Tingkat Lanjut
-Informatika
-""",
-            'INVESTIGATIVE': """
+        detail_mapel_by_kelompok = {
+            'Kelompok Mapel 1': """
 Matematika Tingkat Lanjut
 Ekonomi
 PKWu
 Biologi
 Fisika
 """,
-            'ARTISTIC': """
-Seni Musik
-Seni Rupa
-Bahasa Inggris
-Desain
-Multimedia
-""",
-            'SOCIAL': """
-Sosiologi
-Geografi
-Bahasa Indonesia
+            'Kelompok Mapel 2': """
+Biologi
 Ekonomi
-PPKn
-""",
-            'ENTERPRISING': """
-Ekonomi
-Matematika
 PKWu
-Bahasa Inggris
-Bisnis Digital
-""",
-            'CONVENTIONAL': """
-Akuntansi
-Ekonomi
-Administrasi
-Matematika
+Bahasa Inggris Tingkat Lanjut
 Informatika
 """
         }
 
-        detail_mapel = detail_mapel_by_riasec.get(rekomendasi, '')
+        if kelompok_mapel not in detail_mapel_by_kelompok:
+
+            cur.close()
+
+            return jsonify({
+                'status': 'error',
+                'message': 'Kelompok mapel tidak valid'
+            }), 400
+
+        detail_mapel = detail_mapel_by_kelompok.get(kelompok_mapel, '')
 
         try:
             cur.execute("""
