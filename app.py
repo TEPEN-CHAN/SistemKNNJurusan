@@ -4,7 +4,8 @@ from flask import Flask, render_template, request, redirect, session, jsonify, g
 import pymysql
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from knn import knn_predict
 from chatbot import chatbot_response
 import os
@@ -33,6 +34,19 @@ app.config['MYSQL_PASSWORD'] = getattr(config, 'MYSQL_PASSWORD', None) or os.get
 app.config['MYSQL_DB'] = getattr(config, 'MYSQL_DB', None) or os.getenv('MYSQL_DB')
 app.config['MYSQL_PORT'] = int(getattr(config, 'MYSQL_PORT', None) or os.getenv('MYSQL_PORT', 3306))
 app.secret_key = getattr(config, 'SECRET_KEY', None) or os.getenv('SECRET_KEY', 'default-secret-key')
+
+try:
+
+    WIB = ZoneInfo('Asia/Jakarta')
+
+except Exception:
+
+    WIB = timezone(timedelta(hours=7))
+
+
+def waktu_indonesia():
+
+    return datetime.now(WIB).replace(tzinfo=None)
 
 cloudinary.config(
     cloud_name=getattr(config, 'CLOUDINARY_CLOUD_NAME', None) or os.getenv('CLOUDINARY_CLOUD_NAME'),
@@ -322,7 +336,7 @@ def simpan_log(aktivitas):
             username,
             role,
             aktivitas,
-            datetime.now()
+            waktu_indonesia()
         ))
 
         mysql.connection.commit()
@@ -438,8 +452,8 @@ def fetch_hasil_knn_data():
             hasil_knn.rata_jarak,
             hasil_knn.confidence,
             DATE_FORMAT(
-                DATE_ADD(hasil_knn.tanggal, INTERVAL 7 HOUR),
-                '%d-%m-%Y %H:%i:%s'
+                hasil_knn.tanggal,
+                '%d-%m-%Y %H:%i:%s WIB'
             ) AS tanggal_wib
         FROM hasil_knn
 
@@ -1030,8 +1044,8 @@ def dashboard_siswa():
             detail_mapel,
             lanjut_pt,
             DATE_FORMAT(
-                DATE_ADD(tanggal, INTERVAL 7 HOUR),
-                '%%d-%%m-%%Y %%H:%%i:%%s'
+                tanggal,
+                '%%d-%%m-%%Y %%H:%%i:%%s WIB'
             ) AS tanggal_wib
         FROM hasil_chatbot
         WHERE nis=%s
@@ -1053,8 +1067,8 @@ def dashboard_siswa():
             rata_jarak,
             confidence,
             DATE_FORMAT(
-                DATE_ADD(tanggal, INTERVAL 7 HOUR),
-                '%%d-%%m-%%Y %%H:%%i:%%s'
+                tanggal,
+                '%%d-%%m-%%Y %%H:%%i:%%s WIB'
             ) AS tanggal_wib
         FROM hasil_knn
         WHERE nis=%s
@@ -1147,7 +1161,7 @@ def admin_input_alumni():
                     row['minat_bakat'],
                     row['lanjut_pt'],
                     row['hasil_jurusan'],
-                    datetime.now()
+                    waktu_indonesia()
 
                 ))
 
@@ -1463,7 +1477,7 @@ def input_nilai():
                 nilai_pkwu,
                 minat_bakat,
                 lanjut_pt,
-                datetime.now(),
+                waktu_indonesia(),
                 'belum',
                 cek_nilai[0]
             ))
@@ -1498,7 +1512,7 @@ def input_nilai():
                 nilai_pkwu,
                 minat_bakat,
                 lanjut_pt,
-                datetime.now(),
+                waktu_indonesia(),
                 'belum'
             ))
 
@@ -1661,7 +1675,7 @@ def input_alumni():
                     row['minat_bakat'],
                     row['lanjut_pt'],
                     row['hasil_jurusan'],
-                    datetime.now()
+                    waktu_indonesia()
 
                 ))
 
@@ -1908,7 +1922,7 @@ def proses_semua_knn():
                 len(neighbors),
                 round(rata_jarak, 4),
                 confidence,
-                datetime.now()
+                waktu_indonesia()
             ))
 
             cur.execute("""
@@ -2131,8 +2145,8 @@ def chatbot():
             detail_mapel,
             lanjut_pt,
             DATE_FORMAT(
-                DATE_ADD(tanggal, INTERVAL 7 HOUR),
-                '%%d-%%m-%%Y %%H:%%i:%%s'
+                tanggal,
+                '%%d-%%m-%%Y %%H:%%i:%%s WIB'
             ) AS tanggal_wib
         FROM hasil_chatbot
         WHERE nis=%s
@@ -2152,8 +2166,8 @@ def chatbot():
             rata_jarak,
             confidence,
             DATE_FORMAT(
-                DATE_ADD(tanggal, INTERVAL 7 HOUR),
-                '%%d-%%m-%%Y %%H:%%i:%%s'
+                tanggal,
+                '%%d-%%m-%%Y %%H:%%i:%%s WIB'
             ) AS tanggal_wib
         FROM hasil_knn
         WHERE nis=%s
@@ -2264,7 +2278,7 @@ Informatika
                 kelompok_mapel,
                 detail_mapel,
                 lanjut_kuliah,
-                datetime.now()
+                waktu_indonesia()
             ))
 
             mysql.connection.commit()
@@ -2903,7 +2917,7 @@ def admin_nilai_siswa():
                 nilai_pkwu,
                 minat_bakat,
                 lanjut_pt,
-                datetime.now(),
+                waktu_indonesia(),
                 'belum',
                 cek_nilai[0]
             ))
@@ -2938,7 +2952,7 @@ def admin_nilai_siswa():
                 nilai_pkwu,
                 minat_bakat,
                 lanjut_pt,
-                datetime.now(),
+                waktu_indonesia(),
                 'belum'
             ))
 
@@ -3179,8 +3193,8 @@ def admin_evaluasi_sistem():
             hasil_knn.rata_jarak,
             hasil_knn.confidence,
             DATE_FORMAT(
-                DATE_ADD(hasil_knn.tanggal, INTERVAL 7 HOUR),
-                '%d-%m-%Y %H:%i:%s'
+                hasil_knn.tanggal,
+                '%d-%m-%Y %H:%i:%s WIB'
             ) AS tanggal_wib
         FROM hasil_knn
 
@@ -4033,7 +4047,7 @@ def admin_proses_semua_knn():
                 len(neighbors),
                 round(rata_jarak, 4),
                 confidence,
-                datetime.now()
+                waktu_indonesia()
             ))
 
             # =================================================
