@@ -188,7 +188,7 @@ def hitung_metrik_evaluasi(y_true, y_pred):
 # =========================================================
 # HELPER FITUR KNN
 # Variabel skripsi:
-# 1. Mapel      = nilai Pancasila, PKWU, Matematika,
+# 1. Mapel      = nilai Pancasila, Matematika,
 #                 Bahasa Indonesia, Bahasa Inggris
 # 2. Minat bakat = 0 / 1
 # 3. Lanjut PT   = 0 / 1
@@ -279,7 +279,6 @@ def encode_lanjut_pt(value):
 
 def buat_fitur_knn(
     nilai_pancasila,
-    nilai_pkwu,
     nilai_matematika,
     nilai_bahasa_indonesia,
     nilai_bahasa_inggris,
@@ -289,7 +288,6 @@ def buat_fitur_knn(
 
     return [
         to_float(nilai_pancasila),
-        to_float(nilai_pkwu),
         to_float(nilai_matematika),
         to_float(nilai_bahasa_indonesia),
         to_float(nilai_bahasa_inggris),
@@ -1131,7 +1129,6 @@ def admin_input_alumni():
                         id_alumni,
                         nama_alumni,
                         nilai_pancasila,
-                        nilai_pkwu,
                         nilai_matematika,
                         nilai_bahasaindo,
                         nilai_bahasaingg,
@@ -1145,7 +1142,7 @@ def admin_input_alumni():
                     VALUES(
 
                         %s,%s,%s,%s,%s,
-                        %s,%s,%s,%s,%s,%s
+                        %s,%s,%s,%s,%s
 
                     )
 
@@ -1154,7 +1151,6 @@ def admin_input_alumni():
                     row['id_alumni'],
                     row['nama_alumni'],
                     row['nilai_pancasila'],
-                    row['nilai_pkwu'],
                     row['nilai_matematika'],
                     row['nilai_bahasaindo'],
                     row['nilai_bahasaingg'],
@@ -1192,7 +1188,6 @@ def admin_input_alumni():
             id_alumni,
             nama_alumni,
             nilai_pancasila,
-            nilai_pkwu,
             nilai_matematika,
             nilai_bahasaindo,
             nilai_bahasaingg,
@@ -1241,7 +1236,6 @@ def download_alumni():
         'id_alumni',
         'nama_alumni',
         'nilai_pancasila',
-        'nilai_pkwu',
         'nilai_matematika',
         'nilai_bahasaindo',
         'nilai_bahasaingg',
@@ -1403,7 +1397,6 @@ def input_nilai():
         nilai_indonesia = request.form['nilai_indonesia']
         nilai_inggris = request.form['nilai_inggris']
         nilai_pancasila = request.form['nilai_pancasila']
-        nilai_pkwu = request.form['nilai_pkwu']
 
         # ============================================
         # AMBIL HASIL CHATBOT
@@ -1463,7 +1456,6 @@ def input_nilai():
                     nilai_indonesia=%s,
                     nilai_inggris=%s,
                     nilai_pancasila=%s,
-                    nilai_pkwu=%s,
                     minat_bakat=%s,
                     lanjut_pt=%s,
                     tanggal_input=%s,
@@ -1474,7 +1466,6 @@ def input_nilai():
                 nilai_indonesia,
                 nilai_inggris,
                 nilai_pancasila,
-                nilai_pkwu,
                 minat_bakat,
                 lanjut_pt,
                 waktu_indonesia(),
@@ -1496,20 +1487,18 @@ def input_nilai():
                     nilai_indonesia,
                     nilai_inggris,
                     nilai_pancasila,
-                    nilai_pkwu,
                     minat_bakat,
                     lanjut_pt,
                     tanggal_input,
                     status_proses
                 )
-                VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, (
                 nis,
                 nilai_matematika,
                 nilai_indonesia,
                 nilai_inggris,
                 nilai_pancasila,
-                nilai_pkwu,
                 minat_bakat,
                 lanjut_pt,
                 waktu_indonesia(),
@@ -1545,7 +1534,6 @@ def input_nilai():
                 input_siswa.nilai_indonesia,
                 input_siswa.nilai_inggris,
                 input_siswa.nilai_pancasila,
-                input_siswa.nilai_pkwu,
                 input_siswa.minat_bakat,
                 input_siswa.lanjut_pt,
                 input_siswa.status_proses,
@@ -1581,7 +1569,6 @@ def input_nilai():
                 input_siswa.nilai_indonesia,
                 input_siswa.nilai_inggris,
                 input_siswa.nilai_pancasila,
-                input_siswa.nilai_pkwu,
                 input_siswa.minat_bakat,
                 input_siswa.lanjut_pt,
                 input_siswa.status_proses,
@@ -1645,7 +1632,6 @@ def input_alumni():
                         id_alumni,
                         nama_alumni,
                         nilai_pancasila,
-                        nilai_pkwu,
                         nilai_matematika,
                         nilai_bahasaindo,
                         nilai_bahasaingg,
@@ -1659,7 +1645,7 @@ def input_alumni():
                     VALUES(
 
                         %s,%s,%s,%s,%s,
-                        %s,%s,%s,%s,%s,%s
+                        %s,%s,%s,%s,%s
 
                     )
 
@@ -1668,7 +1654,6 @@ def input_alumni():
                     row['id_alumni'],
                     row['nama_alumni'],
                     row['nilai_pancasila'],
-                    row['nilai_pkwu'],
                     row['nilai_matematika'],
                     row['nilai_bahasaindo'],
                     row['nilai_bahasaingg'],
@@ -1706,7 +1691,6 @@ def input_alumni():
             id_alumni,
             nama_alumni,
             nilai_pancasila,
-            nilai_pkwu,
             nilai_matematika,
             nilai_bahasaindo,
             nilai_bahasaingg,
@@ -1794,7 +1778,6 @@ def proses_semua_knn():
                 id_input,
                 nis,
                 nilai_pancasila,
-                nilai_pkwu,
                 nilai_matematika,
                 nilai_indonesia,
                 nilai_inggris,
@@ -1820,7 +1803,6 @@ def proses_semua_knn():
         cur.execute("""
             SELECT
                 nilai_pancasila,
-                nilai_pkwu,
                 nilai_matematika,
                 nilai_bahasaindo,
                 nilai_bahasaingg,
@@ -1856,12 +1838,11 @@ def proses_semua_knn():
                 a[2],
                 a[3],
                 a[4],
-                a[5],
-                a[6]
+                a[5]
             )
 
             data_latih.append(fitur)
-            label_latih.append(a[7])
+            label_latih.append(a[6])
 
         jumlah_diproses = 0
 
@@ -1879,8 +1860,7 @@ def proses_semua_knn():
                 siswa_uji[4],
                 siswa_uji[5],
                 siswa_uji[6],
-                siswa_uji[7],
-                siswa_uji[8]
+                siswa_uji[7]
             )
 
             hasil_knn = knn_predict(
@@ -2843,7 +2823,6 @@ def admin_nilai_siswa():
         nilai_indonesia = request.form['nilai_indonesia']
         nilai_inggris = request.form['nilai_inggris']
         nilai_pancasila = request.form['nilai_pancasila']
-        nilai_pkwu = request.form['nilai_pkwu']
 
         # =================================================
         # AMBIL HASIL CHATBOT
@@ -2903,7 +2882,6 @@ def admin_nilai_siswa():
                     nilai_indonesia=%s,
                     nilai_inggris=%s,
                     nilai_pancasila=%s,
-                    nilai_pkwu=%s,
                     minat_bakat=%s,
                     lanjut_pt=%s,
                     tanggal_input=%s,
@@ -2914,7 +2892,6 @@ def admin_nilai_siswa():
                 nilai_indonesia,
                 nilai_inggris,
                 nilai_pancasila,
-                nilai_pkwu,
                 minat_bakat,
                 lanjut_pt,
                 waktu_indonesia(),
@@ -2936,20 +2913,18 @@ def admin_nilai_siswa():
                     nilai_indonesia,
                     nilai_inggris,
                     nilai_pancasila,
-                    nilai_pkwu,
                     minat_bakat,
                     lanjut_pt,
                     tanggal_input,
                     status_proses
                 )
-                VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, (
                 nis,
                 nilai_matematika,
                 nilai_indonesia,
                 nilai_inggris,
                 nilai_pancasila,
-                nilai_pkwu,
                 minat_bakat,
                 lanjut_pt,
                 waktu_indonesia(),
@@ -2985,7 +2960,6 @@ def admin_nilai_siswa():
                 input_siswa.nilai_indonesia,
                 input_siswa.nilai_inggris,
                 input_siswa.nilai_pancasila,
-                input_siswa.nilai_pkwu,
                 input_siswa.minat_bakat,
                 input_siswa.lanjut_pt,
                 input_siswa.status_proses,
@@ -3025,7 +2999,6 @@ def admin_nilai_siswa():
                 input_siswa.nilai_indonesia,
                 input_siswa.nilai_inggris,
                 input_siswa.nilai_pancasila,
-                input_siswa.nilai_pkwu,
                 input_siswa.minat_bakat,
                 input_siswa.lanjut_pt,
                 input_siswa.status_proses,
@@ -3225,7 +3198,6 @@ def admin_evaluasi_sistem():
         cur.execute("""
             SELECT
                 nilai_pancasila,
-                nilai_pkwu,
                 nilai_matematika,
                 nilai_bahasaindo,
                 nilai_bahasaingg,
@@ -3254,11 +3226,10 @@ def admin_evaluasi_sistem():
                     data_alumni[i][2],
                     data_alumni[i][3],
                     data_alumni[i][4],
-                    data_alumni[i][5],
-                    data_alumni[i][6]
+                    data_alumni[i][5]
                 )
 
-                label_asli = data_alumni[i][7]
+                label_asli = data_alumni[i][6]
 
                 data_latih = []
                 label_latih = []
@@ -3273,12 +3244,11 @@ def admin_evaluasi_sistem():
                             data_alumni[j][2],
                             data_alumni[j][3],
                             data_alumni[j][4],
-                            data_alumni[j][5],
-                            data_alumni[j][6]
+                            data_alumni[j][5]
                         )
 
                         data_latih.append(fitur_latih)
-                        label_latih.append(data_alumni[j][7])
+                        label_latih.append(data_alumni[j][6])
 
                 k_dipakai = nilai_k_evaluasi
 
@@ -3795,7 +3765,6 @@ def admin_proses_knn():
             COALESCE(input_siswa.minat_bakat, hasil_chatbot.minat_bakat, 'BELUM MENGISI') AS minat_bakat,
             COALESCE(input_siswa.lanjut_pt, hasil_chatbot.lanjut_pt, 'BELUM MENGISI') AS lanjut_pt,
             input_siswa.nilai_pancasila,
-            input_siswa.nilai_pkwu,
             input_siswa.nilai_matematika,
             input_siswa.nilai_indonesia,
             input_siswa.nilai_inggris,
@@ -3879,7 +3848,6 @@ def admin_proses_semua_knn():
                 COALESCE(input_siswa.lanjut_pt, hasil_chatbot.lanjut_pt, 'BELUM MENGISI') AS lanjut_pt,
 
                 input_siswa.nilai_pancasila,
-                input_siswa.nilai_pkwu,
                 input_siswa.nilai_matematika,
                 input_siswa.nilai_indonesia,
                 input_siswa.nilai_inggris
@@ -3923,7 +3891,6 @@ def admin_proses_semua_knn():
                 id_alumni,
                 nama_alumni,
                 nilai_pancasila,
-                nilai_pkwu,
                 nilai_matematika,
                 nilai_bahasaindo,
                 nilai_bahasaingg,
@@ -3974,13 +3941,12 @@ def admin_proses_semua_knn():
                 a[4],
                 a[5],
                 a[6],
-                a[7],
-                a[8]
+                a[7]
             )
 
             data_latih.append(fitur_latih)
 
-            label_latih.append(a[9])
+            label_latih.append(a[8])
 
         jumlah_diproses = 0
 
@@ -3997,7 +3963,6 @@ def admin_proses_semua_knn():
                 siswa_uji[7],
                 siswa_uji[8],
                 siswa_uji[9],
-                siswa_uji[10],
                 siswa_uji[4],
                 siswa_uji[5]
             )

@@ -351,34 +351,6 @@
 
                     </div>
 
-                    <div class="col-md-6 mb-3">
-
-                        <label class="form-label">
-                            Nilai PKWU
-                        </label>
-
-                        <select
-                            name="nilai_pkwu"
-                            class="form-select"
-                            required
-                        >
-
-                            <option value="">
-                                -- Pilih Nilai --
-                            </option>
-
-                            {% for i in range(0,101) %}
-
-                                <option value="{{ i }}">
-                                    {{ i }}
-                                </option>
-
-                            {% endfor %}
-
-                        </select>
-
-                    </div>
-
                 </div>
 
                 <div class="mt-4">
@@ -457,7 +429,6 @@
                             <th>B. Indonesia</th>
                             <th>B. Inggris</th>
                             <th>Pancasila</th>
-                            <th>PKWU</th>
                             <th>Status</th>
                             <th>Tanggal Input</th>
                         </tr>
@@ -488,11 +459,9 @@
 
                                     <td>{{ n[7] }}</td>
 
-                                    <td>{{ n[8] }}</td>
-
                                     <td>
 
-                                        {% if n[11] == 'belum' %}
+                                        {% if n[10] == 'belum' %}
 
                                             <span class="badge bg-warning text-dark">
                                                 Belum Diproses
@@ -509,7 +478,7 @@
                                     </td>
 
                                     <td>
-                                        {{ n[12].strftime('%d-%m-%Y %H:%M WIB') if n[12] else '-' }}
+                                        {{ n[11].strftime('%d-%m-%Y %H:%M WIB') if n[11] else '-' }}
                                     </td>
 
                                 </tr>
@@ -519,7 +488,7 @@
                         {% else %}
 
                             <tr>
-                                <td colspan="11" class="text-center text-muted">
+                                <td colspan="10" class="text-center text-muted">
                                     Belum ada data nilai siswa
                                 </td>
                             </tr>

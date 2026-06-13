@@ -373,24 +373,6 @@ Nilai Siswa
 
                 </div>
 
-                <div class="col-lg-4">
-
-                    <label class="form-label">
-                        Nilai PKWU
-                    </label>
-
-                    <input
-                        type="number"
-                        name="nilai_pkwu"
-                        class="form-control"
-                        min="0"
-                        max="100"
-                        placeholder="0 - 100"
-                        required
-                    >
-
-                </div>
-
                 <div class="col-lg-12">
 
                     <button type="submit" class="btn btn-warning-custom">
@@ -482,7 +464,6 @@ Nilai Siswa
                         <th>B. Indonesia</th>
                         <th>B. Inggris</th>
                         <th>Pancasila</th>
-                        <th>PKWU</th>
                         <th>Minat Bakat</th>
                         <th>Lanjut PT</th>
                         <th>Status Proses</th>
@@ -517,21 +498,19 @@ Nilai Siswa
 
                                 <td>{{ n[7] }}</td>
 
-                                <td>{{ n[8] }}</td>
-
                                 <td>
 
                                     <span class="badge-custom badge-info-custom">
-                                        {{ n[9] }}
+                                        {{ n[8] }}
                                     </span>
 
                                 </td>
 
-                                <td>{{ n[10] }}</td>
+                                <td>{{ n[9] }}</td>
 
                                 <td>
 
-                                    {% if n[11] == 'belum' %}
+                                    {% if n[10] == 'belum' %}
 
                                         <span class="badge-custom badge-belum">
                                             Belum
@@ -548,7 +527,7 @@ Nilai Siswa
                                 </td>
 
                                 <td>
-                                    {{ n[12].strftime('%d-%m-%Y %H:%M WIB') if n[12] else '-' }}
+                                    {{ n[11].strftime('%d-%m-%Y %H:%M WIB') if n[11] else '-' }}
                                 </td>
 
                                 <td>
@@ -574,7 +553,7 @@ Nilai Siswa
 
                         <tr>
 
-                            <td colspan="14" class="text-center text-muted">
+                            <td colspan="13" class="text-center text-muted">
 
                                 Data nilai siswa belum tersedia
 
