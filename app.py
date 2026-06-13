@@ -5,7 +5,6 @@ import pymysql
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from datetime import datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
 from knn import knn_predict
 from chatbot import chatbot_response
 import os
@@ -35,14 +34,7 @@ app.config['MYSQL_DB'] = getattr(config, 'MYSQL_DB', None) or os.getenv('MYSQL_D
 app.config['MYSQL_PORT'] = int(getattr(config, 'MYSQL_PORT', None) or os.getenv('MYSQL_PORT', 3306))
 app.secret_key = getattr(config, 'SECRET_KEY', None) or os.getenv('SECRET_KEY', 'default-secret-key')
 
-try:
-
-    WIB = ZoneInfo('Asia/Jakarta')
-
-except Exception:
-
-    WIB = timezone(timedelta(hours=7))
-
+WIB = timezone(timedelta(hours=7))
 
 def waktu_indonesia():
 
@@ -1938,26 +1930,7 @@ def proses_semua_knn():
 @login_required(roles=[3])
 def hasil():
 
-    nis = session['id_ref']
-
-    cur = mysql.connection.cursor()
-
-    cur.execute("""
-        SELECT *
-        FROM hasil_knn
-        WHERE nis=%s
-        ORDER BY id_hasil DESC
-        LIMIT 1
-    """, [nis])
-
-    hasil = cur.fetchone()
-
-    cur.close()
-
-    return render_template(
-        'siswa/hasil.html',
-        hasil=hasil
-    )
+    return redirect('/dashboard_siswa')
 
 @app.route('/hasil_rekomendasi')
 @login_required(roles=[2])
