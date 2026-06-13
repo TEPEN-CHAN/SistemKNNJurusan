@@ -540,11 +540,25 @@ def login_required(roles=None):
 
             if 'login' not in session:
 
+                if request.is_json:
+
+                    return jsonify({
+                        'status': 'error',
+                        'message': 'Sesi login sudah habis. Silakan login ulang.'
+                    }), 401
+
                 return redirect('/')
 
             if roles:
 
                 if session.get('id_role') not in roles:
+
+                    if request.is_json:
+
+                        return jsonify({
+                            'status': 'error',
+                            'message': 'Akun ini tidak memiliki akses untuk menyimpan chatbot.'
+                        }), 403
 
                     return redirect('/')
 
@@ -2173,7 +2187,14 @@ def chatbot():
 
         rekomendasi = data.get('minat_bakat')
         kelompok_mapel = data.get('kelompok_mapel')
-        lanjut_kuliah = data.get('status_kuliah')
+        lanjut_kuliah_input = str(data.get('status_kuliah') or '').strip().lower()
+        lanjut_kuliah_map = {
+            'iya': 'IYA',
+            'ya': 'IYA',
+            'mungkin': 'MUNGKIN',
+            'tidak': 'TIDAK'
+        }
+        lanjut_kuliah = lanjut_kuliah_map.get(lanjut_kuliah_input)
 
         if not rekomendasi or not kelompok_mapel or not lanjut_kuliah:
             cur.close()

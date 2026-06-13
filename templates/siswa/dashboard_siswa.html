@@ -1220,7 +1220,26 @@ Chatbot Konsultasi Jurusan SMA
             })
         })
         .then(function(response){
-            return response.json();
+            return response.text().then(function(text){
+                var data = {};
+
+                try{
+                    data = text ? JSON.parse(text) : {};
+                }catch(error){
+                    data = {
+                        status: 'error',
+                        message: response.ok
+                            ? 'Respons server tidak valid.'
+                            : 'Server mengembalikan error ' + response.status + '.'
+                    };
+                }
+
+                if(!response.ok && !data.message){
+                    data.message = 'Server mengembalikan error ' + response.status + '.';
+                }
+
+                return data;
+            });
         })
         .then(function(data){
             if(data.status === 'success'){
@@ -1247,14 +1266,14 @@ Chatbot Konsultasi Jurusan SMA
                 );
             }else{
                 addMessage(
-                    "Terjadi kendala saat menyimpan hasil chatbot. Silakan coba lagi.",
+                    data.message || "Terjadi kendala saat menyimpan hasil chatbot. Silakan coba lagi.",
                     'bot'
                 );
             }
         })
-        .catch(function(){
+        .catch(function(error){
             addMessage(
-                "Terjadi error koneksi saat menyimpan hasil chatbot.",
+                "Terjadi error koneksi saat menyimpan hasil chatbot: " + error.message,
                 'bot'
             );
         });
@@ -1262,7 +1281,7 @@ Chatbot Konsultasi Jurusan SMA
 
     function handleCollegeAnswer(lower){
         if(lower === 'iya' || lower === 'ya'){
-            statusKuliah = 'Iya';
+            statusKuliah = 'IYA';
 
             addMessage(
                 "Bagus 😊\n\nKamu dapat mulai mencari jurusan kuliah yang sesuai dengan hasil RIASEC kamu.",
@@ -1277,7 +1296,7 @@ Chatbot Konsultasi Jurusan SMA
         }
 
         if(lower === 'mungkin'){
-            statusKuliah = 'Mungkin';
+            statusKuliah = 'MUNGKIN';
 
             addMessage(
                 "Tidak masalah 😊\n\nKamu masih punya waktu mempertimbangkan pilihan kuliah atau karir.",
@@ -1292,7 +1311,7 @@ Chatbot Konsultasi Jurusan SMA
         }
 
         if(lower === 'tidak'){
-            statusKuliah = 'Tidak';
+            statusKuliah = 'TIDAK';
 
             addMessage(
                 "Baik 😊\n\nKamu bisa fokus pada pekerjaan, pelatihan skill, atau wirausaha sesuai minatmu.",
