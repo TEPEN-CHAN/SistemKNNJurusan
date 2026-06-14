@@ -459,6 +459,28 @@ def nilai_excel(row, kolom):
     return value
 
 
+def normalisasi_lanjut_pt(value):
+
+    if pd.isna(value):
+
+        return None
+
+    nilai = str(value).strip().upper()
+
+    mapping = {
+        'YA': 'IYA',
+        'YES': 'IYA',
+        'LANJUT': 'IYA',
+        'MELANJUTKAN': 'IYA',
+        'BELUM TENTU': 'MUNGKIN',
+        'RAGU': 'MUNGKIN',
+        'NO': 'TIDAK',
+        'TIDAK LANJUT': 'TIDAK'
+    }
+
+    return mapping.get(nilai, nilai)
+
+
 def upload_data_alumni(file):
 
     df = pd.read_excel(file)
@@ -550,7 +572,7 @@ def upload_data_alumni(file):
                     nilai_excel(row, 'nilai_bahasaindo'),
                     nilai_excel(row, 'nilai_bahasaingg'),
                     nilai_excel(row, 'minat_bakat'),
-                    nilai_excel(row, 'lanjut_pt'),
+                    normalisasi_lanjut_pt(nilai_excel(row, 'lanjut_pt')),
                     nilai_excel(row, 'hasil_jurusan'),
                     waktu_indonesia()
 
@@ -589,7 +611,7 @@ def upload_data_alumni(file):
                     nilai_excel(row, 'nilai_bahasaindo'),
                     nilai_excel(row, 'nilai_bahasaingg'),
                     nilai_excel(row, 'minat_bakat'),
-                    nilai_excel(row, 'lanjut_pt'),
+                    normalisasi_lanjut_pt(nilai_excel(row, 'lanjut_pt')),
                     nilai_excel(row, 'hasil_jurusan'),
                     waktu_indonesia()
 
