@@ -448,6 +448,168 @@ def redirect_alumni_page():
     return redirect('/admin/input_alumni')
 
 
+def nilai_excel(row, kolom):
+
+    value = row.get(kolom)
+
+    if pd.isna(value):
+
+        return None
+
+    return value
+
+
+def upload_data_alumni(file):
+
+    df = pd.read_excel(file)
+
+    df.columns = (
+        df.columns
+        .astype(str)
+        .str.strip()
+        .str.lower()
+        .str.replace(' ', '_', regex=False)
+    )
+
+    rename_kolom = {
+        'nama': 'nama_alumni',
+        'nama_siswa': 'nama_alumni',
+        'bahasa_indonesia': 'nilai_bahasaindo',
+        'nilai_bahasa_indonesia': 'nilai_bahasaindo',
+        'b_indonesia': 'nilai_bahasaindo',
+        'bahasa_inggris': 'nilai_bahasaingg',
+        'nilai_bahasa_inggris': 'nilai_bahasaingg',
+        'b_inggris': 'nilai_bahasaingg',
+        'jurusan': 'hasil_jurusan'
+    }
+
+    df = df.rename(columns=rename_kolom)
+
+    kolom_wajib = [
+        'nama_alumni',
+        'nilai_pancasila',
+        'nilai_matematika',
+        'nilai_bahasaindo',
+        'nilai_bahasaingg',
+        'minat_bakat',
+        'lanjut_pt',
+        'hasil_jurusan'
+    ]
+
+    kolom_kurang = [kolom for kolom in kolom_wajib if kolom not in df.columns]
+
+    if kolom_kurang:
+
+        raise ValueError(
+            'Kolom Excel belum sesuai. Kolom yang kurang: '
+            + ', '.join(kolom_kurang)
+        )
+
+    punya_id_alumni = 'id_alumni' in df.columns
+
+    cur = mysql.connection.cursor()
+
+    try:
+
+        for index, row in df.iterrows():
+
+            id_alumni = nilai_excel(row, 'id_alumni') if punya_id_alumni else None
+
+            if id_alumni is not None:
+
+                cur.execute("""
+
+                    REPLACE INTO alumni(
+
+                        id_alumni,
+                        nama_alumni,
+                        nilai_pancasila,
+                        nilai_matematika,
+                        nilai_bahasaindo,
+                        nilai_bahasaingg,
+                        minat_bakat,
+                        lanjut_pt,
+                        hasil_jurusan,
+                        tanggal_input
+
+                    )
+
+                    VALUES(
+
+                        %s,%s,%s,%s,%s,
+                        %s,%s,%s,%s,%s
+
+                    )
+
+                """, (
+
+                    id_alumni,
+                    nilai_excel(row, 'nama_alumni'),
+                    nilai_excel(row, 'nilai_pancasila'),
+                    nilai_excel(row, 'nilai_matematika'),
+                    nilai_excel(row, 'nilai_bahasaindo'),
+                    nilai_excel(row, 'nilai_bahasaingg'),
+                    nilai_excel(row, 'minat_bakat'),
+                    nilai_excel(row, 'lanjut_pt'),
+                    nilai_excel(row, 'hasil_jurusan'),
+                    waktu_indonesia()
+
+                ))
+
+            else:
+
+                cur.execute("""
+
+                    INSERT INTO alumni(
+
+                        nama_alumni,
+                        nilai_pancasila,
+                        nilai_matematika,
+                        nilai_bahasaindo,
+                        nilai_bahasaingg,
+                        minat_bakat,
+                        lanjut_pt,
+                        hasil_jurusan,
+                        tanggal_input
+
+                    )
+
+                    VALUES(
+
+                        %s,%s,%s,%s,%s,
+                        %s,%s,%s,%s
+
+                    )
+
+                """, (
+
+                    nilai_excel(row, 'nama_alumni'),
+                    nilai_excel(row, 'nilai_pancasila'),
+                    nilai_excel(row, 'nilai_matematika'),
+                    nilai_excel(row, 'nilai_bahasaindo'),
+                    nilai_excel(row, 'nilai_bahasaingg'),
+                    nilai_excel(row, 'minat_bakat'),
+                    nilai_excel(row, 'lanjut_pt'),
+                    nilai_excel(row, 'hasil_jurusan'),
+                    waktu_indonesia()
+
+                ))
+
+        mysql.connection.commit()
+
+    except Exception:
+
+        mysql.connection.rollback()
+
+        raise
+
+    finally:
+
+        cur.close()
+
+    return len(df)
+
+
 
 # =========================================================
 # HELPER HASIL KNN / WAKTU WIB
@@ -1149,56 +1311,9 @@ def admin_input_alumni():
 
         try:
 
-            df = pd.read_excel(file)
+            jumlah_data = upload_data_alumni(file)
 
-            cur = mysql.connection.cursor()
-
-            for index, row in df.iterrows():
-
-                cur.execute("""
-
-                    REPLACE INTO alumni(
-
-                        id_alumni,
-                        nama_alumni,
-                        nilai_pancasila,
-                        nilai_matematika,
-                        nilai_bahasaindo,
-                        nilai_bahasaingg,
-                        minat_bakat,
-                        lanjut_pt,
-                        hasil_jurusan,
-                        tanggal_input
-
-                    )
-
-                    VALUES(
-
-                        %s,%s,%s,%s,%s,
-                        %s,%s,%s,%s,%s
-
-                    )
-
-                """, (
-
-                    row['id_alumni'],
-                    row['nama_alumni'],
-                    row['nilai_pancasila'],
-                    row['nilai_matematika'],
-                    row['nilai_bahasaindo'],
-                    row['nilai_bahasaingg'],
-                    row['minat_bakat'],
-                    row['lanjut_pt'],
-                    row['hasil_jurusan'],
-                    waktu_indonesia()
-
-                ))
-
-            mysql.connection.commit()
-
-            simpan_log(f'Mengupload data alumni sebanyak {len(df)} baris')
-
-            cur.close()
+            simpan_log(f'Mengupload data alumni sebanyak {jumlah_data} baris')
 
             flash('Data alumni berhasil diupload', 'success')
 
@@ -1652,56 +1767,9 @@ def input_alumni():
 
         try:
 
-            df = pd.read_excel(file)
+            jumlah_data = upload_data_alumni(file)
 
-            cur = mysql.connection.cursor()
-
-            for index, row in df.iterrows():
-
-                cur.execute("""
-
-                    REPLACE INTO alumni(
-
-                        id_alumni,
-                        nama_alumni,
-                        nilai_pancasila,
-                        nilai_matematika,
-                        nilai_bahasaindo,
-                        nilai_bahasaingg,
-                        minat_bakat,
-                        lanjut_pt,
-                        hasil_jurusan,
-                        tanggal_input
-
-                    )
-
-                    VALUES(
-
-                        %s,%s,%s,%s,%s,
-                        %s,%s,%s,%s,%s
-
-                    )
-
-                """, (
-
-                    row['id_alumni'],
-                    row['nama_alumni'],
-                    row['nilai_pancasila'],
-                    row['nilai_matematika'],
-                    row['nilai_bahasaindo'],
-                    row['nilai_bahasaingg'],
-                    row['minat_bakat'],
-                    row['lanjut_pt'],
-                    row['hasil_jurusan'],
-                    waktu_indonesia()
-
-                ))
-
-            mysql.connection.commit()
-
-            simpan_log(f'Mengupload data alumni Guru BK sebanyak {len(df)} baris')
-
-            cur.close()
+            simpan_log(f'Mengupload data alumni Guru BK sebanyak {jumlah_data} baris')
 
             flash('Data alumni berhasil diupload', 'success')
 
