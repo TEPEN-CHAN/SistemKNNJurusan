@@ -220,6 +220,38 @@ Evaluasi Sistem
         line-height: 1.7;
     }
 
+    .matrix-table{
+        min-width: 760px;
+        margin-bottom: 0;
+    }
+
+    .matrix-table th{
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    .matrix-table td{
+        text-align: center;
+        font-weight: 700;
+    }
+
+    .matrix-label{
+        background: #f8fafc;
+        color: #0f172a;
+        text-align: left !important;
+        font-weight: 800 !important;
+    }
+
+    .matrix-correct{
+        background: #dcfce7 !important;
+        color: #166534;
+    }
+
+    .matrix-wrong{
+        background: #fff7ed !important;
+        color: #9a3412;
+    }
+
     @keyframes fadeDown{
         from{
             opacity: 0;
@@ -544,6 +576,81 @@ Evaluasi Sistem
                 </div>
 
             </div>
+
+        </div>
+
+    </div>
+
+    <!-- CONFUSION MATRIX -->
+    <div class="card-custom">
+
+        <div class="section-title">
+            Confusion Matrix
+        </div>
+
+        <div class="info-box mb-3">
+            Baris menunjukkan jurusan asli alumni, sedangkan kolom menunjukkan jurusan hasil prediksi sistem.
+            Angka diagonal hijau adalah prediksi yang benar.
+        </div>
+
+        <div class="table-responsive">
+
+            <table class="table table-bordered align-middle matrix-table">
+
+                <thead>
+
+                    <tr>
+                        <th>Aktual \ Prediksi</th>
+
+                        {% for label in confusion_labels %}
+
+                            <th>{{ label }}</th>
+
+                        {% endfor %}
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% if confusion_matrix %}
+
+                        {% for row in confusion_matrix %}
+
+                            {% set row_index = loop.index0 %}
+
+                            <tr>
+
+                                <td class="matrix-label">
+                                    {{ confusion_labels[row_index] }}
+                                </td>
+
+                                {% for value in row %}
+
+                                    <td class="{% if row_index == loop.index0 %}matrix-correct{% else %}matrix-wrong{% endif %}">
+                                        {{ value }}
+                                    </td>
+
+                                {% endfor %}
+
+                            </tr>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                        <tr>
+                            <td colspan="{{ confusion_labels|length + 1 }}" class="text-center text-muted">
+                                Confusion Matrix belum tersedia. Minimal dibutuhkan lebih dari satu data alumni untuk evaluasi.
+                            </td>
+                        </tr>
+
+                    {% endif %}
+
+                </tbody>
+
+            </table>
 
         </div>
 

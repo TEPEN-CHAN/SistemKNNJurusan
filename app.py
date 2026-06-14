@@ -177,6 +177,33 @@ def hitung_metrik_evaluasi(y_true, y_pred):
     }
 
 
+def buat_confusion_matrix(y_true, y_pred):
+
+    labels = sorted(set(y_true) | set(y_pred))
+
+    matrix = []
+
+    for label_asli in labels:
+
+        row = []
+
+        for label_prediksi in labels:
+
+            jumlah = 0
+
+            for i in range(len(y_true)):
+
+                if y_true[i] == label_asli and y_pred[i] == label_prediksi:
+
+                    jumlah += 1
+
+            row.append(jumlah)
+
+        matrix.append(row)
+
+    return labels, matrix
+
+
 # =========================================================
 # HELPER FITUR KNN
 # Variabel skripsi:
@@ -3186,6 +3213,8 @@ def admin_evaluasi_sistem():
         'recall': 0,
         'f1_score': 0
     }
+    confusion_labels = []
+    confusion_matrix = []
 
     try:
 
@@ -3261,6 +3290,7 @@ def admin_evaluasi_sistem():
                 y_pred.append(hasil_prediksi['hasil'])
 
             metrik = hitung_metrik_evaluasi(y_true, y_pred)
+            confusion_labels, confusion_matrix = buat_confusion_matrix(y_true, y_pred)
 
     except Exception as e:
 
@@ -3292,7 +3322,9 @@ def admin_evaluasi_sistem():
         recall=metrik['recall'],
         f1_score=metrik['f1_score'],
         jumlah_data_evaluasi=jumlah_data_evaluasi,
-        nilai_k_evaluasi=nilai_k_evaluasi
+        nilai_k_evaluasi=nilai_k_evaluasi,
+        confusion_labels=confusion_labels,
+        confusion_matrix=confusion_matrix
     )
 # =========================================================
 # ADMIN - HASIL CHATBOT
