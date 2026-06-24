@@ -951,19 +951,19 @@ def lupa_password_guru():
         'ikon': 'G',
         'action_endpoint': 'lupa_password_guru',
         'login_endpoint': 'login_guru',
-        'identitas_label': 'NIP',
-        'identitas_name': 'nip',
-        'identitas_placeholder': 'Masukkan NIP'
+        'identitas_label': 'NIP / ID Guru',
+        'identitas_name': 'identitas',
+        'identitas_placeholder': 'Masukkan NIP atau ID Guru'
     }
 
     if request.method == 'POST':
 
         username = request.form.get('username', '').strip()
-        nip = request.form.get('nip', '').strip()
+        identitas = request.form.get('identitas', '').strip()
         password_baru = request.form.get('password_baru', '')
         konfirmasi_password = request.form.get('konfirmasi_password', '')
 
-        if not username or not nip or not password_baru or not konfirmasi_password:
+        if not username or not identitas or not password_baru or not konfirmasi_password:
 
             return render_lupa_password(
                 context,
@@ -991,6 +991,24 @@ def lupa_password_guru():
             cur = mysql.connection.cursor()
 
             cur.execute("""
+                SELECT COUNT(*)
+                FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = 'guru_bk'
+                AND COLUMN_NAME = 'nip'
+            """)
+
+            punya_kolom_nip = cur.fetchone()[0] > 0
+
+            kondisi_identitas = "CAST(guru_bk.id_guru AS CHAR)=%s"
+            params_identitas = [identitas]
+
+            if punya_kolom_nip:
+
+                kondisi_identitas = f"({kondisi_identitas} OR guru_bk.nip=%s)"
+                params_identitas.append(identitas)
+
+            cur.execute("""
                 SELECT
                     akun.id_akun
                 FROM akun
@@ -1001,11 +1019,11 @@ def lupa_password_guru():
 
                 WHERE akun.username=%s
                 AND akun.id_role=2
-                AND guru_bk.nip=%s
-            """, (
+                AND """ + kondisi_identitas + """
+            """, [
                 username,
-                nip
-            ))
+                *params_identitas
+            ])
 
             akun = cur.fetchone()
 
@@ -1013,7 +1031,7 @@ def lupa_password_guru():
 
                 return render_lupa_password(
                     context,
-                    error='Data username dan NIP Guru BK tidak cocok'
+                    error='Data username dan NIP / ID Guru BK tidak cocok'
                 )
 
             password_hash = generate_password_hash(password_baru)
