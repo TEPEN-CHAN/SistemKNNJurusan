@@ -1,6 +1,6 @@
 import cloudinary
 import cloudinary.uploader
-from flask import Flask, render_template, request, redirect, session, jsonify, g, send_file, flash
+from flask import Flask, render_template, request, redirect, session, jsonify, g, send_file, flash, url_for
 import pymysql
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
@@ -808,6 +808,252 @@ def login_guru():
     return render_template(
         'auth/login_guru.html'
     )
+
+# =========================================================
+# LUPA PASSWORD SISWA
+# =========================================================
+def render_lupa_password(context, error=None, success=None):
+
+    return render_template(
+        'auth/lupa_password.html',
+        jenis=context['jenis'],
+        ikon=context['ikon'],
+        action_url=url_for(context['action_endpoint']),
+        login_url=url_for(context['login_endpoint']),
+        identitas_label=context['identitas_label'],
+        identitas_name=context['identitas_name'],
+        identitas_placeholder=context['identitas_placeholder'],
+        error=error,
+        success=success
+    )
+
+
+@app.route('/lupa_password_siswa', methods=['GET', 'POST'])
+def lupa_password_siswa():
+
+    context = {
+        'jenis': 'Siswa',
+        'ikon': 'S',
+        'action_endpoint': 'lupa_password_siswa',
+        'login_endpoint': 'login_siswa',
+        'identitas_label': 'NIS',
+        'identitas_name': 'nis',
+        'identitas_placeholder': 'Masukkan NIS'
+    }
+
+    if request.method == 'POST':
+
+        username = request.form.get('username', '').strip()
+        nis = request.form.get('nis', '').strip()
+        password_baru = request.form.get('password_baru', '')
+        konfirmasi_password = request.form.get('konfirmasi_password', '')
+
+        if not username or not nis or not password_baru or not konfirmasi_password:
+
+            return render_lupa_password(
+                context,
+                error='Semua field wajib diisi'
+            )
+
+        if password_baru != konfirmasi_password:
+
+            return render_lupa_password(
+                context,
+                error='Konfirmasi password tidak sama'
+            )
+
+        if len(password_baru) < 6:
+
+            return render_lupa_password(
+                context,
+                error='Password baru minimal 6 karakter'
+            )
+
+        cur = None
+
+        try:
+
+            cur = mysql.connection.cursor()
+
+            cur.execute("""
+                SELECT
+                    akun.id_akun
+                FROM akun
+
+                JOIN siswa
+                    ON akun.id_role = 3
+                    AND akun.id_ref = siswa.nis
+
+                WHERE akun.username=%s
+                AND akun.id_role=3
+                AND siswa.nis=%s
+            """, (
+                username,
+                nis
+            ))
+
+            akun = cur.fetchone()
+
+            if not akun:
+
+                return render_lupa_password(
+                    context,
+                    error='Data username dan NIS siswa tidak cocok'
+                )
+
+            password_hash = generate_password_hash(password_baru)
+
+            cur.execute("""
+                UPDATE akun
+                SET password=%s
+                WHERE id_akun=%s
+            """, (
+                password_hash,
+                akun[0]
+            ))
+
+            mysql.connection.commit()
+
+            return render_lupa_password(
+                context,
+                success='Password siswa berhasil diubah. Silakan login dengan password baru.'
+            )
+
+        except Exception as e:
+
+            print('Gagal reset password siswa:', e)
+
+            if cur:
+
+                mysql.connection.rollback()
+
+            return render_lupa_password(
+                context,
+                error='Gagal mengubah password. Silakan coba lagi nanti.'
+            )
+
+        finally:
+
+            if cur:
+
+                cur.close()
+
+    return render_lupa_password(context)
+
+# =========================================================
+# LUPA PASSWORD GURU BK
+# =========================================================
+@app.route('/lupa_password_guru', methods=['GET', 'POST'])
+def lupa_password_guru():
+
+    context = {
+        'jenis': 'Guru BK',
+        'ikon': 'G',
+        'action_endpoint': 'lupa_password_guru',
+        'login_endpoint': 'login_guru',
+        'identitas_label': 'NIP',
+        'identitas_name': 'nip',
+        'identitas_placeholder': 'Masukkan NIP'
+    }
+
+    if request.method == 'POST':
+
+        username = request.form.get('username', '').strip()
+        nip = request.form.get('nip', '').strip()
+        password_baru = request.form.get('password_baru', '')
+        konfirmasi_password = request.form.get('konfirmasi_password', '')
+
+        if not username or not nip or not password_baru or not konfirmasi_password:
+
+            return render_lupa_password(
+                context,
+                error='Semua field wajib diisi'
+            )
+
+        if password_baru != konfirmasi_password:
+
+            return render_lupa_password(
+                context,
+                error='Konfirmasi password tidak sama'
+            )
+
+        if len(password_baru) < 6:
+
+            return render_lupa_password(
+                context,
+                error='Password baru minimal 6 karakter'
+            )
+
+        cur = None
+
+        try:
+
+            cur = mysql.connection.cursor()
+
+            cur.execute("""
+                SELECT
+                    akun.id_akun
+                FROM akun
+
+                JOIN guru_bk
+                    ON akun.id_role = 2
+                    AND akun.id_ref = guru_bk.id_guru
+
+                WHERE akun.username=%s
+                AND akun.id_role=2
+                AND guru_bk.nip=%s
+            """, (
+                username,
+                nip
+            ))
+
+            akun = cur.fetchone()
+
+            if not akun:
+
+                return render_lupa_password(
+                    context,
+                    error='Data username dan NIP Guru BK tidak cocok'
+                )
+
+            password_hash = generate_password_hash(password_baru)
+
+            cur.execute("""
+                UPDATE akun
+                SET password=%s
+                WHERE id_akun=%s
+            """, (
+                password_hash,
+                akun[0]
+            ))
+
+            mysql.connection.commit()
+
+            return render_lupa_password(
+                context,
+                success='Password Guru BK berhasil diubah. Silakan login dengan password baru.'
+            )
+
+        except Exception as e:
+
+            print('Gagal reset password Guru BK:', e)
+
+            if cur:
+
+                mysql.connection.rollback()
+
+            return render_lupa_password(
+                context,
+                error='Gagal mengubah password. Silakan coba lagi nanti.'
+            )
+
+        finally:
+
+            if cur:
+
+                cur.close()
+
+    return render_lupa_password(context)
 
 # =========================================================
 # PROSES LOGIN SISWA

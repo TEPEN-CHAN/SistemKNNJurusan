@@ -187,6 +187,24 @@
             font-weight:600;
         }
 
+        .forgot-text{
+
+            text-align:right;
+
+            margin-top:-6px;
+            margin-bottom:24px;
+        }
+
+        .forgot-text a{
+
+            text-decoration:none;
+
+            color:#2563eb;
+
+            font-weight:600;
+            font-size:14px;
+        }
+
         @keyframes fadeIn{
 
             from{
@@ -249,7 +267,7 @@
 
             </div>
 
-            <div class="mb-4">
+            <div class="mb-2">
 
                 <label class="form-label">
                     Password
@@ -263,6 +281,12 @@
                     required
                 >
 
+            </div>
+
+            <div class="forgot-text">
+                <a href="{{ url_for('lupa_password_guru') }}">
+                    Lupa password?
+                </a>
             </div>
 
             <button
