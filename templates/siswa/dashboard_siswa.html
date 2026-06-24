@@ -565,7 +565,7 @@ Chatbot Konsultasi Jurusan SMA
         </div>
 
         <div class="chat-subtitle">
-            Tanya seputar jurusan, mapel, RIASEC, kuliah, dan karir.
+            Tanya seputar jurusan, mapel, minat mapel, bakat, kuliah, dan karir.
         </div>
 
     </div>
@@ -587,7 +587,7 @@ Chatbot Konsultasi Jurusan SMA
                     </div>
 
                     <p class="welcome-text">
-                        Anda telah mengisi chatbot RIASEC sebelumnya. Berikut hasil chatbot dan hasil rekomendasi KNN Anda.
+                        Anda telah mengisi chatbot minat mapel dan bakat sebelumnya. Berikut hasil chatbot dan hasil rekomendasi KNN Anda.
                     </p>
 
                     <div class="result-card">
@@ -600,11 +600,11 @@ Chatbot Konsultasi Jurusan SMA
 
                             <div>
                                 <div class="result-title">
-                                    Hasil Rekomendasi RIASEC
+                                    Hasil Chatbot Minat Mapel dan Bakat
                                 </div>
 
                                 <div class="result-subtitle">
-                                    Data ini diambil dari hasil pengisian chatbot RIASEC yang sudah kamu simpan sebelumnya.
+                                    Data ini diambil dari hasil pengisian chatbot minat mapel dan bakat yang sudah kamu simpan sebelumnya.
                                 </div>
                             </div>
 
@@ -613,7 +613,7 @@ Chatbot Konsultasi Jurusan SMA
                         <div class="result-grid">
 
                             <div class="result-item">
-                                <span class="result-label">Minat Bakat</span>
+                                <span class="result-label">Minat Mapel</span>
                                 <span class="result-value">{{ hasil_chatbot_lama[0] }}</span>
                             </div>
 
@@ -623,7 +623,7 @@ Chatbot Konsultasi Jurusan SMA
                             </div>
 
                             <div class="result-item">
-                                <span class="result-label">Lanjut Perguruan Tinggi</span>
+                                <span class="result-label">Bakat/Kecenderungan Kemampuan</span>
                                 <span class="result-value">{{ hasil_chatbot_lama[3] }}</span>
                             </div>
 
@@ -682,8 +682,8 @@ Chatbot Konsultasi Jurusan SMA
                     </div>
 
                     <div class="quick-actions">
-                        <button type="button" class="quick-btn" onclick="quickSend('Apa itu RIASEC?')">
-                            Apa itu RIASEC?
+                        <button type="button" class="quick-btn" onclick="quickSend('Apa itu minat mapel?')">
+                            Apa itu minat mapel?
                         </button>
 
                         <button type="button" class="quick-btn" onclick="quickSend('Jurusan apa yang cocok dengan minat saya?')">
@@ -702,19 +702,19 @@ Chatbot Konsultasi Jurusan SMA
                     </div>
 
                     <p class="welcome-text">
-                        Saya adalah AI Konsultasi Jurusan SMA. Saya dapat membantu kamu melakukan tes minat bakat RIASEC,
+                        Saya adalah AI Konsultasi Jurusan SMA. Saya dapat membantu kamu melakukan tes minat mapel dan bakat,
                         memahami kelompok mapel, memilih jurusan, serta berkonsultasi tentang kuliah dan karir.
                         <br><br>
-                        Ketik <b>MULAI</b> untuk memulai tes minat bakat.
+                        Ketik <b>MULAI</b> untuk memulai tes minat mapel dan bakat.
                     </p>
 
                     <div class="quick-actions">
                         <button type="button" class="quick-btn" onclick="quickSend('MULAI')">
-                            Mulai Tes RIASEC
+                            Mulai Tes Minat Mapel
                         </button>
 
-                        <button type="button" class="quick-btn" onclick="quickSend('Apa itu RIASEC?')">
-                            Apa itu RIASEC?
+                        <button type="button" class="quick-btn" onclick="quickSend('Apa itu minat mapel?')">
+                            Apa itu minat mapel?
                         </button>
 
                         <button type="button" class="quick-btn" onclick="quickSend('Jurusan IPA cocok untuk siapa?')">
@@ -744,7 +744,7 @@ Chatbot Konsultasi Jurusan SMA
                     type="text"
                     id="chatInput"
                     class="chat-input"
-                    placeholder="Tulis pertanyaan seputar jurusan, mapel, RIASEC..."
+                    placeholder="Tulis pertanyaan seputar jurusan, mapel, minat, bakat..."
                 >
 
                 <button type="button" class="send-btn" id="sendButton">
@@ -754,7 +754,7 @@ Chatbot Konsultasi Jurusan SMA
             </div>
 
             <div class="input-note">
-                AI hanya membahas topik jurusan, mapel, RIASEC, kuliah, dan karir.
+                AI hanya membahas topik jurusan, mapel, minat, bakat, kuliah, dan karir.
             </div>
 
         </div>
@@ -781,11 +781,10 @@ Chatbot Konsultasi Jurusan SMA
     var testStarted = false;
     var currentQuestion = 0;
     var waitingMapelChoice = false;
-    var waitingCollegeAnswer = false;
 
-    var hasilRiasec = '';
+    var hasilMinatMapel = '';
+    var hasilBakatKemampuan = '';
     var kelompokMapel = '';
-    var statusKuliah = '';
 
     var mapelOptions = {
         '1': {
@@ -812,38 +811,60 @@ Chatbot Konsultasi Jurusan SMA
 
     var questions = [
         {
-            text: "Apakah kamu suka memperbaiki mesin atau alat elektronik?",
-            type: "REALISTIC"
+            text: "Minat mapel: kegiatan mana yang lebih kamu sukai?",
+            dimension: "minat",
+            option1: "Mengerjakan soal Matematika Tingkat Lanjut atau Fisika",
+            option2: "Mengerjakan tugas Informatika atau Bahasa Inggris Tingkat Lanjut"
         },
         {
-            text: "Apakah kamu suka melakukan penelitian atau eksperimen?",
-            type: "INVESTIGATIVE"
+            text: "Minat mapel: topik mana yang lebih membuat kamu penasaran?",
+            dimension: "minat",
+            option1: "Rumus, grafik, eksperimen, dan analisis angka",
+            option2: "Teknologi, pemrograman, komunikasi, dan teks bahasa Inggris"
         },
         {
-            text: "Apakah kamu suka menggambar atau desain?",
-            type: "ARTISTIC"
+            text: "Minat mapel: tugas mana yang lebih nyaman kamu kerjakan?",
+            dimension: "minat",
+            option1: "Menghitung, membandingkan data, dan menyusun langkah penyelesaian",
+            option2: "Membuat karya digital, membaca referensi, dan menyampaikan ide"
         },
         {
-            text: "Apakah kamu suka membantu orang lain?",
-            type: "SOCIAL"
+            text: "Minat mapel: kegiatan kelas mana yang lebih kamu pilih?",
+            dimension: "minat",
+            option1: "Praktik sains atau penyelesaian masalah berbasis hitungan",
+            option2: "Praktik komputer atau diskusi berbasis bahasa dan teknologi"
         },
         {
-            text: "Apakah kamu suka memimpin organisasi?",
-            type: "ENTERPRISING"
+            text: "Bakat/kecenderungan: kemampuan mana yang lebih menonjol pada dirimu?",
+            dimension: "bakat",
+            option1: "Cepat memahami pola angka, rumus, dan hubungan sebab-akibat",
+            option2: "Cepat memahami instruksi digital, bahasa, dan alur teknologi"
         },
         {
-            text: "Apakah kamu suka pekerjaan administrasi dan data?",
-            type: "CONVENTIONAL"
+            text: "Bakat/kecenderungan: saat belajar, kamu lebih kuat dalam hal apa?",
+            dimension: "bakat",
+            option1: "Menganalisis data, menghitung, dan menarik kesimpulan logis",
+            option2: "Mengolah informasi, menggunakan aplikasi, dan menjelaskan ide"
+        },
+        {
+            text: "Bakat/kecenderungan: masalah seperti apa yang lebih mudah kamu pecahkan?",
+            dimension: "bakat",
+            option1: "Masalah yang membutuhkan perhitungan bertahap dan ketelitian rumus",
+            option2: "Masalah yang membutuhkan kreativitas digital dan pemahaman instruksi"
+        },
+        {
+            text: "Bakat/kecenderungan: tugas mana yang biasanya hasilnya lebih baik?",
+            dimension: "bakat",
+            option1: "Tugas analisis angka, percobaan, atau penyelesaian soal",
+            option2: "Tugas teknologi, presentasi, penulisan, atau pengolahan informasi"
         }
     ];
 
     var scores = {
-        REALISTIC: 0,
-        INVESTIGATIVE: 0,
-        ARTISTIC: 0,
-        SOCIAL: 0,
-        ENTERPRISING: 0,
-        CONVENTIONAL: 0
+        minat_1: 0,
+        minat_2: 0,
+        bakat_1: 0,
+        bakat_2: 0
     };
 
     var responses = {
@@ -854,10 +875,11 @@ Chatbot Konsultasi Jurusan SMA
         kedokteran: "Jurusan Kedokteran biasanya disarankan mengambil kelompok mapel IPA.",
         teknik: "Jurusan teknik membutuhkan logika dan kemampuan Matematika yang kuat.",
         akuntansi: "Akuntansi cocok untuk siswa yang suka berhitung dan administrasi.",
-        desain: "Bidang desain sangat cocok untuk tipe ARTISTIC dalam RIASEC.",
-        riasec: "RIASEC terdiri dari Realistic, Investigative, Artistic, Social, Enterprising, dan Conventional.",
-        karir: "Karir yang cocok bisa dilihat dari minat RIASEC, kemampuan akademik, dan rencana lanjut kuliah.",
-        jurusan: "Pemilihan jurusan sebaiknya mempertimbangkan minat, nilai mata pelajaran, dan rencana karir."
+        desain: "Bidang desain bisa dipertimbangkan dari minat visual, kreativitas, dan kemampuan membuat karya.",
+        minat: "Minat mapel menunjukkan pelajaran yang paling kamu sukai dan membuat kamu bersemangat belajar.",
+        bakat: "Bakat/kecenderungan kemampuan menunjukkan jenis tugas yang lebih mudah kamu pahami dan kerjakan.",
+        karir: "Karir yang cocok bisa dilihat dari minat mapel, kemampuan akademik, bakat, dan tujuan setelah lulus.",
+        jurusan: "Pemilihan jurusan sebaiknya mempertimbangkan nilai mapel, minat mapel, dan bakat/kecenderungan kemampuan."
     };
 
     function scrollBottom(){
@@ -946,19 +968,26 @@ Chatbot Konsultasi Jurusan SMA
 
     function resetScores(){
         scores = {
-            REALISTIC: 0,
-            INVESTIGATIVE: 0,
-            ARTISTIC: 0,
-            SOCIAL: 0,
-            ENTERPRISING: 0,
-            CONVENTIONAL: 0
+            minat_1: 0,
+            minat_2: 0,
+            bakat_1: 0,
+            bakat_2: 0
         };
+    }
+
+    function getQuestionText(question){
+        return (
+            question.text + "\n\n" +
+            "1. " + question.option1 + "\n" +
+            "2. " + question.option2 + "\n\n" +
+            "Jawab: 1 / 2"
+        );
     }
 
     function startQuestions(){
         if(alreadyFilledChatbot){
             addMessage(
-                "Anda telah mengisi chatbot RIASEC sebelumnya.\n\nHasil chatbot dan hasil rekomendasi KNN Anda sudah ditampilkan pada halaman ini.",
+                "Anda telah mengisi chatbot minat mapel dan bakat sebelumnya.\n\nHasil chatbot dan hasil rekomendasi KNN Anda sudah ditampilkan pada halaman ini.",
                 'bot'
             );
 
@@ -968,22 +997,45 @@ Chatbot Konsultasi Jurusan SMA
         testStarted = true;
         currentQuestion = 0;
         waitingMapelChoice = false;
-        waitingCollegeAnswer = false;
-        hasilRiasec = '';
+        hasilMinatMapel = '';
+        hasilBakatKemampuan = '';
         kelompokMapel = '';
-        statusKuliah = '';
 
         resetScores();
 
         addMessage(
-            questions[currentQuestion].text + "\n\nJawab: suka / tidak",
+            getQuestionText(questions[currentQuestion]),
             'bot'
         );
     }
 
-    function processRiasecAnswer(text){
-        if(text === 'suka'){
-            scores[questions[currentQuestion].type] += 1;
+    function processQuestionAnswer(text){
+        var question = questions[currentQuestion];
+        var pilihan = '';
+
+        if(text === '1' || text === 'a' || text.includes('pilihan 1')){
+            pilihan = '1';
+        }
+
+        if(text === '2' || text === 'b' || text.includes('pilihan 2')){
+            pilihan = '2';
+        }
+
+        if(!pilihan){
+            addMessage(
+                "Mohon jawab dengan 1 atau 2.",
+                'bot'
+            );
+
+            return;
+        }
+
+        scores[question.dimension + '_' + pilihan] += 1;
+
+        if(pilihan === '1'){
+            addMessage(question.option1, 'bot');
+        }else{
+            addMessage(question.option2, 'bot');
         }
 
         currentQuestion++;
@@ -991,7 +1043,7 @@ Chatbot Konsultasi Jurusan SMA
         if(currentQuestion < questions.length){
             setTimeout(function(){
                 addMessage(
-                    questions[currentQuestion].text + "\n\nJawab: suka / tidak",
+                    getQuestionText(questions[currentQuestion]),
                     'bot'
                 );
             }, 600);
@@ -1004,25 +1056,42 @@ Chatbot Konsultasi Jurusan SMA
         testStarted = false;
     }
 
-    function getHighestRiasec(){
-        var highest = '';
-        var highestScore = 0;
-        var totalScore = 0;
+    function getDimensionResult(dimension){
+        var skor1 = scores[dimension + '_1'];
+        var skor2 = scores[dimension + '_2'];
 
-        for(var key in scores){
-            totalScore += scores[key];
-
-            if(scores[key] > highestScore){
-                highestScore = scores[key];
-                highest = key;
-            }
+        if(skor1 > skor2){
+            return 'Kelompok Mapel 1';
         }
 
-        if(totalScore === 0){
-            return 'BELUM TERDETEKSI';
+        if(skor2 > skor1){
+            return 'Kelompok Mapel 2';
         }
 
-        return highest;
+        return 'Seimbang';
+    }
+
+    function getCombinedMapel(){
+        var skor1 = scores.minat_1 + scores.bakat_1;
+        var skor2 = scores.minat_2 + scores.bakat_2;
+
+        if(skor1 > skor2){
+            return 'Kelompok Mapel 1';
+        }
+
+        if(skor2 > skor1){
+            return 'Kelompok Mapel 2';
+        }
+
+        if(hasilMinatMapel !== 'Seimbang'){
+            return hasilMinatMapel;
+        }
+
+        if(hasilBakatKemampuan !== 'Seimbang'){
+            return hasilBakatKemampuan;
+        }
+
+        return '';
     }
 
     function getMapelText(option){
@@ -1066,7 +1135,7 @@ Chatbot Konsultasi Jurusan SMA
             '<div class="message-wrap">' +
                 getBotAvatar() +
                 '<div class="bubble">' +
-                    '<div><b>Pilih kelompok mapel yang kamu inginkan:</b></div>' +
+                    '<div><b>Skor kamu seimbang. Pilih kelompok mapel yang paling kamu minati:</b></div>' +
                     '<div class="mapel-choice">' +
                         '<button type="button" class="mapel-option" data-mapel-choice="1">' +
                             getMapelPreviewHtml('1') +
@@ -1089,16 +1158,6 @@ Chatbot Konsultasi Jurusan SMA
         });
 
         scrollBottom();
-    }
-
-    function askCollegeQuestion(){
-        addMessage(
-            "Apakah kamu ingin melanjutkan ke perguruan tinggi?\n\n" +
-            "Jawab:\n- iya\n- mungkin\n- tidak",
-            'bot'
-        );
-
-        waitingCollegeAnswer = true;
     }
 
     function chooseMapel(optionKey){
@@ -1126,7 +1185,7 @@ Chatbot Konsultasi Jurusan SMA
             'bot'
         );
 
-        setTimeout(askCollegeQuestion, 700);
+        saveToDatabase();
     }
 
     function handleMapelChoice(lower){
@@ -1162,9 +1221,9 @@ Chatbot Konsultasi Jurusan SMA
             kelompokMapel = '';
 
             addMessage(
-                "Hasil minat bakat kamu belum dapat ditentukan.\n\n" +
-                "Karena semua jawaban kamu adalah 'tidak', sistem belum menemukan kategori RIASEC yang dominan.\n\n" +
-                "Silakan ulangi tes dan jawab 'suka' pada aktivitas yang paling mendekati minat kamu.",
+                "Hasil minat mapel kamu belum dapat ditentukan.\n\n" +
+                "Karena pilihan kamu masih seimbang, sistem belum menemukan kelompok mapel yang dominan.\n\n" +
+                "Silakan pilih jawaban yang paling mendekati minat dan kemampuan kamu.",
                 'bot'
             );
 
@@ -1179,8 +1238,8 @@ Chatbot Konsultasi Jurusan SMA
         kelompokMapel = '';
 
         addMessage(
-            "🎯 HASIL RIASEC\n\n" +
-            "Minat Bakat: " + highest + "\n" +
+            "HASIL CHATBOT\n\n" +
+            "Minat Mapel: " + highest + "\n" +
             "\nSelanjutnya, silakan pilih sendiri kelompok mapel yang ingin kamu ambil.",
             'bot'
         );
@@ -1198,10 +1257,35 @@ Chatbot Konsultasi Jurusan SMA
         }, 1000);
     }
 
+    function showResult(){
+        hasilMinatMapel = getDimensionResult('minat');
+        hasilBakatKemampuan = getDimensionResult('bakat');
+        kelompokMapel = getCombinedMapel();
+
+        addMessage(
+            "HASIL CHATBOT\n\n" +
+            "Minat Mapel: " + hasilMinatMapel + "\n" +
+            "Bakat/Kecenderungan Kemampuan: " + hasilBakatKemampuan + "\n" +
+            "Rekomendasi Chatbot: " + (kelompokMapel || 'Seimbang') + "\n\n" +
+            "Hasil ini akan dipakai sebagai variabel minat mapel dan bakat pada proses KNN.",
+            'bot'
+        );
+
+        if(!kelompokMapel){
+            setTimeout(function(){
+                showMapelChoice();
+            }, 800);
+
+            return;
+        }
+
+        saveToDatabase();
+    }
+
     function saveToDatabase(){
         if(alreadyFilledChatbot){
             addMessage(
-                "Data tidak disimpan ulang karena Anda telah mengisi chatbot RIASEC sebelumnya.",
+                "Data tidak disimpan ulang karena Anda telah mengisi chatbot minat mapel dan bakat sebelumnya.",
                 'bot'
             );
 
@@ -1214,9 +1298,9 @@ Chatbot Konsultasi Jurusan SMA
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                minat_bakat: hasilRiasec,
+                minat_bakat: hasilMinatMapel,
                 kelompok_mapel: kelompokMapel,
-                status_kuliah: statusKuliah
+                bakat_kemampuan: hasilBakatKemampuan
             })
         })
         .then(function(response){
@@ -1250,7 +1334,7 @@ Chatbot Konsultasi Jurusan SMA
                 }
 
                 addMessage(
-                    "✅ Data hasil chatbot RIASEC kamu berhasil disimpan.",
+                    "Data hasil chatbot minat mapel dan bakat kamu berhasil disimpan.",
                     'bot'
                 );
             }else if(data.status === 'already_exists'){
@@ -1261,7 +1345,7 @@ Chatbot Konsultasi Jurusan SMA
                 }
 
                 addMessage(
-                    "Anda telah mengisi chatbot RIASEC sebelumnya.\n\nHasil rekomendasi kamu sudah tersimpan.",
+                    "Anda telah mengisi chatbot minat mapel dan bakat sebelumnya.\n\nHasil rekomendasi kamu sudah tersimpan.",
                     'bot'
                 );
             }else{
@@ -1284,7 +1368,7 @@ Chatbot Konsultasi Jurusan SMA
             statusKuliah = 'IYA';
 
             addMessage(
-                "Bagus 😊\n\nKamu dapat mulai mencari jurusan kuliah yang sesuai dengan hasil RIASEC kamu.",
+                "Bagus 😊\n\nKamu dapat mempertimbangkan jurusan sesuai minat mapel dan bakat kamu.",
                 'bot'
             );
 
@@ -1355,8 +1439,8 @@ Chatbot Konsultasi Jurusan SMA
                     "Silakan tanyakan hal seputar:\n" +
                     "• Jurusan SMA\n" +
                     "• Mapel\n" +
-                    "• Minat bakat\n" +
-                    "• RIASEC\n" +
+                    "• Minat mapel\n" +
+                    "• Bakat/kecenderungan kemampuan\n" +
                     "• Kuliah & Karir",
                     'bot'
                 );
@@ -1382,27 +1466,29 @@ Chatbot Konsultasi Jurusan SMA
             return;
         }
 
-        if(waitingCollegeAnswer){
-            handleCollegeAnswer(lower);
-            return;
-        }
-
         if(lower === 'mulai'){
             startQuestions();
             return;
         }
 
         if(testStarted){
-            if(lower !== 'suka' && lower !== 'tidak'){
+            if(
+                lower !== '1' &&
+                lower !== '2' &&
+                lower !== 'a' &&
+                lower !== 'b' &&
+                !lower.includes('pilihan 1') &&
+                !lower.includes('pilihan 2')
+            ){
                 addMessage(
-                    "Mohon jawab dengan: suka / tidak",
+                    "Mohon jawab dengan 1 atau 2.",
                     'bot'
                 );
 
                 return;
             }
 
-            processRiasecAnswer(lower);
+            processQuestionAnswer(lower);
             return;
         }
 

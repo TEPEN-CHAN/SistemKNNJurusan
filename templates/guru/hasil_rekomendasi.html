@@ -1,7 +1,7 @@
 {% extends 'layout/base.html' %}
 
 {% block title %}
-Hasil Rekomendasi RIASEC
+Hasil Rekomendasi KNN
 {% endblock %}
 
 {% block content %}
@@ -252,11 +252,11 @@ Hasil Rekomendasi RIASEC
         <div>
 
             <div class="topbar-title">
-                Hasil Rekomendasi RIASEC
+                Hasil Rekomendasi KNN
             </div>
 
             <div class="topbar-subtitle">
-                Menampilkan hasil rekomendasi jurusan berdasarkan chatbot RIASEC dan metode KNN.
+                Menampilkan hasil rekomendasi jurusan berdasarkan nilai mapel, minat mapel, bakat, dan metode KNN.
             </div>
 
         </div>
@@ -394,7 +394,8 @@ Hasil Rekomendasi RIASEC
                         <th>NIS</th>
                         <th>Nama Siswa</th>
                         <th>Kelas</th>
-                        <th>Minat Bakat</th>
+                        <th>Minat Mapel</th>
+                        <th>Bakat/Kemampuan</th>
                         <th>Kelompok Mapel (CHATBOT)</th>
                         <th>Hasil Jurusan (KNN)</th>
                         <th>K</th>
@@ -443,27 +444,33 @@ Hasil Rekomendasi RIASEC
                                 </td>
 
                                 <td>
-                                    <span class="jurusan-badge">
+                                    <span class="badge-custom badge-info">
                                         {{ h[6] }}
                                     </span>
                                 </td>
 
                                 <td>
-                                    {{ h[7] }}
-                                </td>
-
-                                <td>
-                                    {{ "%.4f"|format(h[8]|float) }}
-                                </td>
-
-                                <td>
-                                    <span class="confidence-badge">
-                                        {{ "%.2f"|format(h[9]|float) }} %
+                                    <span class="jurusan-badge">
+                                        {{ h[7] }}
                                     </span>
                                 </td>
 
                                 <td>
-                                    {{ h[10] if h[10] else '-' }}
+                                    {{ h[8] }}
+                                </td>
+
+                                <td>
+                                    {{ "%.4f"|format(h[9]|float) }}
+                                </td>
+
+                                <td>
+                                    <span class="confidence-badge">
+                                        {{ "%.2f"|format(h[10]|float) }} %
+                                    </span>
+                                </td>
+
+                                <td>
+                                    {{ h[11] if h[11] else '-' }}
                                 </td>
 
                                 <td>
@@ -484,7 +491,7 @@ Hasil Rekomendasi RIASEC
                     {% else %}
 
                         <tr>
-                            <td colspan="12" class="empty-data">
+                            <td colspan="13" class="empty-data">
                                 Belum ada hasil rekomendasi
                             </td>
                         </tr>

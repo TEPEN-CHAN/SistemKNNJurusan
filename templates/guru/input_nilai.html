@@ -354,7 +354,7 @@
                         type="text"
                         name="keyword"
                         class="form-control"
-                        placeholder="Cari NIS, nama, kelas, status..."
+                        placeholder="Cari NIS, nama, kelas, minat mapel, bakat, status..."
                         value="{{ keyword if keyword else '' }}"
                     >
 
@@ -389,7 +389,9 @@
                             <th>B. Indonesia</th>
                             <th>B. Inggris</th>
                             <th>Pancasila</th>
-                            <th>Status</th>
+                                <th>Minat Mapel</th>
+                                <th>Bakat/Kemampuan</th>
+                                <th>Status</th>
                             <th>Tanggal Input</th>
                         </tr>
 
@@ -418,6 +420,10 @@
                                     <td>{{ n[6] }}</td>
 
                                     <td>{{ n[7] }}</td>
+
+                                    <td>{{ n[8] }}</td>
+
+                                    <td>{{ n[9] }}</td>
 
                                     <td>
 
@@ -448,7 +454,7 @@
                         {% else %}
 
                             <tr>
-                                <td colspan="10" class="text-center text-muted">
+                                <td colspan="12" class="text-center text-muted">
                                     Belum ada data nilai siswa
                                 </td>
                             </tr>

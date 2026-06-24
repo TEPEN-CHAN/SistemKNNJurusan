@@ -207,10 +207,10 @@ def buat_confusion_matrix(y_true, y_pred):
 # =========================================================
 # HELPER FITUR KNN
 # Variabel skripsi:
-# 1. Mapel      = nilai Pancasila, Matematika,
-#                 Bahasa Indonesia, Bahasa Inggris
-# 2. Minat bakat = 0 / 1
-# 3. Lanjut PT   = 0 / 1
+# 1. Nilai mapel              = nilai Pancasila, Matematika,
+#                               Bahasa Indonesia, Bahasa Inggris
+# 2. Minat mapel              = kecenderungan Kelompok Mapel 1 / 2
+# 3. Bakat/kecenderungan      = kecenderungan Kelompok Mapel 1 / 2
 # =========================================================
 def to_float(value, default=0):
 
@@ -227,7 +227,7 @@ def to_float(value, default=0):
         return default
 
 
-def encode_minat_bakat(value):
+def encode_kecenderungan_kelompok(value):
 
     if value is None:
 
@@ -241,59 +241,68 @@ def encode_minat_bakat(value):
 
     try:
 
-        return 1 if float(nilai.replace(',', '.')) >= 1 else 0
+        return float(nilai.replace(',', '.'))
 
     except:
 
         pass
 
-    nilai_tidak = {
+    nilai_kosong = {
+        '',
+        '-',
         '0',
-        'TIDAK',
-        'TIDAK ADA',
         'BELUM',
         'BELUM MENGISI',
-        'NONE',
-        '-'
+        'BELUM TERDETEKSI',
+        'TIDAK ADA',
+        'NONE'
     }
 
-    if nilai in nilai_tidak:
+    if nilai in nilai_kosong:
 
         return 0
 
-    return 1
+    if 'SEIMBANG' in nilai:
+
+        return 1.5
+
+    if 'KELOMPOK MAPEL 1' in nilai or 'KELOMPOK 1' in nilai or 'MAPEL 1' in nilai:
+
+        return 1
+
+    if 'KELOMPOK MAPEL 2' in nilai or 'KELOMPOK 2' in nilai or 'MAPEL 2' in nilai:
+
+        return 2
+
+    if nilai.endswith(' 1') or nilai.endswith(':1') or nilai == 'K1':
+
+        return 1
+
+    if nilai.endswith(' 2') or nilai.endswith(':2') or nilai == 'K2':
+
+        return 2
+
+    return 0
+
+
+def encode_minat_mapel(value):
+
+    return encode_kecenderungan_kelompok(value)
+
+
+def encode_bakat_kemampuan(value):
+
+    return encode_kecenderungan_kelompok(value)
+
+
+def encode_minat_bakat(value):
+
+    return encode_minat_mapel(value)
 
 
 def encode_lanjut_pt(value):
 
-    if value is None:
-
-        return 0
-
-    nilai = str(value).strip().upper()
-
-    if nilai == '':
-
-        return 0
-
-    try:
-
-        return 1 if float(nilai.replace(',', '.')) >= 1 else 0
-
-    except:
-
-        pass
-
-    nilai_ya = {
-        '1',
-        'IYA',
-        'YA',
-        'YES',
-        'LANJUT',
-        'MELANJUTKAN'
-    }
-
-    return 1 if nilai in nilai_ya else 0
+    return encode_bakat_kemampuan(value)
 
 
 def buat_fitur_knn(
@@ -301,8 +310,8 @@ def buat_fitur_knn(
     nilai_matematika,
     nilai_bahasa_indonesia,
     nilai_bahasa_inggris,
-    minat_bakat,
-    lanjut_pt
+    minat_mapel,
+    bakat_kemampuan
 ):
 
     return [
@@ -310,8 +319,8 @@ def buat_fitur_knn(
         to_float(nilai_matematika),
         to_float(nilai_bahasa_indonesia),
         to_float(nilai_bahasa_inggris),
-        encode_minat_bakat(minat_bakat),
-        encode_lanjut_pt(lanjut_pt)
+        encode_minat_mapel(minat_mapel),
+        encode_bakat_kemampuan(bakat_kemampuan)
     ]
 # =========================================================
 # SIMPAN LOG AKTIVITAS
@@ -459,7 +468,18 @@ def nilai_excel(row, kolom):
     return value
 
 
-def normalisasi_lanjut_pt(value):
+def nilai_excel_pertama(row, daftar_kolom):
+
+    for kolom in daftar_kolom:
+
+        if kolom in row:
+
+            return nilai_excel(row, kolom)
+
+    return None
+
+
+def normalisasi_variabel_kelompok(value):
 
     if pd.isna(value):
 
@@ -468,17 +488,25 @@ def normalisasi_lanjut_pt(value):
     nilai = str(value).strip().upper()
 
     mapping = {
-        'YA': 'IYA',
-        'YES': 'IYA',
-        'LANJUT': 'IYA',
-        'MELANJUTKAN': 'IYA',
-        'BELUM TENTU': 'MUNGKIN',
-        'RAGU': 'MUNGKIN',
-        'NO': 'TIDAK',
-        'TIDAK LANJUT': 'TIDAK'
+        '1': 'Kelompok Mapel 1',
+        'K1': 'Kelompok Mapel 1',
+        'KELOMPOK 1': 'Kelompok Mapel 1',
+        'MAPEL 1': 'Kelompok Mapel 1',
+        'KELOMPOK MAPEL 1': 'Kelompok Mapel 1',
+        '2': 'Kelompok Mapel 2',
+        'K2': 'Kelompok Mapel 2',
+        'KELOMPOK 2': 'Kelompok Mapel 2',
+        'MAPEL 2': 'Kelompok Mapel 2',
+        'KELOMPOK MAPEL 2': 'Kelompok Mapel 2',
+        'SEIMBANG': 'Seimbang'
     }
 
     return mapping.get(nilai, nilai)
+
+
+def normalisasi_lanjut_pt(value):
+
+    return normalisasi_variabel_kelompok(value)
 
 
 def upload_data_alumni(file):
@@ -502,7 +530,14 @@ def upload_data_alumni(file):
         'bahasa_inggris': 'nilai_bahasaingg',
         'nilai_bahasa_inggris': 'nilai_bahasaingg',
         'b_inggris': 'nilai_bahasaingg',
-        'jurusan': 'hasil_jurusan'
+        'jurusan': 'hasil_jurusan',
+        'minat': 'minat_mapel',
+        'minat_bakat': 'minat_mapel',
+        'minat_pelajaran': 'minat_mapel',
+        'bakat': 'bakat_kemampuan',
+        'bakat_kecenderungan': 'bakat_kemampuan',
+        'kemampuan': 'bakat_kemampuan',
+        'lanjut_pt': 'bakat_kemampuan'
     }
 
     df = df.rename(columns=rename_kolom)
@@ -513,8 +548,8 @@ def upload_data_alumni(file):
         'nilai_matematika',
         'nilai_bahasaindo',
         'nilai_bahasaingg',
-        'minat_bakat',
-        'lanjut_pt',
+        'minat_mapel',
+        'bakat_kemampuan',
         'hasil_jurusan'
     ]
 
@@ -571,8 +606,8 @@ def upload_data_alumni(file):
                     nilai_excel(row, 'nilai_matematika'),
                     nilai_excel(row, 'nilai_bahasaindo'),
                     nilai_excel(row, 'nilai_bahasaingg'),
-                    nilai_excel(row, 'minat_bakat'),
-                    normalisasi_lanjut_pt(nilai_excel(row, 'lanjut_pt')),
+                    normalisasi_variabel_kelompok(nilai_excel(row, 'minat_mapel')),
+                    normalisasi_variabel_kelompok(nilai_excel(row, 'bakat_kemampuan')),
                     nilai_excel(row, 'hasil_jurusan'),
                     waktu_indonesia()
 
@@ -610,8 +645,8 @@ def upload_data_alumni(file):
                     nilai_excel(row, 'nilai_matematika'),
                     nilai_excel(row, 'nilai_bahasaindo'),
                     nilai_excel(row, 'nilai_bahasaingg'),
-                    nilai_excel(row, 'minat_bakat'),
-                    normalisasi_lanjut_pt(nilai_excel(row, 'lanjut_pt')),
+                    normalisasi_variabel_kelompok(nilai_excel(row, 'minat_mapel')),
+                    normalisasi_variabel_kelompok(nilai_excel(row, 'bakat_kemampuan')),
                     nilai_excel(row, 'hasil_jurusan'),
                     waktu_indonesia()
 
@@ -646,7 +681,8 @@ def fetch_hasil_knn_data():
             hasil_knn.nis,
             siswa.nama_siswa,
             siswa.kelas,
-            COALESCE(chatbot_terakhir.minat_bakat, 'BELUM MENGISI') AS minat_bakat,
+            COALESCE(chatbot_terakhir.minat_bakat, 'BELUM MENGISI') AS minat_mapel,
+            COALESCE(chatbot_terakhir.lanjut_pt, 'BELUM MENGISI') AS bakat_kemampuan,
             COALESCE(chatbot_terakhir.kelompok_mapel, 'BELUM MENGISI') AS kelompok_mapel,
             hasil_knn.hasil_jurusan,
             hasil_knn.nilai_k,
@@ -689,7 +725,7 @@ def hitung_grafik_jurusan(hasil_data):
 
     for h in hasil_data:
 
-        jurusan = h[6] if h[6] else 'Belum Ada'
+        jurusan = h[7] if h[7] else 'Belum Ada'
 
         if jurusan in jurusan_count:
 
@@ -711,7 +747,8 @@ def buat_file_excel_hasil_rekomendasi(hasil_data, filename='hasil_rekomendasi_kn
         'NIS',
         'Nama Siswa',
         'Kelas',
-        'Minat Bakat',
+        'Minat Mapel',
+        'Bakat/Kecenderungan Kemampuan',
         'Kelompok Mapel',
         'Hasil Jurusan',
         'K',
@@ -1673,8 +1710,8 @@ def download_alumni():
         'nilai_matematika',
         'nilai_bahasaindo',
         'nilai_bahasaingg',
-        'minat_bakat',
-        'lanjut_pt',
+        'minat_mapel',
+        'bakat_kemampuan',
         'hasil_jurusan',
         'tanggal_input'
 
@@ -1855,7 +1892,7 @@ def input_nilai():
             lanjut_pt = 'BELUM MENGISI'
 
             flash(
-                'Siswa belum mengisi chatbot RIASEC. Nilai tetap disimpan, tetapi minat bakat diset BELUM MENGISI.',
+                'Siswa belum mengisi chatbot minat mapel dan bakat. Nilai tetap disimpan, tetapi minat mapel dan bakat diset BELUM MENGISI.',
                 'warning'
             )
 
@@ -1981,10 +2018,14 @@ def input_nilai():
                 input_siswa.nis LIKE %s
                 OR siswa.nama_siswa LIKE %s
                 OR siswa.kelas LIKE %s
+                OR input_siswa.minat_bakat LIKE %s
+                OR input_siswa.lanjut_pt LIKE %s
                 OR input_siswa.status_proses LIKE %s
 
             ORDER BY input_siswa.id_input DESC
         """, (
+            search,
+            search,
             search,
             search,
             search,
@@ -2158,7 +2199,7 @@ def proses_semua_knn():
         # =====================================================
         # DATA SISWA UJI
         # Fitur KNN:
-        # mapel, minat bakat, lanjut PT
+        # nilai mapel, minat mapel, bakat/kecenderungan kemampuan
         # =====================================================
         cur.execute("""
             SELECT
@@ -2440,7 +2481,7 @@ def download_hasil_rekomendasi():
 
 
 # =========================================================
-# CHATBOT RIASEC
+# CHATBOT MINAT MAPEL DAN BAKAT
 # =========================================================
 
 @app.route('/chatbot', methods=['GET', 'POST'])
@@ -2451,12 +2492,14 @@ def chatbot():
     # LIST PERTANYAAN
     # =====================================================
     pertanyaan_list = [
-        {'text': 'Apakah kamu suka memperbaiki mesin atau alat elektronik?', 'kategori': 'REALISTIC'},
-        {'text': 'Apakah kamu suka melakukan penelitian atau eksperimen?', 'kategori': 'INVESTIGATIVE'},
-        {'text': 'Apakah kamu suka menggambar atau membuat desain?', 'kategori': 'ARTISTIC'},
-        {'text': 'Apakah kamu suka membantu dan mengajar orang lain?', 'kategori': 'SOCIAL'},
-        {'text': 'Apakah kamu suka memimpin organisasi atau bisnis?', 'kategori': 'ENTERPRISING'},
-        {'text': 'Apakah kamu suka mengatur data dan administrasi?', 'kategori': 'CONVENTIONAL'}
+        {
+            'text': 'Minat mapel: kamu lebih tertarik Matematika/Fisika atau Informatika/Bahasa Inggris?',
+            'kategori': 'MINAT_MAPEL'
+        },
+        {
+            'text': 'Bakat: kamu lebih cepat memahami pola hitungan/eksperimen atau logika komputer/bahasa?',
+            'kategori': 'BAKAT_KEMAMPUAN'
+        }
     ]
 
     nis = session['id_ref']
@@ -2547,11 +2590,12 @@ def chatbot():
             cur.close()
             return jsonify({
                 'status': 'already_exists',
-                'message': 'Anda telah mengisi chatbot RIASEC sebelumnya. Hasil rekomendasi sudah tersedia.',
+                'message': 'Anda telah mengisi chatbot minat mapel dan bakat sebelumnya. Hasil rekomendasi sudah tersedia.',
                 'hasil_chatbot': {
-                    'minat_bakat': hasil_chatbot_lama[0],
+                    'minat_mapel': hasil_chatbot_lama[0],
                     'kelompok_mapel': hasil_chatbot_lama[1],
                     'detail_mapel': hasil_chatbot_lama[2],
+                    'bakat_kemampuan': hasil_chatbot_lama[3],
                     'lanjut_pt': hasil_chatbot_lama[3],
                     'tanggal': hasil_chatbot_lama[4]
                 },
@@ -2566,18 +2610,11 @@ def chatbot():
 
         data = request.get_json(silent=True) or {}
 
-        rekomendasi = data.get('minat_bakat')
+        minat_mapel = normalisasi_variabel_kelompok(data.get('minat_bakat'))
+        bakat_kemampuan = normalisasi_variabel_kelompok(data.get('bakat_kemampuan'))
         kelompok_mapel = data.get('kelompok_mapel')
-        lanjut_kuliah_input = str(data.get('status_kuliah') or '').strip().lower()
-        lanjut_kuliah_map = {
-            'iya': 'IYA',
-            'ya': 'IYA',
-            'mungkin': 'MUNGKIN',
-            'tidak': 'TIDAK'
-        }
-        lanjut_kuliah = lanjut_kuliah_map.get(lanjut_kuliah_input)
 
-        if not rekomendasi or not kelompok_mapel or not lanjut_kuliah:
+        if not minat_mapel or not bakat_kemampuan or not kelompok_mapel:
             cur.close()
             return jsonify({
                 'status': 'error',
@@ -2629,15 +2666,15 @@ Informatika
                 nis,
                 nama_siswa,
                 kelas,
-                rekomendasi,
+                minat_mapel,
                 kelompok_mapel,
                 detail_mapel,
-                lanjut_kuliah,
+                bakat_kemampuan,
                 waktu_indonesia()
             ))
 
             mysql.connection.commit()
-            simpan_log(f'Menyimpan hasil chatbot RIASEC: {rekomendasi}')
+            simpan_log(f'Menyimpan hasil chatbot minat mapel: {minat_mapel}, bakat: {bakat_kemampuan}')
 
             cur.close()
 
@@ -3222,7 +3259,7 @@ def admin_nilai_siswa():
             lanjut_pt = 'BELUM MENGISI'
 
             flash(
-                'Siswa belum mengisi chatbot RIASEC. Nilai tetap disimpan, tetapi minat bakat diset BELUM MENGISI.',
+                'Siswa belum mengisi chatbot minat mapel dan bakat. Nilai tetap disimpan, tetapi minat mapel dan bakat diset BELUM MENGISI.',
                 'warning'
             )
 
@@ -4308,7 +4345,7 @@ def admin_proses_semua_knn():
         # =================================================
         # SUSUN DATA LATIH
         # Fitur KNN:
-        # mapel, minat bakat, lanjut PT
+        # nilai mapel, minat mapel, bakat/kecenderungan kemampuan
         # =================================================
         data_latih = []
         label_latih = []
