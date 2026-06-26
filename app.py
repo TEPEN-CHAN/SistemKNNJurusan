@@ -509,6 +509,96 @@ def normalisasi_lanjut_pt(value):
     return normalisasi_variabel_kelompok(value)
 
 
+_schema_variabel_knn_baru_siap = False
+
+
+def pastikan_kolom_variabel_knn_baru():
+
+    global _schema_variabel_knn_baru_siap
+
+    if _schema_variabel_knn_baru_siap:
+
+        return
+
+    target_kolom = {
+        'alumni': {
+            'minat_bakat': 'VARCHAR(50) NULL',
+            'lanjut_pt': 'VARCHAR(50) NULL'
+        },
+        'hasil_chatbot': {
+            'minat_bakat': 'VARCHAR(50) NULL',
+            'kelompok_mapel': 'VARCHAR(50) NULL',
+            'lanjut_pt': 'VARCHAR(50) NULL'
+        },
+        'input_siswa': {
+            'minat_bakat': 'VARCHAR(50) NULL',
+            'lanjut_pt': 'VARCHAR(50) NULL'
+        }
+    }
+
+    cur = mysql.connection.cursor()
+
+    try:
+
+        for nama_tabel, kolom_tabel in target_kolom.items():
+
+            for nama_kolom, definisi_kolom in kolom_tabel.items():
+
+                cur.execute("""
+                    SELECT
+                        DATA_TYPE,
+                        CHARACTER_MAXIMUM_LENGTH
+                    FROM information_schema.COLUMNS
+                    WHERE TABLE_SCHEMA = DATABASE()
+                    AND TABLE_NAME = %s
+                    AND COLUMN_NAME = %s
+                """, (
+                    nama_tabel,
+                    nama_kolom
+                ))
+
+                info_kolom = cur.fetchone()
+
+                if not info_kolom:
+
+                    continue
+
+                tipe_data = str(info_kolom[0]).lower()
+                panjang_karakter = info_kolom[1] or 0
+                tipe_teks_panjang = {
+                    'text',
+                    'mediumtext',
+                    'longtext'
+                }
+
+                if tipe_data not in tipe_teks_panjang and (
+                    tipe_data != 'varchar' or panjang_karakter < 50
+                ):
+
+                    cur.execute(
+                        f"ALTER TABLE `{nama_tabel}` "
+                        f"MODIFY COLUMN `{nama_kolom}` {definisi_kolom}"
+                    )
+
+        mysql.connection.commit()
+        _schema_variabel_knn_baru_siap = True
+
+    except Exception as e:
+
+        mysql.connection.rollback()
+
+        raise RuntimeError(
+            'Kolom database untuk variabel KNN baru masih memakai format lama. '
+            'Pastikan kolom alumni/input_siswa/hasil_chatbot minat_bakat dan '
+            'lanjut_pt sudah bertipe VARCHAR(50). Detail: '
+            + str(e)
+        )
+
+    finally:
+
+        cur.close()
+
+
 def upload_data_alumni(file):
 
     df = pd.read_excel(file)
@@ -561,6 +651,8 @@ def upload_data_alumni(file):
             'Kolom Excel belum sesuai. Kolom yang kurang: '
             + ', '.join(kolom_kurang)
         )
+
+    pastikan_kolom_variabel_knn_baru()
 
     punya_id_alumni = 'id_alumni' in df.columns
 
@@ -1842,6 +1934,8 @@ def admin_hapus_alumni_massal():
 @login_required(roles=[2])
 def input_nilai():
 
+    pastikan_kolom_variabel_knn_baru()
+
     cur = mysql.connection.cursor()
 
     # ============================================
@@ -2487,6 +2581,8 @@ def download_hasil_rekomendasi():
 @app.route('/chatbot', methods=['GET', 'POST'])
 @login_required(roles=[3])
 def chatbot():
+
+    pastikan_kolom_variabel_knn_baru()
 
     # =====================================================
     # LIST PERTANYAAN
@@ -3207,6 +3303,8 @@ def hapus_akun(id_akun):
 @app.route('/admin/nilai_siswa', methods=['GET', 'POST'])
 @login_required(roles=[1])
 def admin_nilai_siswa():
+
+    pastikan_kolom_variabel_knn_baru()
 
     cur = mysql.connection.cursor()
 
