@@ -504,9 +504,14 @@ def normalisasi_variabel_kelompok(value):
     return mapping.get(nilai, nilai)
 
 
-def normalisasi_lanjut_pt(value):
+def normalisasi_bakat_kemampuan(value):
 
     return normalisasi_variabel_kelompok(value)
+
+
+def normalisasi_lanjut_pt(value):
+
+    return normalisasi_bakat_kemampuan(value)
 
 
 _schema_variabel_knn_baru_siap = False
@@ -522,17 +527,21 @@ def pastikan_kolom_variabel_knn_baru():
 
     target_kolom = {
         'alumni': {
-            'minat_bakat': 'VARCHAR(50) NULL',
-            'lanjut_pt': 'VARCHAR(50) NULL'
+            'minat_mapel': ('minat_bakat', 'VARCHAR(50) NULL'),
+            'bakat_kemampuan': ('lanjut_pt', 'VARCHAR(50) NULL')
         },
         'hasil_chatbot': {
-            'minat_bakat': 'VARCHAR(50) NULL',
-            'kelompok_mapel': 'VARCHAR(50) NULL',
-            'lanjut_pt': 'VARCHAR(50) NULL'
+            'minat_mapel': ('minat_bakat', 'VARCHAR(50) NULL'),
+            'kelompok_mapel': (None, 'VARCHAR(50) NULL'),
+            'bakat_kemampuan': ('lanjut_pt', 'VARCHAR(50) NULL')
         },
         'input_siswa': {
-            'minat_bakat': 'VARCHAR(50) NULL',
-            'lanjut_pt': 'VARCHAR(50) NULL'
+            'minat_mapel': ('minat_bakat', 'VARCHAR(50) NULL'),
+            'bakat_kemampuan': ('lanjut_pt', 'VARCHAR(50) NULL')
+        },
+        'hasil_knn': {
+            'minat_mapel': ('minat_bakat', 'VARCHAR(50) NULL'),
+            'bakat_kemampuan': ('lanjut_pt', 'VARCHAR(50) NULL')
         }
     }
 
@@ -542,7 +551,7 @@ def pastikan_kolom_variabel_knn_baru():
 
         for nama_tabel, kolom_tabel in target_kolom.items():
 
-            for nama_kolom, definisi_kolom in kolom_tabel.items():
+            for nama_kolom, (kolom_lama, definisi_kolom) in kolom_tabel.items():
 
                 cur.execute("""
                     SELECT
@@ -560,6 +569,31 @@ def pastikan_kolom_variabel_knn_baru():
                 info_kolom = cur.fetchone()
 
                 if not info_kolom:
+
+                    if not kolom_lama:
+
+                        continue
+
+                    cur.execute("""
+                        SELECT
+                            COUNT(*)
+                        FROM information_schema.COLUMNS
+                        WHERE TABLE_SCHEMA = DATABASE()
+                        AND TABLE_NAME = %s
+                        AND COLUMN_NAME = %s
+                    """, (
+                        nama_tabel,
+                        kolom_lama
+                    ))
+
+                    if cur.fetchone()[0] == 0:
+
+                        continue
+
+                    cur.execute(
+                        f"ALTER TABLE `{nama_tabel}` "
+                        f"CHANGE COLUMN `{kolom_lama}` `{nama_kolom}` {definisi_kolom}"
+                    )
 
                     continue
 
@@ -589,8 +623,8 @@ def pastikan_kolom_variabel_knn_baru():
 
         raise RuntimeError(
             'Kolom database untuk variabel KNN baru masih memakai format lama. '
-            'Pastikan kolom alumni/input_siswa/hasil_chatbot minat_bakat dan '
-            'lanjut_pt sudah bertipe VARCHAR(50). Detail: '
+            'Pastikan kolom alumni/input_siswa/hasil_chatbot/hasil_knn minat_mapel dan '
+            'bakat_kemampuan sudah bertipe VARCHAR(50). Detail: '
             + str(e)
         )
 
@@ -623,11 +657,13 @@ def upload_data_alumni(file):
         'jurusan': 'hasil_jurusan',
         'minat': 'minat_mapel',
         'minat_bakat': 'minat_mapel',
+        'minat_mapel': 'minat_mapel',
         'minat_pelajaran': 'minat_mapel',
         'bakat': 'bakat_kemampuan',
         'bakat_kecenderungan': 'bakat_kemampuan',
         'kemampuan': 'bakat_kemampuan',
-        'lanjut_pt': 'bakat_kemampuan'
+        'lanjut_pt': 'bakat_kemampuan',
+        'bakat_kemampuan': 'bakat_kemampuan'
     }
 
     df = df.rename(columns=rename_kolom)
@@ -676,8 +712,8 @@ def upload_data_alumni(file):
                         nilai_matematika,
                         nilai_bahasaindo,
                         nilai_bahasaingg,
-                        minat_bakat,
-                        lanjut_pt,
+                        minat_mapel,
+                        bakat_kemampuan,
                         hasil_jurusan,
                         tanggal_input
 
@@ -716,8 +752,8 @@ def upload_data_alumni(file):
                         nilai_matematika,
                         nilai_bahasaindo,
                         nilai_bahasaingg,
-                        minat_bakat,
-                        lanjut_pt,
+                        minat_mapel,
+                        bakat_kemampuan,
                         hasil_jurusan,
                         tanggal_input
 
@@ -765,6 +801,8 @@ def upload_data_alumni(file):
 # =========================================================
 def fetch_hasil_knn_data():
 
+    pastikan_kolom_variabel_knn_baru()
+
     cur = mysql.connection.cursor()
 
     cur.execute("""
@@ -773,8 +811,8 @@ def fetch_hasil_knn_data():
             hasil_knn.nis,
             siswa.nama_siswa,
             siswa.kelas,
-            COALESCE(chatbot_terakhir.minat_bakat, 'BELUM MENGISI') AS minat_mapel,
-            COALESCE(chatbot_terakhir.lanjut_pt, 'BELUM MENGISI') AS bakat_kemampuan,
+            COALESCE(hasil_knn.minat_mapel, chatbot_terakhir.minat_mapel, 'BELUM MENGISI') AS minat_mapel,
+            COALESCE(hasil_knn.bakat_kemampuan, chatbot_terakhir.bakat_kemampuan, 'BELUM MENGISI') AS bakat_kemampuan,
             COALESCE(chatbot_terakhir.kelompok_mapel, 'BELUM MENGISI') AS kelompok_mapel,
             hasil_knn.hasil_jurusan,
             hasil_knn.nilai_k,
@@ -1622,6 +1660,8 @@ def dashboard_guru():
 @login_required(roles=[3])
 def dashboard_siswa():
 
+    pastikan_kolom_variabel_knn_baru()
+
     nis = session['id_ref']
 
     cur = mysql.connection.cursor()
@@ -1647,10 +1687,10 @@ def dashboard_siswa():
     # =====================================================
     cur.execute("""
         SELECT
-            minat_bakat,
+            minat_mapel,
             kelompok_mapel,
             detail_mapel,
-            lanjut_pt,
+            bakat_kemampuan,
             DATE_FORMAT(
                 tanggal,
                 '%%d-%%m-%%Y %%H:%%i:%%s WIB'
@@ -1705,6 +1745,8 @@ def admin_input_alumni():
 
         return redirect('/input_alumni')
 
+    pastikan_kolom_variabel_knn_baru()
+
     # ==================================================
     # PROSES UPLOAD EXCEL
     # ==================================================
@@ -1754,8 +1796,8 @@ def admin_input_alumni():
             nilai_matematika,
             nilai_bahasaindo,
             nilai_bahasaingg,
-            minat_bakat,
-            lanjut_pt,
+            minat_mapel,
+            bakat_kemampuan,
             hasil_jurusan
 
         FROM alumni
@@ -1779,6 +1821,8 @@ def admin_input_alumni():
 @app.route('/admin/download_alumni')
 @login_required(roles=[1, 2])
 def download_alumni():
+
+    pastikan_kolom_variabel_knn_baru()
 
     cur = mysql.connection.cursor()
 
@@ -1968,9 +2012,9 @@ def input_nilai():
         # ============================================
         cur.execute("""
             SELECT
-                minat_bakat,
+                minat_mapel,
                 kelompok_mapel,
-                lanjut_pt
+                bakat_kemampuan
             FROM hasil_chatbot
             WHERE nis=%s
             ORDER BY id DESC
@@ -1981,9 +2025,9 @@ def input_nilai():
 
         if not hasil_chatbot:
 
-            minat_bakat = 'BELUM MENGISI'
+            minat_mapel = 'BELUM MENGISI'
             kelompok_mapel = 'BELUM MENGISI'
-            lanjut_pt = 'BELUM MENGISI'
+            bakat_kemampuan = 'BELUM MENGISI'
 
             flash(
                 'Siswa belum mengisi chatbot minat mapel dan bakat. Nilai tetap disimpan, tetapi minat mapel dan bakat diset BELUM MENGISI.',
@@ -1992,9 +2036,9 @@ def input_nilai():
 
         else:
 
-            minat_bakat = hasil_chatbot[0]
+            minat_mapel = hasil_chatbot[0]
             kelompok_mapel = hasil_chatbot[1]
-            lanjut_pt = hasil_chatbot[2] if hasil_chatbot[2] else 'BELUM MENGISI'
+            bakat_kemampuan = hasil_chatbot[2] if hasil_chatbot[2] else 'BELUM MENGISI'
 
         # ============================================
         # CEK APAKAH DATA NILAI SISWA SUDAH ADA
@@ -2021,8 +2065,8 @@ def input_nilai():
                     nilai_indonesia=%s,
                     nilai_inggris=%s,
                     nilai_pancasila=%s,
-                    minat_bakat=%s,
-                    lanjut_pt=%s,
+                    minat_mapel=%s,
+                    bakat_kemampuan=%s,
                     tanggal_input=%s,
                     status_proses=%s
                 WHERE id_input=%s
@@ -2031,8 +2075,8 @@ def input_nilai():
                 nilai_indonesia,
                 nilai_inggris,
                 nilai_pancasila,
-                minat_bakat,
-                lanjut_pt,
+                minat_mapel,
+                bakat_kemampuan,
                 waktu_indonesia(),
                 'belum',
                 cek_nilai[0]
@@ -2052,8 +2096,8 @@ def input_nilai():
                     nilai_indonesia,
                     nilai_inggris,
                     nilai_pancasila,
-                    minat_bakat,
-                    lanjut_pt,
+                    minat_mapel,
+                    bakat_kemampuan,
                     tanggal_input,
                     status_proses
                 )
@@ -2064,8 +2108,8 @@ def input_nilai():
                 nilai_indonesia,
                 nilai_inggris,
                 nilai_pancasila,
-                minat_bakat,
-                lanjut_pt,
+                minat_mapel,
+                bakat_kemampuan,
                 waktu_indonesia(),
                 'belum'
             ))
@@ -2099,8 +2143,8 @@ def input_nilai():
                 input_siswa.nilai_indonesia,
                 input_siswa.nilai_inggris,
                 input_siswa.nilai_pancasila,
-                input_siswa.minat_bakat,
-                input_siswa.lanjut_pt,
+                input_siswa.minat_mapel,
+                input_siswa.bakat_kemampuan,
                 input_siswa.status_proses,
                 input_siswa.tanggal_input
             FROM input_siswa
@@ -2112,8 +2156,8 @@ def input_nilai():
                 input_siswa.nis LIKE %s
                 OR siswa.nama_siswa LIKE %s
                 OR siswa.kelas LIKE %s
-                OR input_siswa.minat_bakat LIKE %s
-                OR input_siswa.lanjut_pt LIKE %s
+                OR input_siswa.minat_mapel LIKE %s
+                OR input_siswa.bakat_kemampuan LIKE %s
                 OR input_siswa.status_proses LIKE %s
 
             ORDER BY input_siswa.id_input DESC
@@ -2138,8 +2182,8 @@ def input_nilai():
                 input_siswa.nilai_indonesia,
                 input_siswa.nilai_inggris,
                 input_siswa.nilai_pancasila,
-                input_siswa.minat_bakat,
-                input_siswa.lanjut_pt,
+                input_siswa.minat_mapel,
+                input_siswa.bakat_kemampuan,
                 input_siswa.status_proses,
                 input_siswa.tanggal_input
             FROM input_siswa
@@ -2166,6 +2210,8 @@ def input_nilai():
 @app.route('/input_alumni', methods=['GET', 'POST'])
 @login_required(roles=[2])
 def input_alumni():
+
+    pastikan_kolom_variabel_knn_baru()
 
     # ==================================================
     # PROSES UPLOAD EXCEL
@@ -2216,8 +2262,8 @@ def input_alumni():
             nilai_matematika,
             nilai_bahasaindo,
             nilai_bahasaingg,
-            minat_bakat,
-            lanjut_pt,
+            minat_mapel,
+            bakat_kemampuan,
             hasil_jurusan
 
         FROM alumni
@@ -2244,6 +2290,8 @@ def input_alumni():
 @app.route('/proses_knn')
 @login_required(roles=[2])
 def proses_knn():
+
+    pastikan_kolom_variabel_knn_baru()
 
     cur = mysql.connection.cursor()
 
@@ -2284,6 +2332,8 @@ def proses_knn():
 @login_required(roles=[2])
 def proses_semua_knn():
 
+    pastikan_kolom_variabel_knn_baru()
+
     cur = mysql.connection.cursor()
 
     try:
@@ -2297,16 +2347,21 @@ def proses_semua_knn():
         # =====================================================
         cur.execute("""
             SELECT
-                id_input,
-                nis,
-                nilai_pancasila,
-                nilai_matematika,
-                nilai_indonesia,
-                nilai_inggris,
-                minat_bakat,
-                lanjut_pt
+                input_siswa.id_input,
+                input_siswa.nis,
+                siswa.nama_siswa,
+                input_siswa.nilai_pancasila,
+                input_siswa.nilai_matematika,
+                input_siswa.nilai_indonesia,
+                input_siswa.nilai_inggris,
+                input_siswa.minat_mapel,
+                input_siswa.bakat_kemampuan
             FROM input_siswa
-            WHERE status_proses='belum'
+
+            JOIN siswa
+                ON input_siswa.nis = siswa.nis
+
+            WHERE input_siswa.status_proses='belum'
         """)
 
         semua_siswa = cur.fetchall()
@@ -2328,8 +2383,8 @@ def proses_semua_knn():
                 nilai_matematika,
                 nilai_bahasaindo,
                 nilai_bahasaingg,
-                minat_bakat,
-                lanjut_pt,
+                minat_mapel,
+                bakat_kemampuan,
                 hasil_jurusan
             FROM alumni
             WHERE hasil_jurusan IS NOT NULL
@@ -2377,12 +2432,12 @@ def proses_semua_knn():
             nis = siswa_uji[1]
 
             fitur_uji = buat_fitur_knn(
-                siswa_uji[2],
                 siswa_uji[3],
                 siswa_uji[4],
                 siswa_uji[5],
                 siswa_uji[6],
-                siswa_uji[7]
+                siswa_uji[7],
+                siswa_uji[8]
             )
 
             hasil_knn = knn_predict(
@@ -2409,6 +2464,9 @@ def proses_semua_knn():
             cur.execute("""
                 INSERT INTO hasil_knn(
                     nis,
+                    nama_siswa,
+                    minat_mapel,
+                    bakat_kemampuan,
                     hasil_jurusan,
                     nilai_k,
                     jumlah_tetangga,
@@ -2416,9 +2474,12 @@ def proses_semua_knn():
                     confidence,
                     tanggal
                 )
-                VALUES(%s,%s,%s,%s,%s,%s,%s)
+                VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, (
                 nis,
+                siswa_uji[2],
+                siswa_uji[7],
+                siswa_uji[8],
                 nama_jurusan,
                 nilai_k,
                 len(neighbors),
@@ -2627,10 +2688,10 @@ def chatbot():
     # =====================================================
     cur.execute("""
         SELECT
-            minat_bakat,
+            minat_mapel,
             kelompok_mapel,
             detail_mapel,
-            lanjut_pt,
+            bakat_kemampuan,
             DATE_FORMAT(
                 tanggal,
                 '%%d-%%m-%%Y %%H:%%i:%%s WIB'
@@ -2692,7 +2753,6 @@ def chatbot():
                     'kelompok_mapel': hasil_chatbot_lama[1],
                     'detail_mapel': hasil_chatbot_lama[2],
                     'bakat_kemampuan': hasil_chatbot_lama[3],
-                    'lanjut_pt': hasil_chatbot_lama[3],
                     'tanggal': hasil_chatbot_lama[4]
                 },
                 'hasil_knn': {
@@ -2706,7 +2766,9 @@ def chatbot():
 
         data = request.get_json(silent=True) or {}
 
-        minat_mapel = normalisasi_variabel_kelompok(data.get('minat_bakat'))
+        minat_mapel = normalisasi_variabel_kelompok(
+            data.get('minat_mapel') or data.get('minat_bakat')
+        )
         bakat_kemampuan = normalisasi_variabel_kelompok(data.get('bakat_kemampuan'))
         kelompok_mapel = data.get('kelompok_mapel')
 
@@ -2751,10 +2813,10 @@ Informatika
                     nis,
                     nama_siswa,
                     kelas,
-                    minat_bakat,
+                    minat_mapel,
                     kelompok_mapel,
                     detail_mapel,
-                    lanjut_pt,
+                    bakat_kemampuan,
                     tanggal
                 )
                 VALUES(%s,%s,%s,%s,%s,%s,%s,%s)
@@ -3339,9 +3401,9 @@ def admin_nilai_siswa():
         # =================================================
         cur.execute("""
             SELECT
-                minat_bakat,
+                minat_mapel,
                 kelompok_mapel,
-                lanjut_pt
+                bakat_kemampuan
             FROM hasil_chatbot
             WHERE nis=%s
             ORDER BY id DESC
@@ -3352,9 +3414,9 @@ def admin_nilai_siswa():
 
         if not hasil_chatbot:
 
-            minat_bakat = 'BELUM MENGISI'
+            minat_mapel = 'BELUM MENGISI'
             kelompok_mapel = 'BELUM MENGISI'
-            lanjut_pt = 'BELUM MENGISI'
+            bakat_kemampuan = 'BELUM MENGISI'
 
             flash(
                 'Siswa belum mengisi chatbot minat mapel dan bakat. Nilai tetap disimpan, tetapi minat mapel dan bakat diset BELUM MENGISI.',
@@ -3363,9 +3425,9 @@ def admin_nilai_siswa():
 
         else:
 
-            minat_bakat = hasil_chatbot[0]
+            minat_mapel = hasil_chatbot[0]
             kelompok_mapel = hasil_chatbot[1]
-            lanjut_pt = hasil_chatbot[2] if hasil_chatbot[2] else 'BELUM MENGISI'
+            bakat_kemampuan = hasil_chatbot[2] if hasil_chatbot[2] else 'BELUM MENGISI'
 
         # =================================================
         # CEK APAKAH NILAI SISWA SUDAH ADA
@@ -3392,8 +3454,8 @@ def admin_nilai_siswa():
                     nilai_indonesia=%s,
                     nilai_inggris=%s,
                     nilai_pancasila=%s,
-                    minat_bakat=%s,
-                    lanjut_pt=%s,
+                    minat_mapel=%s,
+                    bakat_kemampuan=%s,
                     tanggal_input=%s,
                     status_proses=%s
                 WHERE id_input=%s
@@ -3402,8 +3464,8 @@ def admin_nilai_siswa():
                 nilai_indonesia,
                 nilai_inggris,
                 nilai_pancasila,
-                minat_bakat,
-                lanjut_pt,
+                minat_mapel,
+                bakat_kemampuan,
                 waktu_indonesia(),
                 'belum',
                 cek_nilai[0]
@@ -3423,8 +3485,8 @@ def admin_nilai_siswa():
                     nilai_indonesia,
                     nilai_inggris,
                     nilai_pancasila,
-                    minat_bakat,
-                    lanjut_pt,
+                    minat_mapel,
+                    bakat_kemampuan,
                     tanggal_input,
                     status_proses
                 )
@@ -3435,8 +3497,8 @@ def admin_nilai_siswa():
                 nilai_indonesia,
                 nilai_inggris,
                 nilai_pancasila,
-                minat_bakat,
-                lanjut_pt,
+                minat_mapel,
+                bakat_kemampuan,
                 waktu_indonesia(),
                 'belum'
             ))
@@ -3470,8 +3532,8 @@ def admin_nilai_siswa():
                 input_siswa.nilai_indonesia,
                 input_siswa.nilai_inggris,
                 input_siswa.nilai_pancasila,
-                input_siswa.minat_bakat,
-                input_siswa.lanjut_pt,
+                input_siswa.minat_mapel,
+                input_siswa.bakat_kemampuan,
                 input_siswa.status_proses,
                 input_siswa.tanggal_input
             FROM input_siswa
@@ -3483,8 +3545,8 @@ def admin_nilai_siswa():
                 input_siswa.nis LIKE %s
                 OR siswa.nama_siswa LIKE %s
                 OR siswa.kelas LIKE %s
-                OR input_siswa.minat_bakat LIKE %s
-                OR input_siswa.lanjut_pt LIKE %s
+                OR input_siswa.minat_mapel LIKE %s
+                OR input_siswa.bakat_kemampuan LIKE %s
                 OR input_siswa.status_proses LIKE %s
 
             ORDER BY input_siswa.id_input DESC
@@ -3509,8 +3571,8 @@ def admin_nilai_siswa():
                 input_siswa.nilai_indonesia,
                 input_siswa.nilai_inggris,
                 input_siswa.nilai_pancasila,
-                input_siswa.minat_bakat,
-                input_siswa.lanjut_pt,
+                input_siswa.minat_mapel,
+                input_siswa.bakat_kemampuan,
                 input_siswa.status_proses,
                 input_siswa.tanggal_input
             FROM input_siswa
@@ -3585,6 +3647,8 @@ def admin_hasil_rekomendasi():
 @app.route('/admin/evaluasi_sistem')
 @login_required(roles=[1])
 def admin_evaluasi_sistem():
+
+    pastikan_kolom_variabel_knn_baru()
 
     cur = mysql.connection.cursor()
 
@@ -3713,8 +3777,8 @@ def admin_evaluasi_sistem():
                 nilai_matematika,
                 nilai_bahasaindo,
                 nilai_bahasaingg,
-                minat_bakat,
-                lanjut_pt,
+                minat_mapel,
+                bakat_kemampuan,
                 hasil_jurusan
             FROM alumni
             WHERE hasil_jurusan IS NOT NULL
@@ -3822,6 +3886,8 @@ def admin_evaluasi_sistem():
 @login_required(roles=[1])
 def admin_hasil_chatbot():
 
+    pastikan_kolom_variabel_knn_baru()
+
     cur = mysql.connection.cursor()
 
     keyword = request.args.get('keyword', '')
@@ -3836,19 +3902,19 @@ def admin_hasil_chatbot():
                 nis,
                 nama_siswa,
                 kelas,
-                minat_bakat,
+                minat_mapel,
                 kelompok_mapel,
                 detail_mapel,
-                lanjut_pt,
+                bakat_kemampuan,
                 tanggal
             FROM hasil_chatbot
             WHERE
                 nis LIKE %s
                 OR nama_siswa LIKE %s
                 OR kelas LIKE %s
-                OR minat_bakat LIKE %s
+                OR minat_mapel LIKE %s
                 OR kelompok_mapel LIKE %s
-                OR lanjut_pt LIKE %s
+                OR bakat_kemampuan LIKE %s
             ORDER BY id DESC
         """, (
             search,
@@ -3867,10 +3933,10 @@ def admin_hasil_chatbot():
                 nis,
                 nama_siswa,
                 kelas,
-                minat_bakat,
+                minat_mapel,
                 kelompok_mapel,
                 detail_mapel,
-                lanjut_pt,
+                bakat_kemampuan,
                 tanggal
             FROM hasil_chatbot
             ORDER BY id DESC
@@ -4228,6 +4294,8 @@ def admin_hapus_semua_log():
 @login_required(roles=[1])
 def admin_proses_knn():
 
+    pastikan_kolom_variabel_knn_baru()
+
     cur = mysql.connection.cursor()
 
     # =====================================================
@@ -4277,8 +4345,8 @@ def admin_proses_knn():
             input_siswa.nis,
             siswa.nama_siswa,
             siswa.kelas,
-            COALESCE(input_siswa.minat_bakat, hasil_chatbot.minat_bakat, 'BELUM MENGISI') AS minat_bakat,
-            COALESCE(input_siswa.lanjut_pt, hasil_chatbot.lanjut_pt, 'BELUM MENGISI') AS lanjut_pt,
+            COALESCE(input_siswa.minat_mapel, hasil_chatbot.minat_mapel, 'BELUM MENGISI') AS minat_mapel,
+            COALESCE(input_siswa.bakat_kemampuan, hasil_chatbot.bakat_kemampuan, 'BELUM MENGISI') AS bakat_kemampuan,
             input_siswa.nilai_pancasila,
             input_siswa.nilai_matematika,
             input_siswa.nilai_indonesia,
@@ -4327,6 +4395,8 @@ def admin_proses_knn():
 @login_required(roles=[1])
 def admin_proses_semua_knn():
 
+    pastikan_kolom_variabel_knn_baru()
+
     cur = mysql.connection.cursor()
 
     try:
@@ -4359,8 +4429,8 @@ def admin_proses_semua_knn():
                 input_siswa.nis,
                 siswa.nama_siswa,
                 siswa.kelas,
-                COALESCE(input_siswa.minat_bakat, hasil_chatbot.minat_bakat, 'BELUM MENGISI') AS minat_bakat,
-                COALESCE(input_siswa.lanjut_pt, hasil_chatbot.lanjut_pt, 'BELUM MENGISI') AS lanjut_pt,
+                COALESCE(input_siswa.minat_mapel, hasil_chatbot.minat_mapel, 'BELUM MENGISI') AS minat_mapel,
+                COALESCE(input_siswa.bakat_kemampuan, hasil_chatbot.bakat_kemampuan, 'BELUM MENGISI') AS bakat_kemampuan,
 
                 input_siswa.nilai_pancasila,
                 input_siswa.nilai_matematika,
@@ -4409,8 +4479,8 @@ def admin_proses_semua_knn():
                 nilai_matematika,
                 nilai_bahasaindo,
                 nilai_bahasaingg,
-                minat_bakat,
-                lanjut_pt,
+                minat_mapel,
+                bakat_kemampuan,
                 hasil_jurusan
             FROM alumni
             WHERE hasil_jurusan IS NOT NULL
@@ -4512,6 +4582,9 @@ def admin_proses_semua_knn():
             cur.execute("""
                 INSERT INTO hasil_knn(
                     nis,
+                    nama_siswa,
+                    minat_mapel,
+                    bakat_kemampuan,
                     hasil_jurusan,
                     nilai_k,
                     jumlah_tetangga,
@@ -4519,9 +4592,12 @@ def admin_proses_semua_knn():
                     confidence,
                     tanggal
                 )
-                VALUES(%s,%s,%s,%s,%s,%s,%s)
+                VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, (
                 nis,
+                siswa_uji[2],
+                siswa_uji[4],
+                siswa_uji[5],
                 nama_jurusan,
                 nilai_k,
                 len(neighbors),
