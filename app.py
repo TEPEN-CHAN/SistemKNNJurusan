@@ -1056,17 +1056,9 @@ def susun_tahapan_knn(id_hasil):
         data_uji['bakat_kemampuan']
     ]
 
-    fitur_uji_detail = []
-
-    for index, nama in enumerate(nama_fitur):
-
-        fitur_uji_detail.append({
-            'nama': nama,
-            'nilai_asli': nilai_asli_uji[index],
-            'nilai_fitur': round(float(fitur_uji[index]), 4)
-        })
-
-    ranking_jarak = []
+    data_latih = []
+    label_latih = []
+    alumni_meta = []
 
     for data_alumni in alumni:
 
@@ -1088,13 +1080,68 @@ def susun_tahapan_knn(id_hasil):
             data_alumni[7]
         ]
 
+        data_latih.append(fitur_latih)
+        label_latih.append(data_alumni[8])
+        alumni_meta.append({
+            'id_alumni': data_alumni[0],
+            'nama_alumni': data_alumni[1],
+            'hasil_jurusan': data_alumni[8],
+            'fitur_latih': fitur_latih,
+            'nilai_asli_latih': nilai_asli_latih
+        })
+
+    hasil_knn_detail = knn_predict(
+        data_latih,
+        label_latih,
+        fitur_uji,
+        k=nilai_k
+    )
+
+    data_uji_normalisasi = hasil_knn_detail.get('data_uji_normalisasi', [])
+    min_values = hasil_knn_detail.get('min_values', [])
+    max_values = hasil_knn_detail.get('max_values', [])
+    range_values = hasil_knn_detail.get('range_values', [])
+
+    fitur_uji_detail = []
+
+    for index, nama in enumerate(nama_fitur):
+
+        fitur_uji_detail.append({
+            'nama': nama,
+            'nilai_asli': nilai_asli_uji[index],
+            'nilai_fitur': round(float(fitur_uji[index]), 4),
+            'nilai_min': min_values[index] if index < len(min_values) else 0,
+            'nilai_max': max_values[index] if index < len(max_values) else 0,
+            'nilai_range': range_values[index] if index < len(range_values) else 0,
+            'nilai_normalisasi': (
+                data_uji_normalisasi[index]
+                if index < len(data_uji_normalisasi)
+                else 0
+            )
+        })
+
+    ranking_jarak = []
+
+    for jarak_item in hasil_knn_detail.get('all_distances', []):
+
+        meta = alumni_meta[jarak_item['index']]
+        fitur_latih_normal = jarak_item.get('fitur_normalisasi', [])
+
         komponen = []
         total_kuadrat = 0
 
         for index, nama in enumerate(nama_fitur):
 
-            nilai_uji = float(fitur_uji[index])
-            nilai_latih = float(fitur_latih[index])
+            nilai_uji = (
+                float(data_uji_normalisasi[index])
+                if index < len(data_uji_normalisasi)
+                else 0
+            )
+            nilai_latih = (
+                float(fitur_latih_normal[index])
+                if index < len(fitur_latih_normal)
+                else 0
+            )
             selisih = nilai_uji - nilai_latih
             kuadrat = selisih ** 2
             total_kuadrat += kuadrat
@@ -1104,27 +1151,21 @@ def susun_tahapan_knn(id_hasil):
                 'nilai_uji': round(nilai_uji, 4),
                 'nilai_latih': round(nilai_latih, 4),
                 'nilai_asli_uji': nilai_asli_uji[index],
-                'nilai_asli_latih': nilai_asli_latih[index],
+                'nilai_asli_latih': meta['nilai_asli_latih'][index],
                 'selisih': round(selisih, 4),
                 'kuadrat': round(kuadrat, 4)
             })
 
-        jarak = total_kuadrat ** 0.5
-
         ranking_jarak.append({
-            'id_alumni': data_alumni[0],
-            'nama_alumni': data_alumni[1],
-            'hasil_jurusan': data_alumni[8],
-            'fitur_latih': [round(float(nilai), 4) for nilai in fitur_latih],
+            'id_alumni': meta['id_alumni'],
+            'nama_alumni': meta['nama_alumni'],
+            'hasil_jurusan': meta['hasil_jurusan'],
+            'fitur_latih': [round(float(nilai), 4) for nilai in meta['fitur_latih']],
+            'fitur_latih_normalisasi': fitur_latih_normal,
             'komponen': komponen,
             'total_kuadrat': round(total_kuadrat, 4),
-            'jarak': round(jarak, 4)
+            'jarak': round(float(jarak_item['distance']), 4)
         })
-
-    ranking_jarak = sorted(
-        ranking_jarak,
-        key=lambda item: item['jarak']
-    )
 
     for index, item in enumerate(ranking_jarak, start=1):
 
@@ -1151,8 +1192,8 @@ def susun_tahapan_knn(id_hasil):
         key=lambda item: (-item['jumlah'], item['label'])
     )
 
-    hasil_prediksi = voting_list[0]['label'] if voting_list else 'Belum Ada'
-    confidence_hitung = voting_list[0]['persentase'] if voting_list else 0
+    hasil_prediksi = hasil_knn_detail.get('hasil', 'Belum Ada')
+    confidence_hitung = hasil_knn_detail.get('confidence', 0)
     rata_jarak_hitung = round(
         sum(tetangga['jarak'] for tetangga in tetangga_terdekat) / len(tetangga_terdekat),
         4
