@@ -78,7 +78,7 @@ Hasil Rekomendasi KNN
     .table{
         border-radius: 15px;
         overflow: hidden;
-        min-width: 1250px;
+        min-width: 1360px;
         margin-bottom: 0;
     }
 
@@ -202,6 +202,32 @@ Hasil Rekomendasi KNN
         background: #b91c1c;
         color: white;
         transform: translateY(-2px);
+    }
+
+    .btn-detail{
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 9px 13px;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: .3s;
+    }
+
+    .btn-detail:hover{
+        background: #1d4ed8;
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .row-actions{
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
     }
 
     .confidence-badge{
@@ -474,14 +500,24 @@ Hasil Rekomendasi KNN
                                 </td>
 
                                 <td>
-                                    <a
-                                        href="/hapus_hasil_rekomendasi/{{ h[0] }}"
-                                        class="btn-delete"
-                                        onclick="return confirm('Yakin ingin menghapus hasil rekomendasi ini?')"
-                                    >
-                                        <i class="bi bi-trash"></i>
-                                        Hapus
-                                    </a>
+                                    <div class="row-actions">
+                                        <a
+                                            href="/tahapan_knn/{{ h[0] }}"
+                                            class="btn-detail"
+                                        >
+                                            <i class="bi bi-list-check"></i>
+                                            Tahapan
+                                        </a>
+
+                                        <a
+                                            href="/hapus_hasil_rekomendasi/{{ h[0] }}"
+                                            class="btn-delete"
+                                            onclick="return confirm('Yakin ingin menghapus hasil rekomendasi ini?')"
+                                        >
+                                            <i class="bi bi-trash"></i>
+                                            Hapus
+                                        </a>
+                                    </div>
                                 </td>
 
                             </tr>

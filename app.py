@@ -906,6 +906,274 @@ def buat_file_excel_hasil_rekomendasi(hasil_data, filename='hasil_rekomendasi_kn
     return file_path
 
 
+def susun_tahapan_knn(id_hasil):
+
+    pastikan_kolom_variabel_knn_baru()
+
+    cur = mysql.connection.cursor()
+
+    try:
+
+        cur.execute("""
+            SELECT
+                hasil_knn.id_hasil,
+                hasil_knn.nis,
+                COALESCE(siswa.nama_siswa, hasil_knn.nama_siswa) AS nama_siswa,
+                siswa.kelas,
+                COALESCE(
+                    hasil_knn.minat_mapel,
+                    input_terakhir.minat_mapel,
+                    chatbot_terakhir.minat_mapel,
+                    'BELUM MENGISI'
+                ) AS minat_mapel,
+                COALESCE(
+                    hasil_knn.bakat_kemampuan,
+                    input_terakhir.bakat_kemampuan,
+                    chatbot_terakhir.bakat_kemampuan,
+                    'BELUM MENGISI'
+                ) AS bakat_kemampuan,
+                hasil_knn.hasil_jurusan,
+                hasil_knn.nilai_k,
+                hasil_knn.jumlah_tetangga,
+                hasil_knn.rata_jarak,
+                hasil_knn.confidence,
+                DATE_FORMAT(
+                    hasil_knn.tanggal,
+                    '%%d-%%m-%%Y %%H:%%i:%%s WIB'
+                ) AS tanggal_wib,
+                input_terakhir.nilai_pancasila,
+                input_terakhir.nilai_matematika,
+                input_terakhir.nilai_indonesia,
+                input_terakhir.nilai_inggris
+            FROM hasil_knn
+
+            LEFT JOIN siswa
+                ON hasil_knn.nis = siswa.nis
+
+            LEFT JOIN (
+                SELECT input_siswa.*
+                FROM input_siswa
+                INNER JOIN (
+                    SELECT nis, MAX(id_input) AS max_id
+                    FROM input_siswa
+                    GROUP BY nis
+                ) latest_input
+                    ON input_siswa.nis = latest_input.nis
+                    AND input_siswa.id_input = latest_input.max_id
+            ) input_terakhir
+                ON hasil_knn.nis = input_terakhir.nis
+
+            LEFT JOIN (
+                SELECT hasil_chatbot.*
+                FROM hasil_chatbot
+                INNER JOIN (
+                    SELECT nis, MAX(id) AS max_id
+                    FROM hasil_chatbot
+                    GROUP BY nis
+                ) latest_chatbot
+                    ON hasil_chatbot.nis = latest_chatbot.nis
+                    AND hasil_chatbot.id = latest_chatbot.max_id
+            ) chatbot_terakhir
+                ON hasil_knn.nis = chatbot_terakhir.nis
+
+            WHERE hasil_knn.id_hasil=%s
+        """, [id_hasil])
+
+        hasil = cur.fetchone()
+
+        if not hasil:
+
+            return None
+
+        cur.execute("""
+            SELECT
+                id_alumni,
+                nama_alumni,
+                nilai_pancasila,
+                nilai_matematika,
+                nilai_bahasaindo,
+                nilai_bahasaingg,
+                minat_mapel,
+                bakat_kemampuan,
+                hasil_jurusan
+            FROM alumni
+            WHERE hasil_jurusan IS NOT NULL
+            AND hasil_jurusan != ''
+        """)
+
+        alumni = cur.fetchall()
+
+    finally:
+
+        cur.close()
+
+    nilai_k = int(hasil[7] or 3)
+    nilai_k = max(1, min(nilai_k, len(alumni))) if alumni else 0
+
+    data_uji = {
+        'id_hasil': hasil[0],
+        'nis': hasil[1],
+        'nama_siswa': hasil[2],
+        'kelas': hasil[3],
+        'minat_mapel': hasil[4],
+        'bakat_kemampuan': hasil[5],
+        'hasil_jurusan': hasil[6],
+        'nilai_k': nilai_k,
+        'jumlah_tetangga': hasil[8],
+        'rata_jarak': hasil[9],
+        'confidence': hasil[10],
+        'tanggal_wib': hasil[11],
+        'nilai_pancasila': hasil[12],
+        'nilai_matematika': hasil[13],
+        'nilai_bahasaindo': hasil[14],
+        'nilai_bahasaingg': hasil[15]
+    }
+
+    fitur_uji = buat_fitur_knn(
+        data_uji['nilai_pancasila'],
+        data_uji['nilai_matematika'],
+        data_uji['nilai_bahasaindo'],
+        data_uji['nilai_bahasaingg'],
+        data_uji['minat_mapel'],
+        data_uji['bakat_kemampuan']
+    )
+
+    nama_fitur = [
+        'Nilai Pancasila',
+        'Nilai Matematika',
+        'Nilai Bahasa Indonesia',
+        'Nilai Bahasa Inggris',
+        'Minat Mapel',
+        'Bakat/Kemampuan'
+    ]
+
+    nilai_asli_uji = [
+        data_uji['nilai_pancasila'],
+        data_uji['nilai_matematika'],
+        data_uji['nilai_bahasaindo'],
+        data_uji['nilai_bahasaingg'],
+        data_uji['minat_mapel'],
+        data_uji['bakat_kemampuan']
+    ]
+
+    fitur_uji_detail = []
+
+    for index, nama in enumerate(nama_fitur):
+
+        fitur_uji_detail.append({
+            'nama': nama,
+            'nilai_asli': nilai_asli_uji[index],
+            'nilai_fitur': round(float(fitur_uji[index]), 4)
+        })
+
+    ranking_jarak = []
+
+    for data_alumni in alumni:
+
+        fitur_latih = buat_fitur_knn(
+            data_alumni[2],
+            data_alumni[3],
+            data_alumni[4],
+            data_alumni[5],
+            data_alumni[6],
+            data_alumni[7]
+        )
+
+        nilai_asli_latih = [
+            data_alumni[2],
+            data_alumni[3],
+            data_alumni[4],
+            data_alumni[5],
+            data_alumni[6],
+            data_alumni[7]
+        ]
+
+        komponen = []
+        total_kuadrat = 0
+
+        for index, nama in enumerate(nama_fitur):
+
+            nilai_uji = float(fitur_uji[index])
+            nilai_latih = float(fitur_latih[index])
+            selisih = nilai_uji - nilai_latih
+            kuadrat = selisih ** 2
+            total_kuadrat += kuadrat
+
+            komponen.append({
+                'nama': nama,
+                'nilai_uji': round(nilai_uji, 4),
+                'nilai_latih': round(nilai_latih, 4),
+                'nilai_asli_uji': nilai_asli_uji[index],
+                'nilai_asli_latih': nilai_asli_latih[index],
+                'selisih': round(selisih, 4),
+                'kuadrat': round(kuadrat, 4)
+            })
+
+        jarak = total_kuadrat ** 0.5
+
+        ranking_jarak.append({
+            'id_alumni': data_alumni[0],
+            'nama_alumni': data_alumni[1],
+            'hasil_jurusan': data_alumni[8],
+            'fitur_latih': [round(float(nilai), 4) for nilai in fitur_latih],
+            'komponen': komponen,
+            'total_kuadrat': round(total_kuadrat, 4),
+            'jarak': round(jarak, 4)
+        })
+
+    ranking_jarak = sorted(
+        ranking_jarak,
+        key=lambda item: item['jarak']
+    )
+
+    for index, item in enumerate(ranking_jarak, start=1):
+
+        item['peringkat'] = index
+        item['tetangga_terpilih'] = index <= nilai_k
+
+    tetangga_terdekat = ranking_jarak[:nilai_k]
+    voting = {}
+
+    for tetangga in tetangga_terdekat:
+
+        label = tetangga['hasil_jurusan']
+        voting[label] = voting.get(label, 0) + 1
+
+    voting_list = sorted(
+        [
+            {
+                'label': label,
+                'jumlah': jumlah,
+                'persentase': round((jumlah / nilai_k) * 100, 2) if nilai_k else 0
+            }
+            for label, jumlah in voting.items()
+        ],
+        key=lambda item: (-item['jumlah'], item['label'])
+    )
+
+    hasil_prediksi = voting_list[0]['label'] if voting_list else 'Belum Ada'
+    confidence_hitung = voting_list[0]['persentase'] if voting_list else 0
+    rata_jarak_hitung = round(
+        sum(tetangga['jarak'] for tetangga in tetangga_terdekat) / len(tetangga_terdekat),
+        4
+    ) if tetangga_terdekat else 0
+
+    return {
+        'data_uji': data_uji,
+        'fitur_uji': fitur_uji_detail,
+        'nama_fitur': nama_fitur,
+        'jumlah_data_latih': len(alumni),
+        'nilai_k': nilai_k,
+        'ranking_jarak': ranking_jarak,
+        'tetangga_terdekat': tetangga_terdekat,
+        'komponen_contoh': tetangga_terdekat[0]['komponen'] if tetangga_terdekat else [],
+        'voting': voting_list,
+        'hasil_prediksi': hasil_prediksi,
+        'confidence_hitung': confidence_hitung,
+        'rata_jarak_hitung': rata_jarak_hitung
+    }
+
+
 # =========================================================
 # DECORATOR LOGIN
 # =========================================================
@@ -2541,6 +2809,37 @@ def hasil_rekomendasi():
         total_siswa=total_siswa,
         labels=labels,
         values=values
+    )
+
+
+@app.route('/tahapan_knn/<int:id_hasil>')
+@app.route('/admin/tahapan_knn/<int:id_hasil>')
+@login_required(roles=[1, 2])
+def tahapan_knn(id_hasil):
+
+    tahapan = susun_tahapan_knn(id_hasil)
+
+    if session.get('id_role') == 1:
+
+        kembali_url = url_for('admin_hasil_rekomendasi')
+        role_label = 'Administrator'
+
+    else:
+
+        kembali_url = url_for('hasil_rekomendasi')
+        role_label = 'Guru BK'
+
+    if not tahapan:
+
+        flash('Data tahapan KNN tidak ditemukan', 'warning')
+
+        return redirect(kembali_url)
+
+    return render_template(
+        'knn_tahapan.html',
+        tahapan=tahapan,
+        kembali_url=kembali_url,
+        role_label=role_label
     )
 # =========================================================
 # HAPUS HASIL REKOMENDASI - GURU

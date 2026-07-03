@@ -1,0 +1,421 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}
+Tahapan KNN
+{% endblock %}
+
+{% block content %}
+
+<style>
+    .content{
+        padding: 30px;
+    }
+
+    .page-header{
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        padding: 26px 30px;
+        margin-bottom: 24px;
+        box-shadow: 0 10px 28px rgba(15,23,42,0.07);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 18px;
+        flex-wrap: wrap;
+    }
+
+    .page-title{
+        font-size: 30px;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 6px;
+    }
+
+    .page-subtitle{
+        color: #64748b;
+        margin-bottom: 0;
+        line-height: 1.6;
+    }
+
+    .btn-back{
+        background: #0f172a;
+        color: #ffffff;
+        border-radius: 12px;
+        padding: 11px 16px;
+        text-decoration: none;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-back:hover{
+        background: #1e293b;
+        color: #ffffff;
+    }
+
+    .summary-grid{
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .summary-card,
+    .stage-card{
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        box-shadow: 0 10px 26px rgba(15,23,42,0.06);
+    }
+
+    .summary-card{
+        padding: 20px;
+    }
+
+    .summary-label{
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+
+    .summary-value{
+        color: #0f172a;
+        font-size: 22px;
+        font-weight: 800;
+    }
+
+    .stage-card{
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+
+    .stage-title{
+        color: #0f172a;
+        font-size: 21px;
+        font-weight: 800;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .stage-number{
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        background: #2563eb;
+        color: #ffffff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+    }
+
+    .formula-box{
+        background: #f8fafc;
+        border: 1px dashed #cbd5e1;
+        border-radius: 14px;
+        padding: 16px;
+        color: #334155;
+        font-weight: 700;
+        margin-bottom: 16px;
+    }
+
+    .table-responsive{
+        width: 100%;
+        overflow-x: auto;
+        border-radius: 14px;
+    }
+
+    .table{
+        margin-bottom: 0;
+        min-width: 860px;
+    }
+
+    .table th{
+        background: #f8fafc;
+        color: #0f172a;
+        font-weight: 800;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+
+    .table td{
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    .badge-soft-blue,
+    .badge-soft-green,
+    .badge-soft-yellow{
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 7px 12px;
+        font-weight: 800;
+        font-size: 13px;
+    }
+
+    .badge-soft-blue{
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .badge-soft-green{
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .badge-soft-yellow{
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .selected-row{
+        background: #eff6ff;
+    }
+
+    .result-box{
+        background: #ecfdf5;
+        border: 1px solid #bbf7d0;
+        border-radius: 16px;
+        padding: 18px;
+        color: #14532d;
+        font-weight: 800;
+    }
+
+    @media(max-width: 992px){
+        .content{
+            padding: 20px;
+        }
+
+        .summary-grid{
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media(max-width: 576px){
+        .summary-grid{
+            grid-template-columns: 1fr;
+        }
+
+        .page-title{
+            font-size: 25px;
+        }
+    }
+</style>
+
+<div class="content">
+
+    <div class="page-header">
+        <div>
+            <div class="page-title">
+                Tahapan Perhitungan KNN
+            </div>
+            <p class="page-subtitle">
+                Detail proses klasifikasi untuk {{ tahapan.data_uji.nama_siswa }} berdasarkan data uji siswa dan data latih alumni.
+            </p>
+        </div>
+
+        <a href="{{ kembali_url }}" class="btn-back">
+            <i class="bi bi-arrow-left"></i>
+            Kembali
+        </a>
+    </div>
+
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="summary-label">NIS</div>
+            <div class="summary-value">{{ tahapan.data_uji.nis }}</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Nilai K</div>
+            <div class="summary-value">{{ tahapan.nilai_k }}</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Hasil KNN</div>
+            <div class="summary-value">{{ tahapan.hasil_prediksi }}</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Confidence</div>
+            <div class="summary-value">{{ "%.2f"|format(tahapan.confidence_hitung|float) }}%</div>
+        </div>
+    </div>
+
+    <div class="stage-card">
+        <div class="stage-title">
+            <span class="stage-number">1</span>
+            Data Uji Siswa
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+                <thead>
+                    <tr>
+                        <th>Variabel</th>
+                        <th>Nilai Asli</th>
+                        <th>Nilai Fitur</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fitur in tahapan.fitur_uji %}
+                        <tr>
+                            <td>{{ fitur.nama }}</td>
+                            <td>{{ fitur.nilai_asli if fitur.nilai_asli is not none else '-' }}</td>
+                            <td>{{ "%.4f"|format(fitur.nilai_fitur|float) }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="stage-card">
+        <div class="stage-title">
+            <span class="stage-number">2</span>
+            Rumus Euclidean Distance
+        </div>
+
+        <div class="formula-box">
+            d = sqrt((x1-y1)^2 + (x2-y2)^2 + (x3-y3)^2 + (x4-y4)^2 + (x5-y5)^2 + (x6-y6)^2)
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+                <thead>
+                    <tr>
+                        <th>Variabel</th>
+                        <th>Data Uji</th>
+                        <th>Data Latih Terdekat</th>
+                        <th>Selisih</th>
+                        <th>Kuadrat</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in tahapan.komponen_contoh %}
+                        <tr>
+                            <td>{{ item.nama }}</td>
+                            <td>{{ "%.4f"|format(item.nilai_uji|float) }}</td>
+                            <td>{{ "%.4f"|format(item.nilai_latih|float) }}</td>
+                            <td>{{ "%.4f"|format(item.selisih|float) }}</td>
+                            <td>{{ "%.4f"|format(item.kuadrat|float) }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="stage-card">
+        <div class="stage-title">
+            <span class="stage-number">3</span>
+            Ranking Jarak Data Latih
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+                <thead>
+                    <tr>
+                        <th>Peringkat</th>
+                        <th>ID Alumni</th>
+                        <th>Nama Alumni</th>
+                        <th>Hasil Jurusan</th>
+                        <th>Total Kuadrat</th>
+                        <th>Jarak</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in tahapan.ranking_jarak %}
+                        <tr class="{{ 'selected-row' if item.tetangga_terpilih else '' }}">
+                            <td>{{ item.peringkat }}</td>
+                            <td>{{ item.id_alumni }}</td>
+                            <td>{{ item.nama_alumni }}</td>
+                            <td>{{ item.hasil_jurusan }}</td>
+                            <td>{{ "%.4f"|format(item.total_kuadrat|float) }}</td>
+                            <td>{{ "%.4f"|format(item.jarak|float) }}</td>
+                            <td>
+                                {% if item.tetangga_terpilih %}
+                                    <span class="badge-soft-blue">Tetangga Terpilih</span>
+                                {% else %}
+                                    <span class="badge-soft-yellow">Data Pembanding</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="stage-card">
+        <div class="stage-title">
+            <span class="stage-number">4</span>
+            K Tetangga Terdekat
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+                <thead>
+                    <tr>
+                        <th>Ranking</th>
+                        <th>Nama Alumni</th>
+                        <th>Label Jurusan</th>
+                        <th>Jarak</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in tahapan.tetangga_terdekat %}
+                        <tr>
+                            <td>{{ item.peringkat }}</td>
+                            <td>{{ item.nama_alumni }}</td>
+                            <td><span class="badge-soft-green">{{ item.hasil_jurusan }}</span></td>
+                            <td>{{ "%.4f"|format(item.jarak|float) }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="stage-card">
+        <div class="stage-title">
+            <span class="stage-number">5</span>
+            Voting dan Keputusan
+        </div>
+
+        <div class="table-responsive mb-3">
+            <table class="table table-bordered align-middle">
+                <thead>
+                    <tr>
+                        <th>Label Jurusan</th>
+                        <th>Jumlah Tetangga</th>
+                        <th>Persentase</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in tahapan.voting %}
+                        <tr>
+                            <td>{{ item.label }}</td>
+                            <td>{{ item.jumlah }}</td>
+                            <td>{{ "%.2f"|format(item.persentase|float) }}%</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="result-box">
+            Hasil rekomendasi: {{ tahapan.hasil_prediksi }}
+            dengan confidence {{ "%.2f"|format(tahapan.confidence_hitung|float) }}%
+            dan rata-rata jarak {{ "%.4f"|format(tahapan.rata_jarak_hitung|float) }}.
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
