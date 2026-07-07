@@ -240,6 +240,11 @@ Chatbot Konsultasi Jurusan SMA
         line-height: 1.35;
     }
 
+    .bakat-question-text{
+        margin-top: 6px;
+        color: #475569;
+    }
+
     .bakat-option-text{
         color: #475569;
         font-size: 13px;
@@ -836,6 +841,7 @@ Chatbot Konsultasi Jurusan SMA
     var testStarted = false;
     var currentQuestion = 0;
     var waitingMapelChoice = false;
+    var waitingBakatChoice = false;
     var mapelChoiceMode = '';
 
     var hasilMinatMapel = '';
@@ -928,6 +934,30 @@ Chatbot Konsultasi Jurusan SMA
             dimension: "bakat",
             option1: "Tugas analisis angka, percobaan, atau penyelesaian soal",
             option2: "Tugas teknologi, presentasi, penulisan, atau pengolahan informasi"
+        },
+        {
+            text: "Bakat/kecenderungan: ketika diberi proyek sekolah, peran mana yang paling nyaman kamu ambil?",
+            dimension: "bakat",
+            option1: "Menyusun langkah kerja, menghitung kebutuhan, mengukur hasil, dan mengecek ketepatan data",
+            option2: "Membuat media digital, menyusun narasi, mengatur tampilan, dan mempresentasikan hasil"
+        },
+        {
+            text: "Bakat/kecenderungan: materi seperti apa yang biasanya lebih cepat kamu pahami?",
+            dimension: "bakat",
+            option1: "Grafik, tabel, rumus, percobaan sains, dan hubungan antarvariabel",
+            option2: "Alur aplikasi, teks bahasa, instruksi teknologi, dan cara menyampaikan informasi"
+        },
+        {
+            text: "Bakat/kecenderungan: saat menghadapi tugas sulit, strategi mana yang lebih sering kamu pakai?",
+            dimension: "bakat",
+            option1: "Membuat langkah penyelesaian, mencoba rumus, membandingkan data, lalu menarik kesimpulan",
+            option2: "Mencari referensi, membuat contoh visual, mencoba aplikasi, lalu menjelaskan ulang dengan bahasa sendiri"
+        },
+        {
+            text: "Bakat/kecenderungan: hasil kerja seperti apa yang paling sering membuat kamu percaya diri?",
+            dimension: "bakat",
+            option1: "Jawaban hitungan yang tepat, laporan percobaan yang rapi, atau analisis data yang jelas",
+            option2: "Produk digital, tulisan/presentasi yang mudah dipahami, atau solusi berbasis teknologi"
         }
     ];
 
@@ -1072,6 +1102,7 @@ Chatbot Konsultasi Jurusan SMA
         testStarted = false;
         currentQuestion = 0;
         waitingMapelChoice = false;
+        waitingBakatChoice = false;
         mapelChoiceMode = '';
         hasilMinatMapel = '';
         hasilBakatKemampuan = '';
@@ -1212,6 +1243,24 @@ Chatbot Konsultasi Jurusan SMA
         );
     }
 
+    function getBakatQuestionPreviewHtml(question, optionKey){
+        var option = bakatOptions[optionKey];
+        var tagsHtml = '';
+
+        option.tags.forEach(function(tag){
+            tagsHtml += '<span>' + tag + '</span>';
+        });
+
+        return (
+            '<div class="bakat-card">' +
+                '<span class="bakat-icon"><i class="bi ' + option.icon + '"></i></span>' +
+                '<div class="bakat-option-title">' + option.title + '</div>' +
+                '<div class="bakat-option-text">' + question['option' + optionKey] + '</div>' +
+                '<div class="bakat-option-tags">' + tagsHtml + '</div>' +
+            '</div>'
+        );
+    }
+
     function getChoicePreviewHtml(optionKey, mode){
         if(mode === 'bakat'){
             return getBakatPreviewHtml(optionKey);
@@ -1281,14 +1330,54 @@ Chatbot Konsultasi Jurusan SMA
         scrollBottom();
     }
 
+    function showBakatQuestion(){
+        hideWelcome();
+
+        if(currentQuestion >= questions.length){
+            showResult();
+            return;
+        }
+
+        waitingBakatChoice = true;
+
+        var question = questions[currentQuestion];
+        var row = document.createElement('div');
+
+        row.className = 'message-row bot';
+
+        row.innerHTML =
+            '<div class="message-wrap">' +
+                getBotAvatar() +
+                '<div class="bubble">' +
+                    '<div><b>Pertanyaan bakat/kecenderungan ' + (currentQuestion + 1) + ' dari ' + questions.length + '</b></div>' +
+                    '<div class="bakat-question-text">' + question.text + '</div>' +
+                    '<div class="mapel-choice">' +
+                        '<button type="button" class="mapel-option" data-bakat-choice="1">' +
+                            getBakatQuestionPreviewHtml(question, '1') +
+                            '<span class="mapel-label"><span class="mapel-radio"></span>Pilih jawaban ini</span>' +
+                        '</button>' +
+                        '<button type="button" class="mapel-option" data-bakat-choice="2">' +
+                            getBakatQuestionPreviewHtml(question, '2') +
+                            '<span class="mapel-label"><span class="mapel-radio"></span>Pilih jawaban ini</span>' +
+                        '</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+
+        chatContainer.appendChild(row);
+
+        row.querySelectorAll('[data-bakat-choice]').forEach(function(button){
+            button.addEventListener('click', function(){
+                chooseBakatAnswer(button.getAttribute('data-bakat-choice'), false);
+            });
+        });
+
+        scrollBottom();
+    }
+
     function lanjutPertanyaanBakat(){
         if(currentQuestion < questions.length){
-            testStarted = true;
-
-            addMessage(
-                getQuestionText(questions[currentQuestion]),
-                'bot'
-            );
+            showBakatQuestion();
         }else{
             showResult();
         }
@@ -1353,7 +1442,7 @@ Chatbot Konsultasi Jurusan SMA
             );
 
             setTimeout(function(){
-                showMapelChoice('bakat');
+                showBakatQuestion();
             }, 700);
 
             return;
@@ -1393,6 +1482,67 @@ Chatbot Konsultasi Jurusan SMA
         );
 
         finalizeChatbotResult();
+    }
+
+    function chooseBakatAnswer(optionKey, fromText){
+        var question = questions[currentQuestion];
+
+        if(!question || (optionKey !== '1' && optionKey !== '2')){
+            addMessage(
+                "Mohon pilih salah satu card jawaban bakat/kecenderungan.",
+                'bot'
+            );
+
+            return;
+        }
+
+        lockMapelChoiceButtons();
+
+        waitingBakatChoice = false;
+        scores[question.dimension + '_' + optionKey] += 1;
+
+        if(!fromText){
+            addMessage(question['option' + optionKey], 'user');
+        }
+
+        currentQuestion++;
+
+        if(currentQuestion < questions.length){
+            setTimeout(function(){
+                showBakatQuestion();
+            }, 550);
+
+            return;
+        }
+
+        showResult();
+    }
+
+    function handleBakatChoice(lower){
+        if(
+            lower === '1' ||
+            lower === 'a' ||
+            lower.includes('pilihan 1') ||
+            lower.includes('jawaban 1')
+        ){
+            chooseBakatAnswer('1', true);
+            return;
+        }
+
+        if(
+            lower === '2' ||
+            lower === 'b' ||
+            lower.includes('pilihan 2') ||
+            lower.includes('jawaban 2')
+        ){
+            chooseBakatAnswer('2', true);
+            return;
+        }
+
+        addMessage(
+            "Mohon pilih salah satu card jawaban bakat/kecenderungan.",
+            'bot'
+        );
     }
 
     function handleMapelChoice(lower){
@@ -1474,7 +1624,7 @@ Chatbot Konsultasi Jurusan SMA
                 "HASIL CHATBOT\n\n" +
                 "Minat Mapel: " + hasilMinatMapel + "\n\n" +
                 "Skor bakat/kecenderungan kemampuan kamu belum menunjukkan satu kelompok yang dominan.\n\n" +
-                "Silakan pilih kelompok yang paling menggambarkan kemampuan kamu.",
+                "Silakan pilih card yang paling menggambarkan kemampuan kamu.",
                 'bot'
             );
 
@@ -1677,6 +1827,11 @@ Chatbot Konsultasi Jurusan SMA
 
         if(waitingMapelChoice){
             handleMapelChoice(lower);
+            return;
+        }
+
+        if(waitingBakatChoice){
+            handleBakatChoice(lower);
             return;
         }
 
