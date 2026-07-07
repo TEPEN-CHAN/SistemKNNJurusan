@@ -326,7 +326,7 @@ Evaluasi Sistem
             </div>
 
             <div class="topbar-subtitle">
-                Analisis hasil rekomendasi data uji berdasarkan confidence, rata-rata jarak, distribusi hasil KNN, dan metrik evaluasi.
+                Analisis hasil rekomendasi dan evaluasi metode KNN menggunakan split data alumni 80:20.
             </div>
 
         </div>
@@ -613,7 +613,7 @@ Evaluasi Sistem
         </div>
 
         <div class="info-box mb-3">
-            Baris menunjukkan label data uji dari hasil chatbot, sedangkan kolom menunjukkan jurusan hasil prediksi KNN.
+            Baris menunjukkan label aktual data uji alumni, sedangkan kolom menunjukkan hasil prediksi KNN.
             Angka diagonal hijau adalah prediksi yang benar.
         </div>
 
@@ -678,7 +678,7 @@ Evaluasi Sistem
 
                         <tr>
                             <td colspan="{{ confusion_labels|length + 1 }}" class="text-center text-muted">
-                                Confusion Matrix belum tersedia. Minimal dibutuhkan satu hasil KNN data uji yang memiliki label pembanding valid.
+                                Confusion Matrix belum tersedia. Minimal dibutuhkan data alumni latih dan data alumni uji yang memiliki label valid.
                             </td>
                         </tr>
 
@@ -712,14 +712,19 @@ Evaluasi Sistem
 
         <div class="metric-note">
 
-            <b>Accuracy, Precision, Recall, dan F1-Score</b> dihitung dari hasil KNN pada data uji.
-            Label pembanding data uji diambil dari <b>Kelompok Mapel (CHATBOT)</b>, sedangkan prediksi sistem diambil dari
-            <b>Hasil Jurusan (KNN)</b> pada tabel hasil rekomendasi.
+            <b>Accuracy, Precision, Recall, dan F1-Score</b> dihitung dari evaluasi split data alumni.
+            Data alumni dibagi menjadi <b>{{ rasio_split_evaluasi }}</b>, yaitu data latih untuk tetangga KNN dan data uji untuk pengujian.
             <br><br>
-            Jumlah hasil KNN yang dihitung:
+            Total data alumni valid:
+            <b>{{ total_data_alumni_evaluasi }}</b> data.
+            <br>
+            Jumlah data latih:
+            <b>{{ jumlah_data_latih_evaluasi }}</b> data.
+            <br>
+            Jumlah data uji:
             <b>{{ jumlah_data_evaluasi }}</b> data uji.
             <br>
-            Nilai K dari hasil KNN:
+            Nilai K evaluasi:
             <b>{{ nilai_k_evaluasi }}</b>.
             <br>
             Sumber perbandingan metrik:
@@ -774,7 +779,7 @@ Evaluasi Sistem
     <div class="card-custom">
 
         <div class="section-title">
-            Detail Hasil KNN Data Uji
+            Detail Evaluasi Split Data Alumni
         </div>
 
         <div class="table-responsive">
@@ -786,17 +791,18 @@ Evaluasi Sistem
                     <tr>
 
                         <th>No</th>
-                        <th>NIS</th>
-                        <th>Nama Siswa</th>
-                        <th>Kelas</th>
-                        <th>Label Data Uji (CHATBOT)</th>
+                        <th>ID Alumni</th>
+                        <th>Nama Alumni</th>
+                        <th>Label Aktual Alumni</th>
                         <th>Prediksi KNN</th>
                         <th>K</th>
                         <th>Jumlah Tetangga</th>
                         <th>Rata Jarak</th>
                         <th>Confidence</th>
                         <th>Status</th>
-                        <th>Tanggal</th>
+                        <th>Nilai Mapel</th>
+                        <th>Minat Mapel</th>
+                        <th>Bakat/Kemampuan</th>
 
                     </tr>
 
@@ -823,7 +829,9 @@ Evaluasi Sistem
                                 </td>
 
                                 <td>
-                                    {{ e[2] }}
+                                    <span class="badge-custom badge-jurusan">
+                                        {{ e[2] }}
+                                    </span>
                                 </td>
 
                                 <td>
@@ -833,9 +841,7 @@ Evaluasi Sistem
                                 </td>
 
                                 <td>
-                                    <span class="badge-custom badge-jurusan">
-                                        {{ e[4] }}
-                                    </span>
+                                    {{ e[4] }}
                                 </td>
 
                                 <td>
@@ -843,26 +849,22 @@ Evaluasi Sistem
                                 </td>
 
                                 <td>
-                                    {{ e[6] }}
+                                    {{ "%.4f"|format(e[6]|float) }}
                                 </td>
 
                                 <td>
-                                    {{ "%.4f"|format(e[7]|float) }}
-                                </td>
-
-                                <td>
-                                    {{ "%.2f"|format(e[8]|float) }}%
+                                    {{ "%.2f"|format(e[7]|float) }}%
                                 </td>
 
                                 <td>
 
-                                    {% if e[9] == 'Benar' %}
+                                    {% if e[8] == 'Benar' %}
 
                                         <span class="badge-custom badge-correct">
                                             Benar
                                         </span>
 
-                                    {% elif e[9] == 'Salah' %}
+                                    {% elif e[8] == 'Salah' %}
 
                                         <span class="badge-custom badge-wrong">
                                             Salah
@@ -879,7 +881,15 @@ Evaluasi Sistem
                                 </td>
 
                                 <td>
+                                    {{ e[9] if e[9] else '-' }}
+                                </td>
+
+                                <td>
                                     {{ e[10] if e[10] else '-' }}
+                                </td>
+
+                                <td>
+                                    {{ e[11] if e[11] else '-' }}
                                 </td>
 
                             </tr>
@@ -890,8 +900,8 @@ Evaluasi Sistem
 
                         <tr>
 
-                            <td colspan="12" class="text-center text-muted">
-                                Hasil KNN data uji belum tersedia
+                            <td colspan="13" class="text-center text-muted">
+                                Evaluasi split data alumni belum tersedia
                             </td>
 
                         </tr>

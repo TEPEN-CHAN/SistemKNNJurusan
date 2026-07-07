@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from knn import knn_predict
 from chatbot import chatbot_response
 import os
+import random
 
 try:
     from dotenv import load_dotenv
@@ -202,6 +203,48 @@ def buat_confusion_matrix(y_true, y_pred):
         matrix.append(row)
 
     return labels, matrix
+
+
+def split_data_alumni_stratified(alumni, test_ratio=0.2, seed=42):
+
+    rng = random.Random(seed)
+    data_per_label = {}
+
+    for row in alumni:
+
+        label = normalisasi_variabel_kelompok(row[8])
+        data_per_label.setdefault(label, []).append(row)
+
+    data_latih = []
+    data_uji = []
+
+    for label in sorted(data_per_label.keys()):
+
+        rows = list(data_per_label[label])
+        rng.shuffle(rows)
+
+        if len(rows) == 1:
+
+            data_latih.extend(rows)
+            continue
+
+        jumlah_uji = max(1, round(len(rows) * test_ratio))
+
+        if jumlah_uji >= len(rows):
+
+            jumlah_uji = len(rows) - 1
+
+        data_uji.extend(rows[:jumlah_uji])
+        data_latih.extend(rows[jumlah_uji:])
+
+    if not data_uji and len(data_latih) > 1:
+
+        rows = list(data_latih)
+        rng.shuffle(rows)
+        data_uji = rows[:1]
+        data_latih = rows[1:]
+
+    return data_latih, data_uji
 
 
 # =========================================================
@@ -4144,12 +4187,15 @@ def admin_evaluasi_sistem():
         values_jurusan.append(row[1])
 
     # =====================================================
-    # EVALUASI AKURASI BERDASARKAN HASIL KNN DATA UJI
-    # Label data uji diambil dari kelompok_mapel hasil chatbot.
-    # Prediksi diambil dari hasil_jurusan pada tabel hasil_knn.
+    # EVALUASI AKURASI BERDASARKAN SPLIT DATA ALUMNI
+    # Label aktual diambil dari hasil_jurusan alumni.
+    # Prediksi dihasilkan KNN dari data uji alumni.
     # =====================================================
-    nilai_k_evaluasi = '-'
+    nilai_k_evaluasi = 5
     jumlah_data_evaluasi = 0
+    jumlah_data_latih_evaluasi = 0
+    total_data_alumni_evaluasi = 0
+    rasio_split_evaluasi = '80:20'
     metrik = {
         'accuracy': 0,
         'precision': 0,
@@ -4160,8 +4206,8 @@ def admin_evaluasi_sistem():
     confusion_matrix = []
     peringatan_evaluasi = []
     sumber_evaluasi = [
-        'Kelompok Mapel (CHATBOT) sebagai label data uji',
-        'Hasil Jurusan (KNN) sebagai prediksi sistem'
+        'Hasil Jurusan Alumni sebagai label aktual',
+        'Prediksi KNN pada data uji alumni'
     ]
     data_evaluasi = []
 
@@ -4169,133 +4215,188 @@ def admin_evaluasi_sistem():
 
         cur.execute("""
             SELECT
-                hasil_knn.nis,
-                COALESCE(siswa.nama_siswa, hasil_knn.nama_siswa) AS nama_siswa,
-                siswa.kelas,
-                COALESCE(chatbot_terakhir.kelompok_mapel, '') AS label_data_uji,
-                hasil_knn.hasil_jurusan,
-                hasil_knn.nilai_k,
-                hasil_knn.jumlah_tetangga,
-                hasil_knn.rata_jarak,
-                hasil_knn.confidence,
-                DATE_FORMAT(
-                    hasil_knn.tanggal,
-                    '%d-%m-%Y %H:%i:%s WIB'
-                ) AS tanggal_wib
-            FROM hasil_knn
-
-            JOIN siswa
-                ON hasil_knn.nis = siswa.nis
-
-            LEFT JOIN (
-                SELECT hc.*
-                FROM hasil_chatbot hc
-                INNER JOIN (
-                    SELECT nis, MAX(id) AS max_id
-                    FROM hasil_chatbot
-                    GROUP BY nis
-                ) latest
-                    ON hc.nis = latest.nis
-                    AND hc.id = latest.max_id
-            ) chatbot_terakhir
-                ON hasil_knn.nis = chatbot_terakhir.nis
-
-            ORDER BY hasil_knn.id_hasil DESC
+                id_alumni,
+                nama_alumni,
+                nilai_pancasila,
+                nilai_matematika,
+                nilai_bahasaindo,
+                nilai_bahasaingg,
+                minat_mapel,
+                bakat_kemampuan,
+                hasil_jurusan
+            FROM alumni
+            WHERE hasil_jurusan IS NOT NULL
+            AND hasil_jurusan != ''
+            ORDER BY id_alumni ASC
         """)
 
-        data_hasil_knn = cur.fetchall()
+        data_alumni = cur.fetchall()
 
         y_true = []
         y_pred = []
-        nilai_k_dipakai = set()
         jumlah_tidak_dihitung = 0
+        jumlah_label_tidak_valid = 0
         label_valid = {
             'Kelompok Mapel 1',
             'Kelompok Mapel 2'
         }
 
-        for row in data_hasil_knn:
+        data_alumni_valid = []
 
-            label_data_uji = normalisasi_variabel_kelompok(row[3])
-            hasil_prediksi = normalisasi_variabel_kelompok(row[4])
+        for row in data_alumni:
 
-            label_data_uji_valid = label_data_uji in label_valid
-            hasil_prediksi_valid = hasil_prediksi in label_valid
+            label_aktual = normalisasi_variabel_kelompok(row[8])
 
-            if label_data_uji_valid and hasil_prediksi_valid:
+            if label_aktual in label_valid:
 
-                status_evaluasi = (
-                    'Benar'
-                    if label_data_uji == hasil_prediksi
-                    else 'Salah'
-                )
-
-                y_true.append(label_data_uji)
-                y_pred.append(hasil_prediksi)
-
-                if row[5] is not None:
-
-                    nilai_k_dipakai.add(row[5])
+                data_alumni_valid.append(row)
 
             else:
 
-                status_evaluasi = 'Tidak dihitung'
-                jumlah_tidak_dihitung += 1
+                jumlah_label_tidak_valid += 1
 
-            data_evaluasi.append((
-                row[0],
-                row[1],
-                row[2],
-                label_data_uji if label_data_uji_valid else (row[3] or '-'),
-                hasil_prediksi if hasil_prediksi_valid else (row[4] or '-'),
-                row[5],
-                row[6],
-                row[7],
-                row[8],
-                status_evaluasi,
-                row[9]
-            ))
+        total_data_alumni_evaluasi = len(data_alumni_valid)
 
-        jumlah_data_evaluasi = len(y_true)
+        if len(data_alumni_valid) >= 2:
 
-        if jumlah_data_evaluasi > 0:
+            data_latih_eval, data_uji_eval = split_data_alumni_stratified(
+                data_alumni_valid,
+                test_ratio=0.2,
+                seed=42
+            )
+
+            jumlah_data_latih_evaluasi = len(data_latih_eval)
+            jumlah_data_evaluasi = len(data_uji_eval)
+
+            if data_latih_eval and data_uji_eval:
+
+                if nilai_k_evaluasi > len(data_latih_eval):
+
+                    nilai_k_evaluasi = len(data_latih_eval)
+
+                data_latih = []
+                label_latih = []
+
+                for alumni_latih in data_latih_eval:
+
+                    fitur_latih = buat_fitur_knn(
+                        alumni_latih[2],
+                        alumni_latih[3],
+                        alumni_latih[4],
+                        alumni_latih[5],
+                        alumni_latih[6],
+                        alumni_latih[7]
+                    )
+
+                    data_latih.append(fitur_latih)
+                    label_latih.append(normalisasi_variabel_kelompok(alumni_latih[8]))
+
+                for alumni_uji in data_uji_eval:
+
+                    label_aktual = normalisasi_variabel_kelompok(alumni_uji[8])
+                    fitur_uji = buat_fitur_knn(
+                        alumni_uji[2],
+                        alumni_uji[3],
+                        alumni_uji[4],
+                        alumni_uji[5],
+                        alumni_uji[6],
+                        alumni_uji[7]
+                    )
+
+                    hasil_knn_eval = knn_predict(
+                        data_latih,
+                        label_latih,
+                        fitur_uji,
+                        k=nilai_k_evaluasi
+                    )
+
+                    hasil_prediksi = normalisasi_variabel_kelompok(
+                        hasil_knn_eval.get('hasil')
+                    )
+                    hasil_prediksi_valid = hasil_prediksi in label_valid
+                    neighbors = hasil_knn_eval.get('neighbors', [])
+                    rata_jarak_eval = (
+                        sum(float(n['distance']) for n in neighbors)
+                        / len(neighbors)
+                    ) if neighbors else 0
+                    confidence_eval = hasil_knn_eval.get('confidence', 0)
+
+                    if hasil_prediksi_valid:
+
+                        status_evaluasi = (
+                            'Benar'
+                            if label_aktual == hasil_prediksi
+                            else 'Salah'
+                        )
+
+                        y_true.append(label_aktual)
+                        y_pred.append(hasil_prediksi)
+
+                    else:
+
+                        status_evaluasi = 'Tidak dihitung'
+                        jumlah_tidak_dihitung += 1
+
+                    data_evaluasi.append((
+                        alumni_uji[0],
+                        alumni_uji[1],
+                        label_aktual,
+                        hasil_prediksi if hasil_prediksi_valid else hasil_knn_eval.get('hasil', '-'),
+                        nilai_k_evaluasi,
+                        len(neighbors),
+                        round(rata_jarak_eval, 4),
+                        confidence_eval,
+                        status_evaluasi,
+                        f'{alumni_uji[2]}, {alumni_uji[3]}, {alumni_uji[4]}, {alumni_uji[5]}',
+                        alumni_uji[6],
+                        alumni_uji[7]
+                    ))
+
+        if y_true:
 
             metrik = hitung_metrik_evaluasi(y_true, y_pred)
             confusion_labels, confusion_matrix = buat_confusion_matrix(y_true, y_pred)
 
-        if not data_hasil_knn:
+            if len(set(y_true)) < 2:
+
+                peringatan_evaluasi.append(
+                    'Data uji alumni hasil split hanya memiliki satu kelas, sehingga metrik dapat terlihat terlalu tinggi jika data alumni masih sedikit atau tidak seimbang.'
+                )
+
+        if not data_alumni:
 
             peringatan_evaluasi.append(
-                'Belum ada hasil KNN data uji yang dapat dievaluasi.'
+                'Data alumni belum tersedia sehingga evaluasi split 80:20 belum dapat dihitung.'
             )
 
-        elif jumlah_data_evaluasi == 0:
+        elif total_data_alumni_evaluasi < 2:
 
             peringatan_evaluasi.append(
-                'Metrik belum dapat dihitung karena belum ada hasil KNN yang memiliki label data uji valid dari chatbot.'
+                'Minimal dibutuhkan 2 data alumni berlabel valid untuk melakukan split data latih dan data uji.'
             )
 
-        elif jumlah_tidak_dihitung > 0:
+        elif not y_true:
 
             peringatan_evaluasi.append(
-                f'{jumlah_tidak_dihitung} hasil KNN tidak dihitung karena label data uji atau prediksi KNN belum valid.'
+                'Metrik belum dapat dihitung karena hasil prediksi data uji alumni belum memiliki label valid.'
             )
 
-        if len(nilai_k_dipakai) == 1:
+        if jumlah_label_tidak_valid > 0:
 
-            nilai_k_evaluasi = list(nilai_k_dipakai)[0]
+            peringatan_evaluasi.append(
+                f'{jumlah_label_tidak_valid} data alumni tidak dipakai karena hasil_jurusan belum valid.'
+            )
 
-        elif len(nilai_k_dipakai) > 1:
+        if jumlah_tidak_dihitung > 0:
 
-            nilai_k_evaluasi = ', '.join(
-                str(nilai)
-                for nilai in sorted(nilai_k_dipakai)
+            peringatan_evaluasi.append(
+                f'{jumlah_tidak_dihitung} data uji alumni tidak dihitung karena prediksi KNN belum valid.'
             )
 
     except Exception as e:
 
         flash(
-            f'Gagal mengambil evaluasi hasil KNN data uji: {str(e)}',
+            f'Gagal menghitung evaluasi split data alumni: {str(e)}',
             'warning'
         )
 
@@ -4322,6 +4423,9 @@ def admin_evaluasi_sistem():
         recall=metrik['recall'],
         f1_score=metrik['f1_score'],
         jumlah_data_evaluasi=jumlah_data_evaluasi,
+        jumlah_data_latih_evaluasi=jumlah_data_latih_evaluasi,
+        total_data_alumni_evaluasi=total_data_alumni_evaluasi,
+        rasio_split_evaluasi=rasio_split_evaluasi,
         nilai_k_evaluasi=nilai_k_evaluasi,
         confusion_labels=confusion_labels,
         confusion_matrix=confusion_matrix,
