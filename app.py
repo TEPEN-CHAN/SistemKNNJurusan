@@ -2660,7 +2660,7 @@ def proses_knn():
 # =========================================================
 # EKSEKUSI PROSES KNN
 # =========================================================
-@app.route('/proses_semua_knn')
+@app.route('/proses_semua_knn', methods=['GET', 'POST'])
 @login_required(roles=[2])
 def proses_semua_knn():
 
@@ -2670,37 +2670,73 @@ def proses_semua_knn():
 
     try:
 
-        nilai_k = 3
+        nilai_k = 5
+        proses_ulang = request.method == 'POST' and request.form.get('proses_ulang') == '1'
 
         # =====================================================
         # DATA SISWA UJI
         # Fitur KNN:
         # nilai mapel, minat mapel, bakat/kecenderungan kemampuan
         # =====================================================
-        cur.execute("""
-            SELECT
-                input_siswa.id_input,
-                input_siswa.nis,
-                siswa.nama_siswa,
-                input_siswa.nilai_pancasila,
-                input_siswa.nilai_matematika,
-                input_siswa.nilai_indonesia,
-                input_siswa.nilai_inggris,
-                input_siswa.minat_mapel,
-                input_siswa.bakat_kemampuan
-            FROM input_siswa
+        if proses_ulang:
 
-            JOIN siswa
-                ON input_siswa.nis = siswa.nis
+            cur.execute("""
+                SELECT
+                    input_siswa.id_input,
+                    input_siswa.nis,
+                    siswa.nama_siswa,
+                    input_siswa.nilai_pancasila,
+                    input_siswa.nilai_matematika,
+                    input_siswa.nilai_indonesia,
+                    input_siswa.nilai_inggris,
+                    input_siswa.minat_mapel,
+                    input_siswa.bakat_kemampuan
+                FROM input_siswa
 
-            WHERE input_siswa.status_proses='belum'
-        """)
+                JOIN (
+                    SELECT nis, MAX(id_input) AS max_id
+                    FROM input_siswa
+                    GROUP BY nis
+                ) input_terakhir
+                    ON input_siswa.nis = input_terakhir.nis
+                    AND input_siswa.id_input = input_terakhir.max_id
+
+                JOIN siswa
+                    ON input_siswa.nis = siswa.nis
+            """)
+
+        else:
+
+            cur.execute("""
+                SELECT
+                    input_siswa.id_input,
+                    input_siswa.nis,
+                    siswa.nama_siswa,
+                    input_siswa.nilai_pancasila,
+                    input_siswa.nilai_matematika,
+                    input_siswa.nilai_indonesia,
+                    input_siswa.nilai_inggris,
+                    input_siswa.minat_mapel,
+                    input_siswa.bakat_kemampuan
+                FROM input_siswa
+
+                JOIN siswa
+                    ON input_siswa.nis = siswa.nis
+
+                WHERE input_siswa.status_proses='belum'
+            """)
 
         semua_siswa = cur.fetchall()
 
         if len(semua_siswa) == 0:
 
-            flash('Tidak ada data siswa yang siap diproses KNN', 'warning')
+            if proses_ulang:
+
+                flash('Tidak ada data nilai siswa yang dapat diproses ulang KNN', 'warning')
+
+            else:
+
+                flash('Tidak ada data siswa yang siap diproses KNN', 'warning')
 
             cur.close()
 
@@ -2830,9 +2866,17 @@ def proses_semua_knn():
 
         mysql.connection.commit()
 
-        simpan_log(f'Menjalankan proses KNN guru dengan K={nilai_k} untuk {jumlah_diproses} siswa')
+        if proses_ulang:
 
-        flash(f'Proses KNN berhasil. {jumlah_diproses} siswa diproses dengan K={nilai_k}', 'success')
+            simpan_log(f'Menjalankan proses ulang KNN guru dengan K={nilai_k} untuk {jumlah_diproses} siswa')
+
+            flash(f'Proses ulang KNN berhasil. {jumlah_diproses} siswa diproses ulang dengan K={nilai_k}', 'success')
+
+        else:
+
+            simpan_log(f'Menjalankan proses KNN guru dengan K={nilai_k} untuk {jumlah_diproses} siswa')
+
+            flash(f'Proses KNN berhasil. {jumlah_diproses} siswa diproses dengan K={nilai_k}', 'success')
 
     except Exception as e:
 
@@ -4823,51 +4867,104 @@ def admin_proses_semua_knn():
 
             nilai_k = 1
 
+        proses_ulang = request.form.get('proses_ulang') == '1'
+
         # =================================================
         # DATA SISWA UJI
         # Gabungan:
         # input_siswa + siswa + hasil_chatbot
         # =================================================
-        cur.execute("""
-            SELECT
-                input_siswa.id_input,
-                input_siswa.nis,
-                siswa.nama_siswa,
-                siswa.kelas,
-                COALESCE(input_siswa.minat_mapel, hasil_chatbot.minat_mapel, 'BELUM MENGISI') AS minat_mapel,
-                COALESCE(input_siswa.bakat_kemampuan, hasil_chatbot.bakat_kemampuan, 'BELUM MENGISI') AS bakat_kemampuan,
+        if proses_ulang:
 
-                input_siswa.nilai_pancasila,
-                input_siswa.nilai_matematika,
-                input_siswa.nilai_indonesia,
-                input_siswa.nilai_inggris
+            cur.execute("""
+                SELECT
+                    input_siswa.id_input,
+                    input_siswa.nis,
+                    siswa.nama_siswa,
+                    siswa.kelas,
+                    COALESCE(input_siswa.minat_mapel, hasil_chatbot.minat_mapel, 'BELUM MENGISI') AS minat_mapel,
+                    COALESCE(input_siswa.bakat_kemampuan, hasil_chatbot.bakat_kemampuan, 'BELUM MENGISI') AS bakat_kemampuan,
 
-            FROM input_siswa
+                    input_siswa.nilai_pancasila,
+                    input_siswa.nilai_matematika,
+                    input_siswa.nilai_indonesia,
+                    input_siswa.nilai_inggris
 
-            JOIN siswa
-                ON input_siswa.nis = siswa.nis
+                FROM input_siswa
 
-            LEFT JOIN (
-                SELECT hc.*
-                FROM hasil_chatbot hc
-                INNER JOIN (
-                    SELECT nis, MAX(id) AS max_id
-                    FROM hasil_chatbot
+                JOIN (
+                    SELECT nis, MAX(id_input) AS max_id
+                    FROM input_siswa
                     GROUP BY nis
-                ) latest
-                    ON hc.nis = latest.nis
-                    AND hc.id = latest.max_id
-            ) hasil_chatbot
-                ON input_siswa.nis = hasil_chatbot.nis
+                ) input_terakhir
+                    ON input_siswa.nis = input_terakhir.nis
+                    AND input_siswa.id_input = input_terakhir.max_id
 
-            WHERE input_siswa.status_proses='belum'
-        """)
+                JOIN siswa
+                    ON input_siswa.nis = siswa.nis
+
+                LEFT JOIN (
+                    SELECT hc.*
+                    FROM hasil_chatbot hc
+                    INNER JOIN (
+                        SELECT nis, MAX(id) AS max_id
+                        FROM hasil_chatbot
+                        GROUP BY nis
+                    ) latest
+                        ON hc.nis = latest.nis
+                        AND hc.id = latest.max_id
+                ) hasil_chatbot
+                    ON input_siswa.nis = hasil_chatbot.nis
+            """)
+
+        else:
+
+            cur.execute("""
+                SELECT
+                    input_siswa.id_input,
+                    input_siswa.nis,
+                    siswa.nama_siswa,
+                    siswa.kelas,
+                    COALESCE(input_siswa.minat_mapel, hasil_chatbot.minat_mapel, 'BELUM MENGISI') AS minat_mapel,
+                    COALESCE(input_siswa.bakat_kemampuan, hasil_chatbot.bakat_kemampuan, 'BELUM MENGISI') AS bakat_kemampuan,
+
+                    input_siswa.nilai_pancasila,
+                    input_siswa.nilai_matematika,
+                    input_siswa.nilai_indonesia,
+                    input_siswa.nilai_inggris
+
+                FROM input_siswa
+
+                JOIN siswa
+                    ON input_siswa.nis = siswa.nis
+
+                LEFT JOIN (
+                    SELECT hc.*
+                    FROM hasil_chatbot hc
+                    INNER JOIN (
+                        SELECT nis, MAX(id) AS max_id
+                        FROM hasil_chatbot
+                        GROUP BY nis
+                    ) latest
+                        ON hc.nis = latest.nis
+                        AND hc.id = latest.max_id
+                ) hasil_chatbot
+                    ON input_siswa.nis = hasil_chatbot.nis
+
+                WHERE input_siswa.status_proses='belum'
+            """)
 
         semua_siswa = cur.fetchall()
 
         if len(semua_siswa) == 0:
 
-            flash('Tidak ada data siswa yang siap diproses KNN', 'danger')
+            if proses_ulang:
+
+                flash('Tidak ada data nilai siswa yang dapat diproses ulang KNN', 'danger')
+
+            else:
+
+                flash('Tidak ada data siswa yang siap diproses KNN', 'danger')
 
             cur.close()
 
@@ -5028,14 +5125,27 @@ def admin_proses_semua_knn():
         # =================================================
         # SIMPAN LOG AKTIVITAS
         # =================================================
-        simpan_log(
-            f'Menjalankan proses KNN admin dengan K={nilai_k} untuk {jumlah_diproses} siswa'
-        )
+        if proses_ulang:
 
-        flash(
-            f'Proses KNN berhasil. {jumlah_diproses} siswa diproses dengan K={nilai_k}',
-            'success'
-        )
+            simpan_log(
+                f'Menjalankan proses ulang KNN admin dengan K={nilai_k} untuk {jumlah_diproses} siswa'
+            )
+
+            flash(
+                f'Proses ulang KNN berhasil. {jumlah_diproses} siswa diproses ulang dengan K={nilai_k}',
+                'success'
+            )
+
+        else:
+
+            simpan_log(
+                f'Menjalankan proses KNN admin dengan K={nilai_k} untuk {jumlah_diproses} siswa'
+            )
+
+            flash(
+                f'Proses KNN berhasil. {jumlah_diproses} siswa diproses dengan K={nilai_k}',
+                'success'
+            )
 
     except Exception as e:
 

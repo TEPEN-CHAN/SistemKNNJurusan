@@ -222,11 +222,17 @@ def knn_predict(
     # ======================================
     # HITUNG CONFIDENCE
     # ======================================
+    jumlah_vote_terbanyak = voting.most_common(1)[0][1]
+    jumlah_kelas = max(2, len(set(label_latih)))
+    alpha = 0.1
+
+    # Smoothing mencegah confidence menjadi 100% mutlak saat semua tetangga
+    # terdekat memiliki label yang sama, terutama ketika nilai K kecil.
     confidence = round(
 
         (
-            voting.most_common(1)[0][1]
-            / k
+            (jumlah_vote_terbanyak + alpha)
+            / (k + (alpha * jumlah_kelas))
         ) * 100,
 
         2

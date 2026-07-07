@@ -170,6 +170,23 @@
         box-shadow: 0 14px 28px rgba(37,99,235,0.25);
     }
 
+    .btn-reprocess{
+        background: #0f172a;
+        border: none;
+        padding: 15px;
+        border-radius: 14px;
+        font-size: 16px;
+        font-weight: 800;
+        box-shadow: 0 10px 22px rgba(15,23,42,0.18);
+        transition: .25s ease;
+    }
+
+    .btn-reprocess:hover{
+        background: #1e293b;
+        transform: translateY(-2px);
+        box-shadow: 0 14px 28px rgba(15,23,42,0.24);
+    }
+
     @media(max-width: 768px){
 
         .main-content{
@@ -293,7 +310,7 @@
         </div>
 
         <!-- BUTTON -->
-        <div>
+        <div class="d-grid gap-3">
 
             <a href="/proses_semua_knn"
                class="btn btn-primary btn-process w-100">
@@ -302,6 +319,23 @@
                 Mulai Proses KNN
 
             </a>
+
+            <form
+                action="{{ url_for('proses_semua_knn') }}"
+                method="POST"
+                onsubmit="return confirm('Yakin ingin memproses ulang semua hasil KNN? Hasil lama akan diganti dengan hasil terbaru.')"
+            >
+
+                <input type="hidden" name="proses_ulang" value="1">
+
+                <button type="submit" class="btn btn-dark btn-reprocess w-100">
+
+                    <i class="bi bi-arrow-clockwise me-2"></i>
+                    Proses Ulang KNN
+
+                </button>
+
+            </form>
 
         </div>
 
