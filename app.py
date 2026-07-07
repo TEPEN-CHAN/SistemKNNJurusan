@@ -100,6 +100,32 @@ class MySQLConnection:
 
 
 mysql = MySQLConnection(app)
+
+LABEL_KELOMPOK_VALID = {
+    'Kelompok Mapel 1',
+    'Kelompok Mapel 2'
+}
+
+METRIK_KOSONG = {
+    'accuracy': 0,
+    'precision': 0,
+    'recall': 0,
+    'f1_score': 0
+}
+
+
+def metrik_kosong():
+
+    return dict(METRIK_KOSONG)
+
+
+def persen_bagian(jumlah, total):
+
+    if total <= 0:
+
+        return 0
+
+    return round((jumlah / total) * 100, 2)
 # =========================================================
 # HITUNG METRIK EVALUASI KNN
 # Accuracy, Precision, Recall, F1-Score
@@ -247,6 +273,69 @@ def split_data_alumni_stratified(alumni, test_ratio=0.2, seed=42):
     return data_latih, data_uji
 
 
+def hitung_kesamaan_variabel_label(alumni):
+
+    stats = {
+        'minat_sama': 0,
+        'minat_total': 0,
+        'minat_persen': 0,
+        'bakat_sama': 0,
+        'bakat_total': 0,
+        'bakat_persen': 0,
+        'keduanya_sama': 0,
+        'keduanya_total': 0,
+        'keduanya_persen': 0
+    }
+
+    for row in alumni:
+
+        label = normalisasi_variabel_kelompok(row[8])
+        minat = normalisasi_variabel_kelompok(row[6])
+        bakat = normalisasi_variabel_kelompok(row[7])
+
+        minat_valid = minat in LABEL_KELOMPOK_VALID
+        bakat_valid = bakat in LABEL_KELOMPOK_VALID
+
+        if minat_valid:
+
+            stats['minat_total'] += 1
+
+            if minat == label:
+
+                stats['minat_sama'] += 1
+
+        if bakat_valid:
+
+            stats['bakat_total'] += 1
+
+            if bakat == label:
+
+                stats['bakat_sama'] += 1
+
+        if minat_valid and bakat_valid:
+
+            stats['keduanya_total'] += 1
+
+            if minat == label and bakat == label:
+
+                stats['keduanya_sama'] += 1
+
+    stats['minat_persen'] = persen_bagian(
+        stats['minat_sama'],
+        stats['minat_total']
+    )
+    stats['bakat_persen'] = persen_bagian(
+        stats['bakat_sama'],
+        stats['bakat_total']
+    )
+    stats['keduanya_persen'] = persen_bagian(
+        stats['keduanya_sama'],
+        stats['keduanya_total']
+    )
+
+    return stats
+
+
 # =========================================================
 # HELPER FITUR KNN
 # Variabel skripsi:
@@ -358,6 +447,21 @@ def encode_minat_bakat(value):
 def encode_lanjut_pt(value):
 
     return encode_bakat_kemampuan(value)
+
+
+def buat_fitur_nilai_mapel(
+    nilai_pancasila,
+    nilai_matematika,
+    nilai_bahasa_indonesia,
+    nilai_bahasa_inggris
+):
+
+    return [
+        to_float(nilai_pancasila),
+        to_float(nilai_matematika),
+        to_float(nilai_bahasa_indonesia),
+        to_float(nilai_bahasa_inggris)
+    ]
 
 
 def buat_fitur_knn(
@@ -4196,15 +4300,12 @@ def admin_evaluasi_sistem():
     jumlah_data_latih_evaluasi = 0
     total_data_alumni_evaluasi = 0
     rasio_split_evaluasi = '80:20'
-    metrik = {
-        'accuracy': 0,
-        'precision': 0,
-        'recall': 0,
-        'f1_score': 0
-    }
+    metrik = metrik_kosong()
+    metrik_nilai_saja = metrik_kosong()
     confusion_labels = []
     confusion_matrix = []
     peringatan_evaluasi = []
+    kesamaan_variabel_label = hitung_kesamaan_variabel_label([])
     sumber_evaluasi = [
         'Hasil Jurusan Alumni sebagai label aktual',
         'Prediksi KNN pada data uji alumni'
@@ -4234,12 +4335,11 @@ def admin_evaluasi_sistem():
 
         y_true = []
         y_pred = []
+        y_true_nilai_saja = []
+        y_pred_nilai_saja = []
         jumlah_tidak_dihitung = 0
         jumlah_label_tidak_valid = 0
-        label_valid = {
-            'Kelompok Mapel 1',
-            'Kelompok Mapel 2'
-        }
+        label_valid = LABEL_KELOMPOK_VALID
 
         data_alumni_valid = []
 
@@ -4256,6 +4356,9 @@ def admin_evaluasi_sistem():
                 jumlah_label_tidak_valid += 1
 
         total_data_alumni_evaluasi = len(data_alumni_valid)
+        kesamaan_variabel_label = hitung_kesamaan_variabel_label(
+            data_alumni_valid
+        )
 
         if len(data_alumni_valid) >= 2:
 
@@ -4275,6 +4378,7 @@ def admin_evaluasi_sistem():
                     nilai_k_evaluasi = len(data_latih_eval)
 
                 data_latih = []
+                data_latih_nilai_saja = []
                 label_latih = []
 
                 for alumni_latih in data_latih_eval:
@@ -4289,6 +4393,14 @@ def admin_evaluasi_sistem():
                     )
 
                     data_latih.append(fitur_latih)
+                    data_latih_nilai_saja.append(
+                        buat_fitur_nilai_mapel(
+                            alumni_latih[2],
+                            alumni_latih[3],
+                            alumni_latih[4],
+                            alumni_latih[5]
+                        )
+                    )
                     label_latih.append(normalisasi_variabel_kelompok(alumni_latih[8]))
 
                 for alumni_uji in data_uji_eval:
@@ -4310,10 +4422,28 @@ def admin_evaluasi_sistem():
                         k=nilai_k_evaluasi
                     )
 
+                    hasil_knn_nilai_saja = knn_predict(
+                        data_latih_nilai_saja,
+                        label_latih,
+                        buat_fitur_nilai_mapel(
+                            alumni_uji[2],
+                            alumni_uji[3],
+                            alumni_uji[4],
+                            alumni_uji[5]
+                        ),
+                        k=nilai_k_evaluasi
+                    )
+
                     hasil_prediksi = normalisasi_variabel_kelompok(
                         hasil_knn_eval.get('hasil')
                     )
+                    hasil_prediksi_nilai_saja = normalisasi_variabel_kelompok(
+                        hasil_knn_nilai_saja.get('hasil')
+                    )
                     hasil_prediksi_valid = hasil_prediksi in label_valid
+                    hasil_prediksi_nilai_valid = (
+                        hasil_prediksi_nilai_saja in label_valid
+                    )
                     neighbors = hasil_knn_eval.get('neighbors', [])
                     rata_jarak_eval = (
                         sum(float(n['distance']) for n in neighbors)
@@ -4337,6 +4467,20 @@ def admin_evaluasi_sistem():
                         status_evaluasi = 'Tidak dihitung'
                         jumlah_tidak_dihitung += 1
 
+                    if hasil_prediksi_nilai_valid:
+
+                        status_nilai_saja = (
+                            'Benar'
+                            if label_aktual == hasil_prediksi_nilai_saja
+                            else 'Salah'
+                        )
+                        y_true_nilai_saja.append(label_aktual)
+                        y_pred_nilai_saja.append(hasil_prediksi_nilai_saja)
+
+                    else:
+
+                        status_nilai_saja = 'Tidak dihitung'
+
                     data_evaluasi.append((
                         alumni_uji[0],
                         alumni_uji[1],
@@ -4349,7 +4493,13 @@ def admin_evaluasi_sistem():
                         status_evaluasi,
                         f'{alumni_uji[2]}, {alumni_uji[3]}, {alumni_uji[4]}, {alumni_uji[5]}',
                         alumni_uji[6],
-                        alumni_uji[7]
+                        alumni_uji[7],
+                        (
+                            hasil_prediksi_nilai_saja
+                            if hasil_prediksi_nilai_valid
+                            else hasil_knn_nilai_saja.get('hasil', '-')
+                        ),
+                        status_nilai_saja
                     ))
 
         if y_true:
@@ -4362,6 +4512,41 @@ def admin_evaluasi_sistem():
                 peringatan_evaluasi.append(
                     'Data uji alumni hasil split hanya memiliki satu kelas, sehingga metrik dapat terlihat terlalu tinggi jika data alumni masih sedikit atau tidak seimbang.'
                 )
+
+        if y_true_nilai_saja:
+
+            metrik_nilai_saja = hitung_metrik_evaluasi(
+                y_true_nilai_saja,
+                y_pred_nilai_saja
+            )
+
+        if kesamaan_variabel_label['minat_persen'] >= 80:
+
+            peringatan_evaluasi.append(
+                f"{kesamaan_variabel_label['minat_persen']}% data alumni memiliki minat_mapel yang sama dengan hasil_jurusan. Ini dapat membuat evaluasi KNN terlihat sangat tinggi karena variabel input terlalu mirip dengan label aktual."
+            )
+
+        if kesamaan_variabel_label['bakat_persen'] >= 80:
+
+            peringatan_evaluasi.append(
+                f"{kesamaan_variabel_label['bakat_persen']}% data alumni memiliki bakat_kemampuan yang sama dengan hasil_jurusan. Ini dapat membuat evaluasi KNN terlihat sangat tinggi karena variabel input terlalu mirip dengan label aktual."
+            )
+
+        if (
+            metrik['accuracy'] == 100
+            and metrik_nilai_saja['accuracy'] > 0
+            and metrik_nilai_saja['accuracy'] < 100
+        ):
+
+            peringatan_evaluasi.append(
+                f"Accuracy variabel lengkap 100%, tetapi pembanding nilai mapel saja {metrik_nilai_saja['accuracy']}%. Artinya nilai 100% kemungkinan besar dipengaruhi kuat oleh variabel minat_mapel/bakat_kemampuan."
+            )
+
+        elif metrik['accuracy'] == 100 and 0 < jumlah_data_evaluasi < 10:
+
+            peringatan_evaluasi.append(
+                'Accuracy 100% dihitung dari data uji yang masih sedikit. Tambahkan data alumni yang lebih beragam agar metrik lebih stabil.'
+            )
 
         if not data_alumni:
 
@@ -4422,6 +4607,10 @@ def admin_evaluasi_sistem():
         precision=metrik['precision'],
         recall=metrik['recall'],
         f1_score=metrik['f1_score'],
+        accuracy_nilai_saja=metrik_nilai_saja['accuracy'],
+        precision_nilai_saja=metrik_nilai_saja['precision'],
+        recall_nilai_saja=metrik_nilai_saja['recall'],
+        f1_score_nilai_saja=metrik_nilai_saja['f1_score'],
         jumlah_data_evaluasi=jumlah_data_evaluasi,
         jumlah_data_latih_evaluasi=jumlah_data_latih_evaluasi,
         total_data_alumni_evaluasi=total_data_alumni_evaluasi,
@@ -4430,6 +4619,7 @@ def admin_evaluasi_sistem():
         confusion_labels=confusion_labels,
         confusion_matrix=confusion_matrix,
         peringatan_evaluasi=peringatan_evaluasi,
+        kesamaan_variabel_label=kesamaan_variabel_label,
         sumber_evaluasi=sumber_evaluasi
     )
 # =========================================================
