@@ -262,10 +262,6 @@ def encode_kecenderungan_kelompok(value):
 
         return 0
 
-    if 'SEIMBANG' in nilai:
-
-        return 1.5
-
     if 'KELOMPOK MAPEL 1' in nilai or 'KELOMPOK 1' in nilai or 'MAPEL 1' in nilai:
 
         return 1
@@ -274,11 +270,27 @@ def encode_kecenderungan_kelompok(value):
 
         return 2
 
-    if nilai.endswith(' 1') or nilai.endswith(':1') or nilai == 'K1':
+    if (
+        nilai.endswith(' 1')
+        or nilai.endswith(':1')
+        or nilai == 'K1'
+        or nilai == 'I'
+        or 'KELOMPOK MAPEL I' in nilai
+        or 'KELOMPOK I' in nilai
+        or 'MAPEL I' in nilai
+    ):
 
         return 1
 
-    if nilai.endswith(' 2') or nilai.endswith(':2') or nilai == 'K2':
+    if (
+        nilai.endswith(' 2')
+        or nilai.endswith(':2')
+        or nilai == 'K2'
+        or nilai == 'II'
+        or 'KELOMPOK MAPEL II' in nilai
+        or 'KELOMPOK II' in nilai
+        or 'MAPEL II' in nilai
+    ):
 
         return 2
 
@@ -489,17 +501,28 @@ def normalisasi_variabel_kelompok(value):
 
     mapping = {
         '1': 'Kelompok Mapel 1',
+        'I': 'Kelompok Mapel 1',
         'K1': 'Kelompok Mapel 1',
         'KELOMPOK 1': 'Kelompok Mapel 1',
+        'KELOMPOK I': 'Kelompok Mapel 1',
         'MAPEL 1': 'Kelompok Mapel 1',
+        'MAPEL I': 'Kelompok Mapel 1',
         'KELOMPOK MAPEL 1': 'Kelompok Mapel 1',
+        'KELOMPOK MAPEL I': 'Kelompok Mapel 1',
         '2': 'Kelompok Mapel 2',
+        'II': 'Kelompok Mapel 2',
         'K2': 'Kelompok Mapel 2',
         'KELOMPOK 2': 'Kelompok Mapel 2',
+        'KELOMPOK II': 'Kelompok Mapel 2',
         'MAPEL 2': 'Kelompok Mapel 2',
+        'MAPEL II': 'Kelompok Mapel 2',
         'KELOMPOK MAPEL 2': 'Kelompok Mapel 2',
-        'SEIMBANG': 'Seimbang'
+        'KELOMPOK MAPEL II': 'Kelompok Mapel 2'
     }
+
+    if nilai == 'SEIMBANG':
+
+        return None
 
     return mapping.get(nilai, nilai)
 
@@ -736,7 +759,7 @@ def upload_data_alumni(file):
                     nilai_excel(row, 'nilai_bahasaingg'),
                     normalisasi_variabel_kelompok(nilai_excel(row, 'minat_mapel')),
                     normalisasi_variabel_kelompok(nilai_excel(row, 'bakat_kemampuan')),
-                    nilai_excel(row, 'hasil_jurusan'),
+                    normalisasi_variabel_kelompok(nilai_excel(row, 'hasil_jurusan')),
                     waktu_indonesia()
 
                 ))
@@ -775,7 +798,7 @@ def upload_data_alumni(file):
                     nilai_excel(row, 'nilai_bahasaingg'),
                     normalisasi_variabel_kelompok(nilai_excel(row, 'minat_mapel')),
                     normalisasi_variabel_kelompok(nilai_excel(row, 'bakat_kemampuan')),
-                    nilai_excel(row, 'hasil_jurusan'),
+                    normalisasi_variabel_kelompok(nilai_excel(row, 'hasil_jurusan')),
                     waktu_indonesia()
 
                 ))
@@ -1081,11 +1104,11 @@ def susun_tahapan_knn(id_hasil):
         ]
 
         data_latih.append(fitur_latih)
-        label_latih.append(data_alumni[8])
+        label_latih.append(normalisasi_variabel_kelompok(data_alumni[8]))
         alumni_meta.append({
             'id_alumni': data_alumni[0],
             'nama_alumni': data_alumni[1],
-            'hasil_jurusan': data_alumni[8],
+            'hasil_jurusan': normalisasi_variabel_kelompok(data_alumni[8]),
             'fitur_latih': fitur_latih,
             'nilai_asli_latih': nilai_asli_latih
         })
@@ -2728,7 +2751,7 @@ def proses_semua_knn():
             )
 
             data_latih.append(fitur)
-            label_latih.append(a[6])
+            label_latih.append(normalisasi_variabel_kelompok(a[6]))
 
         jumlah_diproses = 0
 
@@ -3110,14 +3133,7 @@ def chatbot():
             data.get('minat_mapel') or data.get('minat_bakat')
         )
         bakat_kemampuan = normalisasi_variabel_kelompok(data.get('bakat_kemampuan'))
-        kelompok_mapel = data.get('kelompok_mapel')
-
-        if not minat_mapel or not bakat_kemampuan or not kelompok_mapel:
-            cur.close()
-            return jsonify({
-                'status': 'error',
-                'message': 'Data chatbot tidak lengkap'
-            }), 400
+        kelompok_mapel = normalisasi_variabel_kelompok(data.get('kelompok_mapel'))
 
         detail_mapel_by_kelompok = {
             'Kelompok Mapel 1': """
@@ -3135,6 +3151,23 @@ Bahasa Inggris Tingkat Lanjut
 Informatika
 """
         }
+
+        if kelompok_mapel in detail_mapel_by_kelompok:
+
+            if not minat_mapel:
+
+                minat_mapel = kelompok_mapel
+
+            if not bakat_kemampuan:
+
+                bakat_kemampuan = kelompok_mapel
+
+        if not minat_mapel or not bakat_kemampuan or not kelompok_mapel:
+            cur.close()
+            return jsonify({
+                'status': 'error',
+                'message': 'Data chatbot tidak lengkap'
+            }), 400
 
         if kelompok_mapel not in detail_mapel_by_kelompok:
 
@@ -4145,7 +4178,7 @@ def admin_evaluasi_sistem():
                     data_alumni[i][5]
                 )
 
-                label_asli = data_alumni[i][6]
+                label_asli = normalisasi_variabel_kelompok(data_alumni[i][6])
 
                 data_latih = []
                 label_latih = []
@@ -4164,7 +4197,7 @@ def admin_evaluasi_sistem():
                         )
 
                         data_latih.append(fitur_latih)
-                        label_latih.append(data_alumni[j][6])
+                        label_latih.append(normalisasi_variabel_kelompok(data_alumni[j][6]))
 
                 k_dipakai = nilai_k_evaluasi
 
@@ -4871,7 +4904,7 @@ def admin_proses_semua_knn():
 
             data_latih.append(fitur_latih)
 
-            label_latih.append(a[8])
+            label_latih.append(normalisasi_variabel_kelompok(a[8]))
 
         jumlah_diproses = 0
 

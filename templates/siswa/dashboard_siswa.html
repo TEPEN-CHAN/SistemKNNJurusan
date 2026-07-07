@@ -1068,7 +1068,7 @@ Chatbot Konsultasi Jurusan SMA
             return 'Kelompok Mapel 2';
         }
 
-        return 'Seimbang';
+        return '';
     }
 
     function getCombinedMapel(){
@@ -1081,14 +1081,6 @@ Chatbot Konsultasi Jurusan SMA
 
         if(skor2 > skor1){
             return 'Kelompok Mapel 2';
-        }
-
-        if(hasilMinatMapel !== 'Seimbang'){
-            return hasilMinatMapel;
-        }
-
-        if(hasilBakatKemampuan !== 'Seimbang'){
-            return hasilBakatKemampuan;
         }
 
         return '';
@@ -1135,7 +1127,7 @@ Chatbot Konsultasi Jurusan SMA
             '<div class="message-wrap">' +
                 getBotAvatar() +
                 '<div class="bubble">' +
-                    '<div><b>Skor kamu seimbang. Pilih kelompok mapel yang paling kamu minati:</b></div>' +
+                    '<div><b>Skor belum dominan. Pilih kelompok mapel yang paling kamu minati:</b></div>' +
                     '<div class="mapel-choice">' +
                         '<button type="button" class="mapel-option" data-mapel-choice="1">' +
                             getMapelPreviewHtml('1') +
@@ -1173,6 +1165,15 @@ Chatbot Konsultasi Jurusan SMA
         }
 
         kelompokMapel = option.kelompok;
+
+        if(!hasilMinatMapel){
+            hasilMinatMapel = option.kelompok;
+        }
+
+        if(!hasilBakatKemampuan){
+            hasilBakatKemampuan = option.kelompok;
+        }
+
         waitingMapelChoice = false;
 
         addMessage(option.kelompok, 'user');
@@ -1222,7 +1223,7 @@ Chatbot Konsultasi Jurusan SMA
 
             addMessage(
                 "Hasil minat mapel kamu belum dapat ditentukan.\n\n" +
-                "Karena pilihan kamu masih seimbang, sistem belum menemukan kelompok mapel yang dominan.\n\n" +
+                "Karena pilihan kamu belum dominan, sistem belum menemukan kelompok mapel utama.\n\n" +
                 "Silakan pilih jawaban yang paling mendekati minat dan kemampuan kamu.",
                 'bot'
             );
@@ -1262,22 +1263,37 @@ Chatbot Konsultasi Jurusan SMA
         hasilBakatKemampuan = getDimensionResult('bakat');
         kelompokMapel = getCombinedMapel();
 
-        addMessage(
-            "HASIL CHATBOT\n\n" +
-            "Minat Mapel: " + hasilMinatMapel + "\n" +
-            "Bakat/Kecenderungan Kemampuan: " + hasilBakatKemampuan + "\n" +
-            "Rekomendasi Chatbot: " + (kelompokMapel || 'Seimbang') + "\n\n" +
-            "Hasil ini akan dipakai sebagai variabel minat mapel dan bakat pada proses KNN.",
-            'bot'
-        );
-
         if(!kelompokMapel){
+            addMessage(
+                "HASIL CHATBOT\n\n" +
+                "Skor minat mapel dan bakat kamu belum menunjukkan satu kelompok yang dominan.\n\n" +
+                "Silakan pilih Kelompok Mapel 1 atau Kelompok Mapel 2 yang paling sesuai dengan minat dan kemampuan kamu.",
+                'bot'
+            );
+
             setTimeout(function(){
                 showMapelChoice();
             }, 800);
 
             return;
         }
+
+        if(!hasilMinatMapel){
+            hasilMinatMapel = kelompokMapel;
+        }
+
+        if(!hasilBakatKemampuan){
+            hasilBakatKemampuan = kelompokMapel;
+        }
+
+        addMessage(
+            "HASIL CHATBOT\n\n" +
+            "Minat Mapel: " + hasilMinatMapel + "\n" +
+            "Bakat/Kecenderungan Kemampuan: " + hasilBakatKemampuan + "\n" +
+            "Rekomendasi Chatbot: " + kelompokMapel + "\n\n" +
+            "Hasil ini akan dipakai sebagai variabel minat mapel dan bakat pada proses KNN.",
+            'bot'
+        );
 
         saveToDatabase();
     }
