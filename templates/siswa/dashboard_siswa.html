@@ -127,6 +127,13 @@ Chatbot Konsultasi Jurusan SMA
         transform: translateY(-2px);
     }
 
+    .mapel-option:disabled{
+        cursor: default;
+        opacity: .72;
+        transform: none;
+        box-shadow: none;
+    }
+
     .mapel-preview{
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -205,6 +212,54 @@ Chatbot Konsultasi Jurusan SMA
 
     .mapel-option:hover .mapel-radio{
         border-color: #2563eb;
+    }
+
+    .bakat-card{
+        min-height: 150px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .bakat-icon{
+        width: 42px;
+        height: 42px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        color: #0f172a;
+        background: #dbeafe;
+    }
+
+    .bakat-option-title{
+        color: #0f172a;
+        font-size: 16px;
+        font-weight: 800;
+        line-height: 1.35;
+    }
+
+    .bakat-option-text{
+        color: #475569;
+        font-size: 13px;
+        line-height: 1.65;
+    }
+
+    .bakat-option-tags{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin-top: auto;
+    }
+
+    .bakat-option-tags span{
+        background: #f1f5f9;
+        color: #334155;
+        border-radius: 999px;
+        padding: 6px 9px;
+        font-size: 11px;
+        font-weight: 800;
     }
 
     .result-card{
@@ -705,12 +760,12 @@ Chatbot Konsultasi Jurusan SMA
                         Saya adalah AI Konsultasi Jurusan SMA. Saya dapat membantu kamu melakukan tes minat mapel dan bakat,
                         memahami kelompok mapel, memilih jurusan, serta berkonsultasi tentang kuliah dan karir.
                         <br><br>
-                        Ketik <b>MULAI</b> untuk memulai tes minat mapel dan bakat.
+                        Ketik <b>MULAI</b> untuk memilih minat mapel dan bakat/kemampuan melalui card.
                     </p>
 
                     <div class="quick-actions">
                         <button type="button" class="quick-btn" onclick="quickSend('MULAI')">
-                            Mulai Tes Minat Mapel
+                            Mulai Tes
                         </button>
 
                         <button type="button" class="quick-btn" onclick="quickSend('Apa itu minat mapel?')">
@@ -781,6 +836,7 @@ Chatbot Konsultasi Jurusan SMA
     var testStarted = false;
     var currentQuestion = 0;
     var waitingMapelChoice = false;
+    var mapelChoiceMode = '';
 
     var hasilMinatMapel = '';
     var hasilBakatKemampuan = '';
@@ -806,6 +862,21 @@ Chatbot Konsultasi Jurusan SMA
                 'Bahasa Inggris Tingkat Lanjut',
                 'Informatika'
             ]
+        }
+    };
+
+    var bakatOptions = {
+        '1': {
+            title: 'Kemampuan Numerik, Sains, dan Analisis',
+            text: 'Saya lebih cepat memahami angka, rumus, eksperimen, pola data, dan penyelesaian masalah yang runtut.',
+            icon: 'bi-calculator',
+            tags: ['Hitungan', 'Logika', 'Eksperimen']
+        },
+        '2': {
+            title: 'Kemampuan Teknologi, Bahasa, dan Komunikasi',
+            text: 'Saya lebih cepat memahami instruksi digital, aplikasi, bahasa, informasi, dan cara menyampaikan ide.',
+            icon: 'bi-laptop',
+            tags: ['Teknologi', 'Bahasa', 'Komunikasi']
         }
     };
 
@@ -859,6 +930,10 @@ Chatbot Konsultasi Jurusan SMA
             option2: "Tugas teknologi, presentasi, penulisan, atau pengolahan informasi"
         }
     ];
+
+    questions = questions.filter(function(question){
+        return question.dimension === 'bakat';
+    });
 
     var scores = {
         minat_1: 0,
@@ -994,9 +1069,10 @@ Chatbot Konsultasi Jurusan SMA
             return;
         }
 
-        testStarted = true;
+        testStarted = false;
         currentQuestion = 0;
         waitingMapelChoice = false;
+        mapelChoiceMode = '';
         hasilMinatMapel = '';
         hasilBakatKemampuan = '';
         kelompokMapel = '';
@@ -1004,9 +1080,13 @@ Chatbot Konsultasi Jurusan SMA
         resetScores();
 
         addMessage(
-            getQuestionText(questions[currentQuestion]),
+            "Silakan pilih minat mapel yang paling kamu sukai terlebih dahulu.",
             'bot'
         );
+
+        setTimeout(function(){
+            showMapelChoice('minat');
+        }, 500);
     }
 
     function processQuestionAnswer(text){
@@ -1114,9 +1194,56 @@ Chatbot Konsultasi Jurusan SMA
         );
     }
 
-    function showMapelChoice(){
+    function getBakatPreviewHtml(optionKey){
+        var option = bakatOptions[optionKey];
+        var tagsHtml = '';
+
+        option.tags.forEach(function(tag){
+            tagsHtml += '<span>' + tag + '</span>';
+        });
+
+        return (
+            '<div class="bakat-card">' +
+                '<span class="bakat-icon"><i class="bi ' + option.icon + '"></i></span>' +
+                '<div class="bakat-option-title">' + option.title + '</div>' +
+                '<div class="bakat-option-text">' + option.text + '</div>' +
+                '<div class="bakat-option-tags">' + tagsHtml + '</div>' +
+            '</div>'
+        );
+    }
+
+    function getChoicePreviewHtml(optionKey, mode){
+        if(mode === 'bakat'){
+            return getBakatPreviewHtml(optionKey);
+        }
+
+        return getMapelPreviewHtml(optionKey);
+    }
+
+    function getChoiceLabel(optionKey, mode){
+        if(mode === 'bakat'){
+            return 'Pilih kemampuan ini';
+        }
+
+        return mapelOptions[optionKey].kelompok;
+    }
+
+    function getMapelChoiceTitle(mode){
+        if(mode === 'minat'){
+            return 'Pilih kelompok mapel yang paling kamu minati:';
+        }
+
+        if(mode === 'bakat'){
+            return 'Pilih bakat/kecenderungan kemampuan yang paling menggambarkan dirimu:';
+        }
+
+        return 'Pilih kelompok mapel yang paling sesuai:';
+    }
+
+    function showMapelChoice(mode){
         hideWelcome();
 
+        mapelChoiceMode = mode || 'hasil';
         waitingMapelChoice = true;
 
         var row = document.createElement('div');
@@ -1127,15 +1254,15 @@ Chatbot Konsultasi Jurusan SMA
             '<div class="message-wrap">' +
                 getBotAvatar() +
                 '<div class="bubble">' +
-                    '<div><b>Skor belum dominan. Pilih kelompok mapel yang paling kamu minati:</b></div>' +
+                    '<div><b>' + getMapelChoiceTitle(mapelChoiceMode) + '</b></div>' +
                     '<div class="mapel-choice">' +
                         '<button type="button" class="mapel-option" data-mapel-choice="1">' +
-                            getMapelPreviewHtml('1') +
-                            '<span class="mapel-label"><span class="mapel-radio"></span>Kelompok Mapel 1</span>' +
+                            getChoicePreviewHtml('1', mapelChoiceMode) +
+                            '<span class="mapel-label"><span class="mapel-radio"></span>' + getChoiceLabel('1', mapelChoiceMode) + '</span>' +
                         '</button>' +
                         '<button type="button" class="mapel-option" data-mapel-choice="2">' +
-                            getMapelPreviewHtml('2') +
-                            '<span class="mapel-label"><span class="mapel-radio"></span>Kelompok Mapel 2</span>' +
+                            getChoicePreviewHtml('2', mapelChoiceMode) +
+                            '<span class="mapel-label"><span class="mapel-radio"></span>' + getChoiceLabel('2', mapelChoiceMode) + '</span>' +
                         '</button>' +
                     '</div>' +
                 '</div>' +
@@ -1143,23 +1270,106 @@ Chatbot Konsultasi Jurusan SMA
 
         chatContainer.appendChild(row);
 
+        var renderedMode = mapelChoiceMode;
+
         row.querySelectorAll('[data-mapel-choice]').forEach(function(button){
             button.addEventListener('click', function(){
-                chooseMapel(button.getAttribute('data-mapel-choice'));
+                chooseMapel(button.getAttribute('data-mapel-choice'), renderedMode, false);
             });
         });
 
         scrollBottom();
     }
 
-    function chooseMapel(optionKey){
+    function lanjutPertanyaanBakat(){
+        if(currentQuestion < questions.length){
+            testStarted = true;
+
+            addMessage(
+                getQuestionText(questions[currentQuestion]),
+                'bot'
+            );
+        }else{
+            showResult();
+        }
+    }
+
+    function finalizeChatbotResult(){
+        if(!kelompokMapel){
+            kelompokMapel = hasilMinatMapel || hasilBakatKemampuan;
+        }
+
+        addMessage(
+            "HASIL CHATBOT\n\n" +
+            "Minat Mapel: " + hasilMinatMapel + "\n" +
+            "Bakat/Kecenderungan Kemampuan: " + hasilBakatKemampuan + "\n" +
+            "Rekomendasi Chatbot: " + kelompokMapel + "\n\n" +
+            "Hasil ini akan dipakai sebagai variabel minat mapel dan bakat pada proses KNN.",
+            'bot'
+        );
+
+        saveToDatabase();
+    }
+
+    function lockMapelChoiceButtons(){
+        document.querySelectorAll('.mapel-option').forEach(function(button){
+            button.disabled = true;
+        });
+    }
+
+    function chooseMapel(optionKey, mode, fromText){
         var option = mapelOptions[optionKey];
+        var choiceMode = mode || mapelChoiceMode || 'hasil';
 
         if(!option){
             addMessage(
                 "Mohon pilih Kelompok Mapel 1 atau Kelompok Mapel 2.",
                 'bot'
             );
+
+            return;
+        }
+
+        lockMapelChoiceButtons();
+
+        waitingMapelChoice = false;
+        mapelChoiceMode = '';
+
+        if(!fromText){
+            addMessage(option.kelompok, 'user');
+        }
+
+        if(choiceMode === 'minat'){
+            hasilMinatMapel = option.kelompok;
+            kelompokMapel = option.kelompok;
+
+            addMessage(
+                "Minat mapel pilihan kamu:\n\n" +
+                option.kelompok + "\n\n" +
+                "Detail mapel:\n- " +
+                getMapelText(option) +
+                "\n\nSelanjutnya, pilih card bakat/kecenderungan kemampuan yang paling menggambarkan dirimu.",
+                'bot'
+            );
+
+            setTimeout(function(){
+                showMapelChoice('bakat');
+            }, 700);
+
+            return;
+        }
+
+        if(choiceMode === 'bakat'){
+            hasilBakatKemampuan = option.kelompok;
+
+            addMessage(
+                "Bakat/kecenderungan kemampuan pilihan kamu:\n\n" +
+                option.kelompok + "\n" +
+                bakatOptions[optionKey].title,
+                'bot'
+            );
+
+            finalizeChatbotResult();
 
             return;
         }
@@ -1174,10 +1384,6 @@ Chatbot Konsultasi Jurusan SMA
             hasilBakatKemampuan = option.kelompok;
         }
 
-        waitingMapelChoice = false;
-
-        addMessage(option.kelompok, 'user');
-
         addMessage(
             "Kelompok mapel pilihan kamu:\n\n" +
             option.kelompok + "\n\n" +
@@ -1186,7 +1392,7 @@ Chatbot Konsultasi Jurusan SMA
             'bot'
         );
 
-        saveToDatabase();
+        finalizeChatbotResult();
     }
 
     function handleMapelChoice(lower){
@@ -1195,7 +1401,7 @@ Chatbot Konsultasi Jurusan SMA
             lower.includes('mapel 1') ||
             lower.includes('kelompok 1')
         ){
-            chooseMapel('1');
+            chooseMapel('1', mapelChoiceMode, true);
             return;
         }
 
@@ -1204,7 +1410,7 @@ Chatbot Konsultasi Jurusan SMA
             lower.includes('mapel 2') ||
             lower.includes('kelompok 2')
         ){
-            chooseMapel('2');
+            chooseMapel('2', mapelChoiceMode, true);
             return;
         }
 
@@ -1214,7 +1420,9 @@ Chatbot Konsultasi Jurusan SMA
         );
     }
 
-    function showResult(){
+    function showLegacyResult(){
+        return;
+
         var highest = getHighestRiasec();
 
         if(highest === 'BELUM TERDETEKSI'){
@@ -1259,43 +1467,33 @@ Chatbot Konsultasi Jurusan SMA
     }
 
     function showResult(){
-        hasilMinatMapel = getDimensionResult('minat');
         hasilBakatKemampuan = getDimensionResult('bakat');
-        kelompokMapel = getCombinedMapel();
 
-        if(!kelompokMapel){
+        if(!hasilBakatKemampuan){
             addMessage(
                 "HASIL CHATBOT\n\n" +
-                "Skor minat mapel dan bakat kamu belum menunjukkan satu kelompok yang dominan.\n\n" +
-                "Silakan pilih Kelompok Mapel 1 atau Kelompok Mapel 2 yang paling sesuai dengan minat dan kemampuan kamu.",
+                "Minat Mapel: " + hasilMinatMapel + "\n\n" +
+                "Skor bakat/kecenderungan kemampuan kamu belum menunjukkan satu kelompok yang dominan.\n\n" +
+                "Silakan pilih kelompok yang paling menggambarkan kemampuan kamu.",
                 'bot'
             );
 
             setTimeout(function(){
-                showMapelChoice();
+                showMapelChoice('bakat');
             }, 800);
 
             return;
         }
 
         if(!hasilMinatMapel){
-            hasilMinatMapel = kelompokMapel;
+            hasilMinatMapel = hasilBakatKemampuan;
         }
 
-        if(!hasilBakatKemampuan){
-            hasilBakatKemampuan = kelompokMapel;
+        if(!kelompokMapel){
+            kelompokMapel = hasilMinatMapel;
         }
 
-        addMessage(
-            "HASIL CHATBOT\n\n" +
-            "Minat Mapel: " + hasilMinatMapel + "\n" +
-            "Bakat/Kecenderungan Kemampuan: " + hasilBakatKemampuan + "\n" +
-            "Rekomendasi Chatbot: " + kelompokMapel + "\n\n" +
-            "Hasil ini akan dipakai sebagai variabel minat mapel dan bakat pada proses KNN.",
-            'bot'
-        );
-
-        saveToDatabase();
+        finalizeChatbotResult();
     }
 
     function saveToDatabase(){
