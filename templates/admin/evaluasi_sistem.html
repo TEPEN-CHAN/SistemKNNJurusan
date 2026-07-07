@@ -605,108 +605,6 @@ Evaluasi Sistem
 
     </div>
 
-    <!-- METRIK PEMBANDING -->
-    <div class="card-custom">
-
-        <div class="section-title">
-            Pembanding Nilai Mapel Saja
-        </div>
-
-        <div class="row g-4 mb-3">
-
-            <div class="col-lg-3 col-md-6">
-
-                <div class="stats-box cyan">
-
-                    <div class="stats-icon">
-                        <i class="bi bi-bullseye"></i>
-                    </div>
-
-                    <div class="stats-title">
-                        Accuracy
-                    </div>
-
-                    <div class="stats-value">
-                        {{ accuracy_nilai_saja }}%
-                    </div>
-
-                </div>
-
-            </div>
-
-            <div class="col-lg-3 col-md-6">
-
-                <div class="stats-box indigo">
-
-                    <div class="stats-icon">
-                        <i class="bi bi-check2-circle"></i>
-                    </div>
-
-                    <div class="stats-title">
-                        Precision
-                    </div>
-
-                    <div class="stats-value">
-                        {{ precision_nilai_saja }}%
-                    </div>
-
-                </div>
-
-            </div>
-
-            <div class="col-lg-3 col-md-6">
-
-                <div class="stats-box dark">
-
-                    <div class="stats-icon">
-                        <i class="bi bi-arrow-repeat"></i>
-                    </div>
-
-                    <div class="stats-title">
-                        Recall
-                    </div>
-
-                    <div class="stats-value">
-                        {{ recall_nilai_saja }}%
-                    </div>
-
-                </div>
-
-            </div>
-
-            <div class="col-lg-3 col-md-6">
-
-                <div class="stats-box red">
-
-                    <div class="stats-icon">
-                        <i class="bi bi-activity"></i>
-                    </div>
-
-                    <div class="stats-title">
-                        F1-Score
-                    </div>
-
-                    <div class="stats-value">
-                        {{ f1_score_nilai_saja }}%
-                    </div>
-
-                </div>
-
-            </div>
-
-        </div>
-
-        <div class="info-box mb-0">
-            Pembanding ini menghitung KNN hanya dari nilai Pancasila, Matematika, Bahasa Indonesia, dan Bahasa Inggris.
-            <br>
-            Kesamaan minat_mapel dengan hasil_jurusan:
-            <b>{{ kesamaan_variabel_label.minat_sama }}/{{ kesamaan_variabel_label.minat_total }} data ({{ kesamaan_variabel_label.minat_persen }}%)</b>.
-            Kesamaan bakat_kemampuan dengan hasil_jurusan:
-            <b>{{ kesamaan_variabel_label.bakat_sama }}/{{ kesamaan_variabel_label.bakat_total }} data ({{ kesamaan_variabel_label.bakat_persen }}%)</b>.
-        </div>
-
-    </div>
-
     <!-- CONFUSION MATRIX -->
     <div class="card-custom">
 
@@ -814,9 +712,9 @@ Evaluasi Sistem
 
         <div class="metric-note">
 
-            <b>Accuracy, Precision, Recall, dan F1-Score</b> utama dihitung dari evaluasi split data alumni memakai variabel lengkap.
+            <b>Accuracy, Precision, Recall, dan F1-Score</b> dihitung dari evaluasi split data alumni memakai nilai mapel saja.
             Data alumni dibagi menjadi <b>{{ rasio_split_evaluasi }}</b>, yaitu data latih untuk tetangga KNN dan data uji untuk pengujian.
-            Pembanding nilai mapel saja dipakai untuk melihat apakah angka utama terlalu dipengaruhi oleh minat_mapel dan bakat_kemampuan.
+            Variabel minat_mapel dan bakat_kemampuan tetap dipakai pada proses rekomendasi jurusan siswa, tetapi tidak dipakai dalam evaluasi metrik.
             <br><br>
             Total data alumni valid:
             <b>{{ total_data_alumni_evaluasi }}</b> data.
@@ -897,14 +795,12 @@ Evaluasi Sistem
                         <th>ID Alumni</th>
                         <th>Nama Alumni</th>
                         <th>Label Aktual Alumni</th>
-                        <th>Prediksi KNN</th>
-                        <th>Prediksi Nilai Saja</th>
+                        <th>Prediksi KNN (Nilai Mapel)</th>
                         <th>K</th>
                         <th>Jumlah Tetangga</th>
                         <th>Rata Jarak</th>
                         <th>Confidence</th>
                         <th>Status</th>
-                        <th>Status Nilai Saja</th>
                         <th>Nilai Mapel</th>
                         <th>Minat Mapel</th>
                         <th>Bakat/Kemampuan</th>
@@ -942,12 +838,6 @@ Evaluasi Sistem
                                 <td>
                                     <span class="badge-custom badge-jurusan">
                                         {{ e[3] }}
-                                    </span>
-                                </td>
-
-                                <td>
-                                    <span class="badge-custom badge-jurusan">
-                                        {{ e[12] }}
                                     </span>
                                 </td>
 
@@ -992,30 +882,6 @@ Evaluasi Sistem
                                 </td>
 
                                 <td>
-
-                                    {% if e[13] == 'Benar' %}
-
-                                        <span class="badge-custom badge-correct">
-                                            Benar
-                                        </span>
-
-                                    {% elif e[13] == 'Salah' %}
-
-                                        <span class="badge-custom badge-wrong">
-                                            Salah
-                                        </span>
-
-                                    {% else %}
-
-                                        <span class="badge-custom badge-muted">
-                                            Tidak dihitung
-                                        </span>
-
-                                    {% endif %}
-
-                                </td>
-
-                                <td>
                                     {{ e[9] if e[9] else '-' }}
                                 </td>
 
@@ -1035,7 +901,7 @@ Evaluasi Sistem
 
                         <tr>
 
-                            <td colspan="15" class="text-center text-muted">
+                            <td colspan="13" class="text-center text-muted">
                                 Evaluasi split data alumni belum tersedia
                             </td>
 

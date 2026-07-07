@@ -371,18 +371,12 @@ def encode_kecenderungan_kelompok(value):
 
         return 0
 
-    try:
-
-        return float(nilai.replace(',', '.'))
-
-    except:
-
-        pass
-
     nilai_kosong = {
         '',
         '-',
         '0',
+        '0.0',
+        '0,0',
         'BELUM',
         'BELUM MENGISI',
         'BELUM TERDETEKSI',
@@ -394,13 +388,43 @@ def encode_kecenderungan_kelompok(value):
 
         return 0
 
+    try:
+
+        nilai_angka = float(nilai.replace(',', '.'))
+
+        if nilai_angka == 1:
+
+            return 1
+
+        if nilai_angka == 2:
+
+            return 0
+
+        return 0
+
+    except:
+
+        pass
+
     if 'KELOMPOK MAPEL 1' in nilai or 'KELOMPOK 1' in nilai or 'MAPEL 1' in nilai:
 
         return 1
 
     if 'KELOMPOK MAPEL 2' in nilai or 'KELOMPOK 2' in nilai or 'MAPEL 2' in nilai:
 
-        return 2
+        return 0
+
+    if (
+        nilai.endswith(' 2')
+        or nilai.endswith(':2')
+        or nilai == 'K2'
+        or nilai == 'II'
+        or 'KELOMPOK MAPEL II' in nilai
+        or 'KELOMPOK II' in nilai
+        or 'MAPEL II' in nilai
+    ):
+
+        return 0
 
     if (
         nilai.endswith(' 1')
@@ -413,18 +437,6 @@ def encode_kecenderungan_kelompok(value):
     ):
 
         return 1
-
-    if (
-        nilai.endswith(' 2')
-        or nilai.endswith(':2')
-        or nilai == 'K2'
-        or nilai == 'II'
-        or 'KELOMPOK MAPEL II' in nilai
-        or 'KELOMPOK II' in nilai
-        or 'MAPEL II' in nilai
-    ):
-
-        return 2
 
     return 0
 
@@ -4293,7 +4305,8 @@ def admin_evaluasi_sistem():
     # =====================================================
     # EVALUASI AKURASI BERDASARKAN SPLIT DATA ALUMNI
     # Label aktual diambil dari hasil_jurusan alumni.
-    # Prediksi dihasilkan KNN dari data uji alumni.
+    # Prediksi evaluasi hanya memakai nilai mapel agar tidak bocor dari
+    # variabel minat_mapel/bakat_kemampuan.
     # =====================================================
     nilai_k_evaluasi = 5
     jumlah_data_evaluasi = 0
@@ -4301,14 +4314,13 @@ def admin_evaluasi_sistem():
     total_data_alumni_evaluasi = 0
     rasio_split_evaluasi = '80:20'
     metrik = metrik_kosong()
-    metrik_nilai_saja = metrik_kosong()
     confusion_labels = []
     confusion_matrix = []
     peringatan_evaluasi = []
     kesamaan_variabel_label = hitung_kesamaan_variabel_label([])
     sumber_evaluasi = [
         'Hasil Jurusan Alumni sebagai label aktual',
-        'Prediksi KNN pada data uji alumni'
+        'Prediksi KNN berdasarkan nilai mapel alumni'
     ]
     data_evaluasi = []
 
@@ -4335,8 +4347,6 @@ def admin_evaluasi_sistem():
 
         y_true = []
         y_pred = []
-        y_true_nilai_saja = []
-        y_pred_nilai_saja = []
         jumlah_tidak_dihitung = 0
         jumlah_label_tidak_valid = 0
         label_valid = LABEL_KELOMPOK_VALID
@@ -4378,41 +4388,28 @@ def admin_evaluasi_sistem():
                     nilai_k_evaluasi = len(data_latih_eval)
 
                 data_latih = []
-                data_latih_nilai_saja = []
                 label_latih = []
 
                 for alumni_latih in data_latih_eval:
 
-                    fitur_latih = buat_fitur_knn(
+                    fitur_latih = buat_fitur_nilai_mapel(
                         alumni_latih[2],
                         alumni_latih[3],
                         alumni_latih[4],
                         alumni_latih[5],
-                        alumni_latih[6],
-                        alumni_latih[7]
                     )
 
                     data_latih.append(fitur_latih)
-                    data_latih_nilai_saja.append(
-                        buat_fitur_nilai_mapel(
-                            alumni_latih[2],
-                            alumni_latih[3],
-                            alumni_latih[4],
-                            alumni_latih[5]
-                        )
-                    )
                     label_latih.append(normalisasi_variabel_kelompok(alumni_latih[8]))
 
                 for alumni_uji in data_uji_eval:
 
                     label_aktual = normalisasi_variabel_kelompok(alumni_uji[8])
-                    fitur_uji = buat_fitur_knn(
+                    fitur_uji = buat_fitur_nilai_mapel(
                         alumni_uji[2],
                         alumni_uji[3],
                         alumni_uji[4],
-                        alumni_uji[5],
-                        alumni_uji[6],
-                        alumni_uji[7]
+                        alumni_uji[5]
                     )
 
                     hasil_knn_eval = knn_predict(
@@ -4422,28 +4419,10 @@ def admin_evaluasi_sistem():
                         k=nilai_k_evaluasi
                     )
 
-                    hasil_knn_nilai_saja = knn_predict(
-                        data_latih_nilai_saja,
-                        label_latih,
-                        buat_fitur_nilai_mapel(
-                            alumni_uji[2],
-                            alumni_uji[3],
-                            alumni_uji[4],
-                            alumni_uji[5]
-                        ),
-                        k=nilai_k_evaluasi
-                    )
-
                     hasil_prediksi = normalisasi_variabel_kelompok(
                         hasil_knn_eval.get('hasil')
                     )
-                    hasil_prediksi_nilai_saja = normalisasi_variabel_kelompok(
-                        hasil_knn_nilai_saja.get('hasil')
-                    )
                     hasil_prediksi_valid = hasil_prediksi in label_valid
-                    hasil_prediksi_nilai_valid = (
-                        hasil_prediksi_nilai_saja in label_valid
-                    )
                     neighbors = hasil_knn_eval.get('neighbors', [])
                     rata_jarak_eval = (
                         sum(float(n['distance']) for n in neighbors)
@@ -4467,20 +4446,6 @@ def admin_evaluasi_sistem():
                         status_evaluasi = 'Tidak dihitung'
                         jumlah_tidak_dihitung += 1
 
-                    if hasil_prediksi_nilai_valid:
-
-                        status_nilai_saja = (
-                            'Benar'
-                            if label_aktual == hasil_prediksi_nilai_saja
-                            else 'Salah'
-                        )
-                        y_true_nilai_saja.append(label_aktual)
-                        y_pred_nilai_saja.append(hasil_prediksi_nilai_saja)
-
-                    else:
-
-                        status_nilai_saja = 'Tidak dihitung'
-
                     data_evaluasi.append((
                         alumni_uji[0],
                         alumni_uji[1],
@@ -4493,13 +4458,7 @@ def admin_evaluasi_sistem():
                         status_evaluasi,
                         f'{alumni_uji[2]}, {alumni_uji[3]}, {alumni_uji[4]}, {alumni_uji[5]}',
                         alumni_uji[6],
-                        alumni_uji[7],
-                        (
-                            hasil_prediksi_nilai_saja
-                            if hasil_prediksi_nilai_valid
-                            else hasil_knn_nilai_saja.get('hasil', '-')
-                        ),
-                        status_nilai_saja
+                        alumni_uji[7]
                     ))
 
         if y_true:
@@ -4513,36 +4472,19 @@ def admin_evaluasi_sistem():
                     'Data uji alumni hasil split hanya memiliki satu kelas, sehingga metrik dapat terlihat terlalu tinggi jika data alumni masih sedikit atau tidak seimbang.'
                 )
 
-        if y_true_nilai_saja:
-
-            metrik_nilai_saja = hitung_metrik_evaluasi(
-                y_true_nilai_saja,
-                y_pred_nilai_saja
-            )
-
         if kesamaan_variabel_label['minat_persen'] >= 80:
 
             peringatan_evaluasi.append(
-                f"{kesamaan_variabel_label['minat_persen']}% data alumni memiliki minat_mapel yang sama dengan hasil_jurusan. Ini dapat membuat evaluasi KNN terlihat sangat tinggi karena variabel input terlalu mirip dengan label aktual."
+                f"Evaluasi metrik hanya memakai nilai mapel. minat_mapel tidak dipakai dalam evaluasi karena {kesamaan_variabel_label['minat_persen']}% data alumni memiliki minat_mapel yang sama dengan hasil_jurusan."
             )
 
         if kesamaan_variabel_label['bakat_persen'] >= 80:
 
             peringatan_evaluasi.append(
-                f"{kesamaan_variabel_label['bakat_persen']}% data alumni memiliki bakat_kemampuan yang sama dengan hasil_jurusan. Ini dapat membuat evaluasi KNN terlihat sangat tinggi karena variabel input terlalu mirip dengan label aktual."
+                f"bakat_kemampuan juga tidak dipakai dalam evaluasi metrik karena {kesamaan_variabel_label['bakat_persen']}% data alumni memiliki bakat_kemampuan yang sama dengan hasil_jurusan."
             )
 
-        if (
-            metrik['accuracy'] == 100
-            and metrik_nilai_saja['accuracy'] > 0
-            and metrik_nilai_saja['accuracy'] < 100
-        ):
-
-            peringatan_evaluasi.append(
-                f"Accuracy variabel lengkap 100%, tetapi pembanding nilai mapel saja {metrik_nilai_saja['accuracy']}%. Artinya nilai 100% kemungkinan besar dipengaruhi kuat oleh variabel minat_mapel/bakat_kemampuan."
-            )
-
-        elif metrik['accuracy'] == 100 and 0 < jumlah_data_evaluasi < 10:
+        if metrik['accuracy'] == 100 and 0 < jumlah_data_evaluasi < 10:
 
             peringatan_evaluasi.append(
                 'Accuracy 100% dihitung dari data uji yang masih sedikit. Tambahkan data alumni yang lebih beragam agar metrik lebih stabil.'
@@ -4607,10 +4549,6 @@ def admin_evaluasi_sistem():
         precision=metrik['precision'],
         recall=metrik['recall'],
         f1_score=metrik['f1_score'],
-        accuracy_nilai_saja=metrik_nilai_saja['accuracy'],
-        precision_nilai_saja=metrik_nilai_saja['precision'],
-        recall_nilai_saja=metrik_nilai_saja['recall'],
-        f1_score_nilai_saja=metrik_nilai_saja['f1_score'],
         jumlah_data_evaluasi=jumlah_data_evaluasi,
         jumlah_data_latih_evaluasi=jumlah_data_latih_evaluasi,
         total_data_alumni_evaluasi=total_data_alumni_evaluasi,
