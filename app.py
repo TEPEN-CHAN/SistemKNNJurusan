@@ -126,7 +126,7 @@ def hitung_metrik_evaluasi(y_true, y_pred):
 
     accuracy = benar / total_data
 
-    labels = list(set(y_true))
+    labels = sorted(set(y_true) | set(y_pred))
 
     precision_total = 0
     recall_total = 0
@@ -4100,38 +4100,11 @@ def admin_evaluasi_sistem():
         values_jurusan.append(row[1])
 
     # =====================================================
-    # DATA DETAIL EVALUASI HASIL KNN SISWA
+    # EVALUASI AKURASI BERDASARKAN HASIL KNN DATA UJI
+    # Label data uji diambil dari kelompok_mapel hasil chatbot.
+    # Prediksi diambil dari hasil_jurusan pada tabel hasil_knn.
     # =====================================================
-    cur.execute("""
-        SELECT
-            hasil_knn.nis,
-            siswa.nama_siswa,
-            siswa.kelas,
-            hasil_knn.hasil_jurusan,
-            hasil_knn.nilai_k,
-            hasil_knn.jumlah_tetangga,
-            hasil_knn.rata_jarak,
-            hasil_knn.confidence,
-            DATE_FORMAT(
-                hasil_knn.tanggal,
-                '%d-%m-%Y %H:%i:%s WIB'
-            ) AS tanggal_wib
-        FROM hasil_knn
-
-        JOIN siswa
-            ON hasil_knn.nis = siswa.nis
-
-        ORDER BY hasil_knn.id_hasil DESC
-    """)
-
-    data_evaluasi = cur.fetchall()
-
-    # =====================================================
-    # EVALUASI AKURASI SISTEM MENGGUNAKAN DATA ALUMNI
-    # Metode: Leave-One-Out
-    # Satu data alumni diuji, data alumni lainnya jadi data latih
-    # =====================================================
-    nilai_k_evaluasi = 3
+    nilai_k_evaluasi = '-'
     jumlah_data_evaluasi = 0
     metrik = {
         'accuracy': 0,
@@ -4142,147 +4115,143 @@ def admin_evaluasi_sistem():
     confusion_labels = []
     confusion_matrix = []
     peringatan_evaluasi = []
-    fitur_evaluasi = [
-        'Nilai Pancasila',
-        'Nilai Matematika',
-        'Nilai Bahasa Indonesia',
-        'Nilai Bahasa Inggris',
-        'Minat Mapel',
-        'Bakat/Kemampuan'
+    sumber_evaluasi = [
+        'Kelompok Mapel (CHATBOT) sebagai label data uji',
+        'Hasil Jurusan (KNN) sebagai prediksi sistem'
     ]
+    data_evaluasi = []
 
     try:
 
         cur.execute("""
             SELECT
-                nilai_pancasila,
-                nilai_matematika,
-                nilai_bahasaindo,
-                nilai_bahasaingg,
-                minat_mapel,
-                bakat_kemampuan,
-                hasil_jurusan
-            FROM alumni
-            WHERE hasil_jurusan IS NOT NULL
-            AND hasil_jurusan != ''
+                hasil_knn.nis,
+                COALESCE(siswa.nama_siswa, hasil_knn.nama_siswa) AS nama_siswa,
+                siswa.kelas,
+                COALESCE(chatbot_terakhir.kelompok_mapel, '') AS label_data_uji,
+                hasil_knn.hasil_jurusan,
+                hasil_knn.nilai_k,
+                hasil_knn.jumlah_tetangga,
+                hasil_knn.rata_jarak,
+                hasil_knn.confidence,
+                DATE_FORMAT(
+                    hasil_knn.tanggal,
+                    '%d-%m-%Y %H:%i:%s WIB'
+                ) AS tanggal_wib
+            FROM hasil_knn
+
+            JOIN siswa
+                ON hasil_knn.nis = siswa.nis
+
+            LEFT JOIN (
+                SELECT hc.*
+                FROM hasil_chatbot hc
+                INNER JOIN (
+                    SELECT nis, MAX(id) AS max_id
+                    FROM hasil_chatbot
+                    GROUP BY nis
+                ) latest
+                    ON hc.nis = latest.nis
+                    AND hc.id = latest.max_id
+            ) chatbot_terakhir
+                ON hasil_knn.nis = chatbot_terakhir.nis
+
+            ORDER BY hasil_knn.id_hasil DESC
         """)
 
-        data_alumni = cur.fetchall()
+        data_hasil_knn = cur.fetchall()
 
         y_true = []
         y_pred = []
+        nilai_k_dipakai = set()
+        jumlah_tidak_dihitung = 0
+        label_valid = {
+            'Kelompok Mapel 1',
+            'Kelompok Mapel 2'
+        }
 
-        jumlah_data_evaluasi = len(data_alumni)
+        for row in data_hasil_knn:
 
-        if jumlah_data_evaluasi > 1:
+            label_data_uji = normalisasi_variabel_kelompok(row[3])
+            hasil_prediksi = normalisasi_variabel_kelompok(row[4])
 
-            indeks_fitur_evaluasi = [0, 1, 2, 3, 4, 5]
-            kandidat_bocor = [
-                (4, 'Minat Mapel'),
-                (5, 'Bakat/Kemampuan')
-            ]
+            label_data_uji_valid = label_data_uji in label_valid
+            hasil_prediksi_valid = hasil_prediksi in label_valid
 
-            for indeks_fitur, nama_fitur in kandidat_bocor:
+            if label_data_uji_valid and hasil_prediksi_valid:
 
-                total_valid = 0
-                jumlah_sama_label = 0
-
-                for row in data_alumni:
-
-                    nilai_fitur = normalisasi_variabel_kelompok(row[indeks_fitur])
-                    label_row = normalisasi_variabel_kelompok(row[6])
-
-                    if not nilai_fitur or not label_row:
-
-                        continue
-
-                    total_valid += 1
-
-                    if nilai_fitur == label_row:
-
-                        jumlah_sama_label += 1
-
-                rasio_sama_label = (
-                    jumlah_sama_label / total_valid
-                    if total_valid
-                    else 0
+                status_evaluasi = (
+                    'Benar'
+                    if label_data_uji == hasil_prediksi
+                    else 'Salah'
                 )
 
-                if rasio_sama_label >= 0.95 and indeks_fitur in indeks_fitur_evaluasi:
+                y_true.append(label_data_uji)
+                y_pred.append(hasil_prediksi)
 
-                    indeks_fitur_evaluasi.remove(indeks_fitur)
-                    peringatan_evaluasi.append(
-                        f'{nama_fitur} tidak dipakai pada metrik evaluasi karena {round(rasio_sama_label * 100, 2)}% nilainya sama dengan label hasil_jurusan.'
-                    )
+                if row[5] is not None:
 
-            fitur_evaluasi = [
-                fitur_evaluasi[index]
-                for index in indeks_fitur_evaluasi
-            ]
+                    nilai_k_dipakai.add(row[5])
 
-            for i in range(jumlah_data_evaluasi):
+            else:
 
-                fitur_uji_lengkap = buat_fitur_knn(
-                    data_alumni[i][0],
-                    data_alumni[i][1],
-                    data_alumni[i][2],
-                    data_alumni[i][3],
-                    data_alumni[i][4],
-                    data_alumni[i][5]
-                )
-                fitur_uji = [
-                    fitur_uji_lengkap[index]
-                    for index in indeks_fitur_evaluasi
-                ]
+                status_evaluasi = 'Tidak dihitung'
+                jumlah_tidak_dihitung += 1
 
-                label_asli = normalisasi_variabel_kelompok(data_alumni[i][6])
+            data_evaluasi.append((
+                row[0],
+                row[1],
+                row[2],
+                label_data_uji if label_data_uji_valid else (row[3] or '-'),
+                hasil_prediksi if hasil_prediksi_valid else (row[4] or '-'),
+                row[5],
+                row[6],
+                row[7],
+                row[8],
+                status_evaluasi,
+                row[9]
+            ))
 
-                data_latih = []
-                label_latih = []
+        jumlah_data_evaluasi = len(y_true)
 
-                for j in range(jumlah_data_evaluasi):
-
-                    if i != j:
-
-                        fitur_latih_lengkap = buat_fitur_knn(
-                            data_alumni[j][0],
-                            data_alumni[j][1],
-                            data_alumni[j][2],
-                            data_alumni[j][3],
-                            data_alumni[j][4],
-                            data_alumni[j][5]
-                        )
-                        fitur_latih = [
-                            fitur_latih_lengkap[index]
-                            for index in indeks_fitur_evaluasi
-                        ]
-
-                        data_latih.append(fitur_latih)
-                        label_latih.append(normalisasi_variabel_kelompok(data_alumni[j][6]))
-
-                k_dipakai = nilai_k_evaluasi
-
-                if k_dipakai > len(data_latih):
-
-                    k_dipakai = len(data_latih)
-
-                hasil_prediksi = knn_predict(
-                    data_latih,
-                    label_latih,
-                    fitur_uji,
-                    k=k_dipakai
-                )
-
-                y_true.append(label_asli)
-                y_pred.append(hasil_prediksi['hasil'])
+        if jumlah_data_evaluasi > 0:
 
             metrik = hitung_metrik_evaluasi(y_true, y_pred)
             confusion_labels, confusion_matrix = buat_confusion_matrix(y_true, y_pred)
 
+        if not data_hasil_knn:
+
+            peringatan_evaluasi.append(
+                'Belum ada hasil KNN data uji yang dapat dievaluasi.'
+            )
+
+        elif jumlah_data_evaluasi == 0:
+
+            peringatan_evaluasi.append(
+                'Metrik belum dapat dihitung karena belum ada hasil KNN yang memiliki label data uji valid dari chatbot.'
+            )
+
+        elif jumlah_tidak_dihitung > 0:
+
+            peringatan_evaluasi.append(
+                f'{jumlah_tidak_dihitung} hasil KNN tidak dihitung karena label data uji atau prediksi KNN belum valid.'
+            )
+
+        if len(nilai_k_dipakai) == 1:
+
+            nilai_k_evaluasi = list(nilai_k_dipakai)[0]
+
+        elif len(nilai_k_dipakai) > 1:
+
+            nilai_k_evaluasi = ', '.join(
+                str(nilai)
+                for nilai in sorted(nilai_k_dipakai)
+            )
+
     except Exception as e:
 
         flash(
-            f'Gagal menghitung metrik evaluasi KNN: {str(e)}',
+            f'Gagal mengambil evaluasi hasil KNN data uji: {str(e)}',
             'warning'
         )
 
@@ -4313,7 +4282,7 @@ def admin_evaluasi_sistem():
         confusion_labels=confusion_labels,
         confusion_matrix=confusion_matrix,
         peringatan_evaluasi=peringatan_evaluasi,
-        fitur_evaluasi=fitur_evaluasi
+        sumber_evaluasi=sumber_evaluasi
     )
 # =========================================================
 # ADMIN - HASIL CHATBOT
