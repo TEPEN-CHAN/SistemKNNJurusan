@@ -220,6 +220,15 @@ Evaluasi Sistem
         line-height: 1.7;
     }
 
+    .warning-box{
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        color: #92400e;
+        border-radius: 18px;
+        padding: 18px;
+        line-height: 1.7;
+    }
+
     .matrix-table{
         min-width: 760px;
         margin-bottom: 0;
@@ -593,6 +602,18 @@ Evaluasi Sistem
             Angka diagonal hijau adalah prediksi yang benar.
         </div>
 
+        {% if peringatan_evaluasi %}
+
+            <div class="warning-box mb-3">
+                <b>Catatan evaluasi:</b>
+                <br>
+                {% for pesan in peringatan_evaluasi %}
+                    {{ pesan }}<br>
+                {% endfor %}
+            </div>
+
+        {% endif %}
+
         <div class="table-responsive">
 
             <table class="table table-bordered align-middle matrix-table">
@@ -685,6 +706,9 @@ Evaluasi Sistem
             <br>
             Nilai K evaluasi:
             <b>{{ nilai_k_evaluasi }}</b>.
+            <br>
+            Fitur yang dipakai pada metrik evaluasi:
+            <b>{{ fitur_evaluasi | join(', ') }}</b>.
 
         </div>
 

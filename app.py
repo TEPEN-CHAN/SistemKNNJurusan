@@ -4141,6 +4141,15 @@ def admin_evaluasi_sistem():
     }
     confusion_labels = []
     confusion_matrix = []
+    peringatan_evaluasi = []
+    fitur_evaluasi = [
+        'Nilai Pancasila',
+        'Nilai Matematika',
+        'Nilai Bahasa Indonesia',
+        'Nilai Bahasa Inggris',
+        'Minat Mapel',
+        'Bakat/Kemampuan'
+    ]
 
     try:
 
@@ -4167,9 +4176,53 @@ def admin_evaluasi_sistem():
 
         if jumlah_data_evaluasi > 1:
 
+            indeks_fitur_evaluasi = [0, 1, 2, 3, 4, 5]
+            kandidat_bocor = [
+                (4, 'Minat Mapel'),
+                (5, 'Bakat/Kemampuan')
+            ]
+
+            for indeks_fitur, nama_fitur in kandidat_bocor:
+
+                total_valid = 0
+                jumlah_sama_label = 0
+
+                for row in data_alumni:
+
+                    nilai_fitur = normalisasi_variabel_kelompok(row[indeks_fitur])
+                    label_row = normalisasi_variabel_kelompok(row[6])
+
+                    if not nilai_fitur or not label_row:
+
+                        continue
+
+                    total_valid += 1
+
+                    if nilai_fitur == label_row:
+
+                        jumlah_sama_label += 1
+
+                rasio_sama_label = (
+                    jumlah_sama_label / total_valid
+                    if total_valid
+                    else 0
+                )
+
+                if rasio_sama_label >= 0.95 and indeks_fitur in indeks_fitur_evaluasi:
+
+                    indeks_fitur_evaluasi.remove(indeks_fitur)
+                    peringatan_evaluasi.append(
+                        f'{nama_fitur} tidak dipakai pada metrik evaluasi karena {round(rasio_sama_label * 100, 2)}% nilainya sama dengan label hasil_jurusan.'
+                    )
+
+            fitur_evaluasi = [
+                fitur_evaluasi[index]
+                for index in indeks_fitur_evaluasi
+            ]
+
             for i in range(jumlah_data_evaluasi):
 
-                fitur_uji = buat_fitur_knn(
+                fitur_uji_lengkap = buat_fitur_knn(
                     data_alumni[i][0],
                     data_alumni[i][1],
                     data_alumni[i][2],
@@ -4177,6 +4230,10 @@ def admin_evaluasi_sistem():
                     data_alumni[i][4],
                     data_alumni[i][5]
                 )
+                fitur_uji = [
+                    fitur_uji_lengkap[index]
+                    for index in indeks_fitur_evaluasi
+                ]
 
                 label_asli = normalisasi_variabel_kelompok(data_alumni[i][6])
 
@@ -4187,7 +4244,7 @@ def admin_evaluasi_sistem():
 
                     if i != j:
 
-                        fitur_latih = buat_fitur_knn(
+                        fitur_latih_lengkap = buat_fitur_knn(
                             data_alumni[j][0],
                             data_alumni[j][1],
                             data_alumni[j][2],
@@ -4195,6 +4252,10 @@ def admin_evaluasi_sistem():
                             data_alumni[j][4],
                             data_alumni[j][5]
                         )
+                        fitur_latih = [
+                            fitur_latih_lengkap[index]
+                            for index in indeks_fitur_evaluasi
+                        ]
 
                         data_latih.append(fitur_latih)
                         label_latih.append(normalisasi_variabel_kelompok(data_alumni[j][6]))
@@ -4250,7 +4311,9 @@ def admin_evaluasi_sistem():
         jumlah_data_evaluasi=jumlah_data_evaluasi,
         nilai_k_evaluasi=nilai_k_evaluasi,
         confusion_labels=confusion_labels,
-        confusion_matrix=confusion_matrix
+        confusion_matrix=confusion_matrix,
+        peringatan_evaluasi=peringatan_evaluasi,
+        fitur_evaluasi=fitur_evaluasi
     )
 # =========================================================
 # ADMIN - HASIL CHATBOT
