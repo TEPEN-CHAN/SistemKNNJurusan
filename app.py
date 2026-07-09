@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from knn import knn_predict
 from chatbot import chatbot_response
 import os
+import random
 
 try:
     from dotenv import load_dotenv
@@ -230,45 +231,46 @@ def buat_confusion_matrix(y_true, y_pred):
     return labels, matrix
 
 
-def ringkas_prediksi_evaluasi(data_latih, label_latih, fitur_uji, label_aktual, k):
+def split_data_alumni_stratified(alumni, test_ratio=0.2, seed=42):
 
-    hasil_knn = knn_predict(
-        data_latih,
-        label_latih,
-        fitur_uji,
-        k=k
-    )
+    rng = random.Random(seed)
+    data_per_label = {}
 
-    hasil_prediksi = normalisasi_variabel_kelompok(
-        hasil_knn.get('hasil')
-    )
-    hasil_prediksi_valid = hasil_prediksi in LABEL_KELOMPOK_VALID
-    neighbors = hasil_knn.get('neighbors', [])
-    rata_jarak = (
-        sum(float(neighbor['distance']) for neighbor in neighbors)
-        / len(neighbors)
-    ) if neighbors else 0
+    for row in alumni:
 
-    if hasil_prediksi_valid:
+        label = normalisasi_variabel_kelompok(row[8])
+        data_per_label.setdefault(label, []).append(row)
 
-        status = 'Benar' if label_aktual == hasil_prediksi else 'Salah'
+    data_latih = []
+    data_uji = []
 
-    else:
+    for label in sorted(data_per_label.keys()):
 
-        status = 'Tidak dihitung'
+        rows = list(data_per_label[label])
+        rng.shuffle(rows)
 
-    return {
-        'prediksi': (
-            hasil_prediksi
-            if hasil_prediksi_valid
-            else hasil_knn.get('hasil', '-')
-        ),
-        'valid': hasil_prediksi_valid,
-        'status': status,
-        'jumlah_tetangga': len(neighbors),
-        'rata_jarak': round(rata_jarak, 4),
-        'confidence': hasil_knn.get('confidence', 0)
-    }
+        if len(rows) == 1:
+
+            data_latih.extend(rows)
+            continue
+
+        jumlah_uji = max(1, round(len(rows) * test_ratio))
+
+        if jumlah_uji >= len(rows):
+
+            jumlah_uji = len(rows) - 1
+
+        data_uji.extend(rows[:jumlah_uji])
+        data_latih.extend(rows[jumlah_uji:])
+
+    if not data_uji and len(data_latih) > 1:
+
+        rows = list(data_latih)
+        rng.shuffle(rows)
+        data_uji = rows[:1]
+        data_latih = rows[1:]
+
+    return data_latih, data_uji
 
 
 def hitung_kesamaan_variabel_label(alumni):
@@ -4301,17 +4303,16 @@ def admin_evaluasi_sistem():
         values_jurusan.append(row[1])
 
     # =====================================================
-    # EVALUASI AKURASI ALUMNI DENGAN LOOCV
+    # EVALUASI AKURASI BERDASARKAN SPLIT DATA ALUMNI
     # Label aktual diambil dari hasil_jurusan alumni.
-    # Prediksi memakai susunan fitur yang sama dengan proses rekomendasi:
-    # nilai mapel, minat mapel, dan bakat/kemampuan.
-    # Setiap alumni diuji sekali dengan seluruh alumni lain sebagai data latih.
+    # Prediksi evaluasi hanya memakai nilai mapel agar tidak bocor dari
+    # variabel minat_mapel/bakat_kemampuan.
     # =====================================================
     nilai_k_evaluasi = 5
     jumlah_data_evaluasi = 0
     jumlah_data_latih_evaluasi = 0
     total_data_alumni_evaluasi = 0
-    rasio_split_evaluasi = 'Leave-One-Out Cross-Validation (LOOCV)'
+    rasio_split_evaluasi = '80:20'
     metrik = metrik_kosong()
     confusion_labels = []
     confusion_matrix = []
@@ -4319,7 +4320,7 @@ def admin_evaluasi_sistem():
     kesamaan_variabel_label = hitung_kesamaan_variabel_label([])
     sumber_evaluasi = [
         'Hasil Jurusan Alumni sebagai label aktual',
-        'Prediksi KNN berdasarkan nilai mapel, minat mapel, dan bakat kemampuan alumni'
+        'Prediksi KNN berdasarkan nilai mapel alumni'
     ]
     data_evaluasi = []
 
@@ -4348,7 +4349,6 @@ def admin_evaluasi_sistem():
         y_pred = []
         jumlah_tidak_dihitung = 0
         jumlah_label_tidak_valid = 0
-        jumlah_fitur_tidak_valid = 0
         label_valid = LABEL_KELOMPOK_VALID
 
         data_alumni_valid = []
@@ -4356,22 +4356,14 @@ def admin_evaluasi_sistem():
         for row in data_alumni:
 
             label_aktual = normalisasi_variabel_kelompok(row[8])
-            minat_mapel = normalisasi_variabel_kelompok(row[6])
-            bakat_kemampuan = normalisasi_variabel_kelompok(row[7])
 
-            if label_aktual not in label_valid:
+            if label_aktual in label_valid:
+
+                data_alumni_valid.append(row)
+
+            else:
 
                 jumlah_label_tidak_valid += 1
-
-                continue
-
-            if minat_mapel not in label_valid or bakat_kemampuan not in label_valid:
-
-                jumlah_fitur_tidak_valid += 1
-
-                continue
-
-            data_alumni_valid.append(row)
 
         total_data_alumni_evaluasi = len(data_alumni_valid)
         kesamaan_variabel_label = hitung_kesamaan_variabel_label(
@@ -4380,120 +4372,134 @@ def admin_evaluasi_sistem():
 
         if len(data_alumni_valid) >= 2:
 
-            jumlah_data_latih_evaluasi = len(data_alumni_valid) - 1
-            jumlah_data_evaluasi = len(data_alumni_valid)
-            nilai_k_evaluasi = min(
-                nilai_k_evaluasi,
-                jumlah_data_latih_evaluasi
+            data_latih_eval, data_uji_eval = split_data_alumni_stratified(
+                data_alumni_valid,
+                test_ratio=0.2,
+                seed=42
             )
 
-            for index_uji, alumni_uji in enumerate(data_alumni_valid):
+            jumlah_data_latih_evaluasi = len(data_latih_eval)
+            jumlah_data_evaluasi = len(data_uji_eval)
+
+            if data_latih_eval and data_uji_eval:
+
+                if nilai_k_evaluasi > len(data_latih_eval):
+
+                    nilai_k_evaluasi = len(data_latih_eval)
 
                 data_latih = []
                 label_latih = []
 
-                for index_latih, alumni_latih in enumerate(data_alumni_valid):
+                for alumni_latih in data_latih_eval:
 
-                    if index_latih == index_uji:
-
-                        continue
-
-                    fitur_latih = buat_fitur_knn(
+                    fitur_latih = buat_fitur_nilai_mapel(
                         alumni_latih[2],
                         alumni_latih[3],
                         alumni_latih[4],
                         alumni_latih[5],
-                        alumni_latih[6],
-                        alumni_latih[7]
                     )
 
                     data_latih.append(fitur_latih)
                     label_latih.append(normalisasi_variabel_kelompok(alumni_latih[8]))
 
-                label_aktual = normalisasi_variabel_kelompok(alumni_uji[8])
-                fitur_uji = buat_fitur_knn(
-                    alumni_uji[2],
-                    alumni_uji[3],
-                    alumni_uji[4],
-                    alumni_uji[5],
-                    alumni_uji[6],
-                    alumni_uji[7]
-                )
-                hasil_evaluasi = ringkas_prediksi_evaluasi(
-                    data_latih,
-                    label_latih,
-                    fitur_uji,
-                    label_aktual,
-                    nilai_k_evaluasi
-                )
+                for alumni_uji in data_uji_eval:
 
-                if hasil_evaluasi['valid']:
+                    label_aktual = normalisasi_variabel_kelompok(alumni_uji[8])
+                    fitur_uji = buat_fitur_nilai_mapel(
+                        alumni_uji[2],
+                        alumni_uji[3],
+                        alumni_uji[4],
+                        alumni_uji[5]
+                    )
 
-                    y_true.append(label_aktual)
-                    y_pred.append(hasil_evaluasi['prediksi'])
+                    hasil_knn_eval = knn_predict(
+                        data_latih,
+                        label_latih,
+                        fitur_uji,
+                        k=nilai_k_evaluasi
+                    )
 
-                else:
+                    hasil_prediksi = normalisasi_variabel_kelompok(
+                        hasil_knn_eval.get('hasil')
+                    )
+                    hasil_prediksi_valid = hasil_prediksi in label_valid
+                    neighbors = hasil_knn_eval.get('neighbors', [])
+                    rata_jarak_eval = (
+                        sum(float(n['distance']) for n in neighbors)
+                        / len(neighbors)
+                    ) if neighbors else 0
+                    confidence_eval = hasil_knn_eval.get('confidence', 0)
 
-                    jumlah_tidak_dihitung += 1
+                    if hasil_prediksi_valid:
 
-                data_evaluasi.append({
-                    'id_alumni': alumni_uji[0],
-                    'nama_alumni': alumni_uji[1],
-                    'label_aktual': label_aktual,
-                    'nilai_mapel': f'{alumni_uji[2]}, {alumni_uji[3]}, {alumni_uji[4]}, {alumni_uji[5]}',
-                    'minat_mapel': alumni_uji[6],
-                    'bakat_kemampuan': alumni_uji[7],
-                    'hasil': hasil_evaluasi
-                })
+                        status_evaluasi = (
+                            'Benar'
+                            if label_aktual == hasil_prediksi
+                            else 'Salah'
+                        )
+
+                        y_true.append(label_aktual)
+                        y_pred.append(hasil_prediksi)
+
+                    else:
+
+                        status_evaluasi = 'Tidak dihitung'
+                        jumlah_tidak_dihitung += 1
+
+                    data_evaluasi.append((
+                        alumni_uji[0],
+                        alumni_uji[1],
+                        label_aktual,
+                        hasil_prediksi if hasil_prediksi_valid else hasil_knn_eval.get('hasil', '-'),
+                        nilai_k_evaluasi,
+                        len(neighbors),
+                        round(rata_jarak_eval, 4),
+                        confidence_eval,
+                        status_evaluasi,
+                        f'{alumni_uji[2]}, {alumni_uji[3]}, {alumni_uji[4]}, {alumni_uji[5]}',
+                        alumni_uji[6],
+                        alumni_uji[7]
+                    ))
 
         if y_true:
 
-            metrik = hitung_metrik_evaluasi(
-                y_true,
-                y_pred
-            )
-            (
-                confusion_labels,
-                confusion_matrix
-            ) = buat_confusion_matrix(
-                y_true,
-                y_pred
-            )
+            metrik = hitung_metrik_evaluasi(y_true, y_pred)
+            confusion_labels, confusion_matrix = buat_confusion_matrix(y_true, y_pred)
 
             if len(set(y_true)) < 2:
 
                 peringatan_evaluasi.append(
-                    'Data alumni valid hanya memiliki satu kelas, sehingga metrik LOOCV belum mewakili kemampuan klasifikasi dua kelas.'
+                    'Data uji alumni hasil split hanya memiliki satu kelas, sehingga metrik dapat terlihat terlalu tinggi jika data alumni masih sedikit atau tidak seimbang.'
                 )
 
         if kesamaan_variabel_label['minat_persen'] >= 80:
 
             peringatan_evaluasi.append(
-                f"minat_mapel memiliki kesamaan {kesamaan_variabel_label['minat_persen']}% dengan hasil_jurusan. Pastikan nilainya berasal dari pengukuran minat yang independen, bukan disalin dari label aktual."
+                f"Evaluasi metrik hanya memakai nilai mapel. minat_mapel tidak dipakai dalam evaluasi karena {kesamaan_variabel_label['minat_persen']}% data alumni memiliki minat_mapel yang sama dengan hasil_jurusan."
             )
 
         if kesamaan_variabel_label['bakat_persen'] >= 80:
 
             peringatan_evaluasi.append(
-                f"bakat_kemampuan memiliki kesamaan {kesamaan_variabel_label['bakat_persen']}% dengan hasil_jurusan. Pastikan nilainya berasal dari pengukuran bakat yang independen, bukan disalin dari label aktual."
+                f"bakat_kemampuan juga tidak dipakai dalam evaluasi metrik karena {kesamaan_variabel_label['bakat_persen']}% data alumni memiliki bakat_kemampuan yang sama dengan hasil_jurusan."
             )
 
-        if metrik['accuracy'] == 100 and y_true:
+        if metrik['accuracy'] == 100 and 0 < jumlah_data_evaluasi < 10:
 
             peringatan_evaluasi.append(
-                'Accuracy 100% merupakan hasil perhitungan LOOCV, bukan nilai yang ditetapkan sistem. Periksa kembali apakah minat dan bakat benar-benar diukur secara independen dari hasil_jurusan, serta tambahkan data yang lebih beragam.'
+                'Accuracy 100% dihitung dari data uji yang masih sedikit. Tambahkan data alumni yang lebih beragam agar metrik lebih stabil.'
             )
 
         if not data_alumni:
 
             peringatan_evaluasi.append(
-                'Data alumni belum tersedia sehingga evaluasi LOOCV belum dapat dihitung.'
+                'Data alumni belum tersedia sehingga evaluasi split 80:20 belum dapat dihitung.'
             )
 
         elif total_data_alumni_evaluasi < 2:
 
             peringatan_evaluasi.append(
-                'Minimal dibutuhkan 2 data alumni dengan label dan fitur valid untuk menjalankan LOOCV.'
+                'Minimal dibutuhkan 2 data alumni berlabel valid untuk melakukan split data latih dan data uji.'
             )
 
         elif not y_true:
@@ -4508,22 +4514,16 @@ def admin_evaluasi_sistem():
                 f'{jumlah_label_tidak_valid} data alumni tidak dipakai karena hasil_jurusan belum valid.'
             )
 
-        if jumlah_fitur_tidak_valid > 0:
-
-            peringatan_evaluasi.append(
-                f'{jumlah_fitur_tidak_valid} data alumni berlabel aktual tidak dipakai karena minat_mapel atau bakat_kemampuan belum valid.'
-            )
-
         if jumlah_tidak_dihitung > 0:
 
             peringatan_evaluasi.append(
-                f'{jumlah_tidak_dihitung} data alumni tidak dihitung karena prediksi KNN belum valid.'
+                f'{jumlah_tidak_dihitung} data uji alumni tidak dihitung karena prediksi KNN belum valid.'
             )
 
     except Exception as e:
 
         flash(
-            f'Gagal menghitung evaluasi LOOCV data alumni: {str(e)}',
+            f'Gagal menghitung evaluasi split data alumni: {str(e)}',
             'warning'
         )
 

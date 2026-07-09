@@ -276,54 +276,6 @@ Evaluasi Sistem
         color: #9a3412;
     }
 
-    .model-panel{
-        border-radius: 22px;
-        padding: 24px;
-        height: 100%;
-        border: 1px solid #e2e8f0;
-    }
-
-    .model-panel.lengkap{
-        background: linear-gradient(145deg, #f0fdf4, #ffffff);
-        border-color: #bbf7d0;
-    }
-
-    .model-name{
-        font-size: 21px;
-        font-weight: 800;
-        color: #0f172a;
-    }
-
-    .model-feature{
-        color: #64748b;
-        margin: 5px 0 18px;
-    }
-
-    .metric-grid{
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 12px;
-    }
-
-    .metric-item{
-        background: rgba(255,255,255,.9);
-        border: 1px solid #e2e8f0;
-        border-radius: 16px;
-        padding: 15px;
-    }
-
-    .metric-item-label{
-        color: #64748b;
-        font-size: 13px;
-        font-weight: 700;
-    }
-
-    .metric-item-value{
-        color: #0f172a;
-        font-size: 27px;
-        font-weight: 800;
-    }
-
     @keyframes fadeDown{
         from{
             opacity: 0;
@@ -347,10 +299,6 @@ Evaluasi Sistem
     }
 
     @media(max-width:992px){
-
-        .metric-grid{
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
 
         .topbar{
             flex-direction: column;
@@ -378,7 +326,7 @@ Evaluasi Sistem
             </div>
 
             <div class="topbar-subtitle">
-                Evaluasi KNN nilai mapel, minat, dan bakat menggunakan LOOCV.
+                Analisis hasil rekomendasi dan evaluasi metode KNN menggunakan split data alumni 80:20.
             </div>
 
         </div>
@@ -573,108 +521,173 @@ Evaluasi Sistem
     </div>
 
     <!-- METRIK EVALUASI -->
-    <div class="card-custom">
+    <div class="row g-4 mb-4">
 
-        <div class="section-title">
-            Hasil Evaluasi Model
-        </div>
+        <div class="col-lg-3 col-md-6">
 
-        <div class="info-box mb-4">
-            Evaluasi memakai nilai mapel, minat mapel, dan bakat/kemampuan dengan metode LOOCV.
-        </div>
+            <div class="stats-box cyan">
 
-        <div class="row g-4">
-
-            <div class="col-12">
-                <div class="model-panel lengkap">
-                    <div class="model-name">
-                        KNN — Nilai Mapel + Minat + Bakat
-                    </div>
-                    <div class="model-feature">
-                        Empat nilai mapel ditambah minat mapel dan bakat/kemampuan.
-                    </div>
-                    <div class="metric-grid">
-                        <div class="metric-item">
-                            <div class="metric-item-label">Accuracy</div>
-                            <div class="metric-item-value">{{ accuracy }}%</div>
-                        </div>
-                        <div class="metric-item">
-                            <div class="metric-item-label">Precision</div>
-                            <div class="metric-item-value">{{ precision }}%</div>
-                        </div>
-                        <div class="metric-item">
-                            <div class="metric-item-label">Recall</div>
-                            <div class="metric-item-value">{{ recall }}%</div>
-                        </div>
-                        <div class="metric-item">
-                            <div class="metric-item-label">F1-Score</div>
-                            <div class="metric-item-value">{{ f1_score }}%</div>
-                        </div>
-                    </div>
+                <div class="stats-icon">
+                    <i class="bi bi-bullseye"></i>
                 </div>
+
+                <div class="stats-title">
+                    Accuracy
+                </div>
+
+                <div class="stats-value">
+                    {{ accuracy }}%
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+
+            <div class="stats-box indigo">
+
+                <div class="stats-icon">
+                    <i class="bi bi-check2-circle"></i>
+                </div>
+
+                <div class="stats-title">
+                    Precision
+                </div>
+
+                <div class="stats-value">
+                    {{ precision }}%
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+
+            <div class="stats-box dark">
+
+                <div class="stats-icon">
+                    <i class="bi bi-arrow-repeat"></i>
+                </div>
+
+                <div class="stats-title">
+                    Recall
+                </div>
+
+                <div class="stats-value">
+                    {{ recall }}%
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+
+            <div class="stats-box red">
+
+                <div class="stats-icon">
+                    <i class="bi bi-activity"></i>
+                </div>
+
+                <div class="stats-title">
+                    F1-Score
+                </div>
+
+                <div class="stats-value">
+                    {{ f1_score }}%
+                </div>
+
             </div>
 
         </div>
 
     </div>
 
-    {% if peringatan_evaluasi %}
+    <!-- CONFUSION MATRIX -->
+    <div class="card-custom">
 
-        <div class="warning-box mb-4">
-            <b>Catatan evaluasi:</b>
-            <br>
-            {% for pesan in peringatan_evaluasi %}
-                {{ pesan }}<br>
-            {% endfor %}
+        <div class="section-title">
+            Confusion Matrix
         </div>
 
-    {% endif %}
+        <div class="info-box mb-3">
+            Baris menunjukkan label aktual data uji alumni, sedangkan kolom menunjukkan hasil prediksi KNN.
+            Angka diagonal hijau adalah prediksi yang benar.
+        </div>
 
-    <!-- CONFUSION MATRIX -->
-    <div class="row g-4 mb-4">
+        {% if peringatan_evaluasi %}
 
-        <div class="col-12">
-            <div class="card-custom h-100 mb-0">
-                <div class="section-title">
-                    Confusion Matrix
-                </div>
-                <div class="info-box mb-3">
-                    Prediksi berdasarkan nilai mapel, minat mapel, dan bakat/kemampuan.
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-bordered align-middle matrix-table">
-                        <thead>
-                            <tr>
-                                <th>Aktual \ Prediksi</th>
-                                {% for label in confusion_labels %}
-                                    <th>{{ label }}</th>
-                                {% endfor %}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% if confusion_matrix %}
-                                {% for row in confusion_matrix %}
-                                    {% set row_index = loop.index0 %}
-                                    <tr>
-                                        <td class="matrix-label">{{ confusion_labels[row_index] }}</td>
-                                        {% for value in row %}
-                                            <td class="{% if row_index == loop.index0 %}matrix-correct{% else %}matrix-wrong{% endif %}">
-                                                {{ value }}
-                                            </td>
-                                        {% endfor %}
-                                    </tr>
-                                {% endfor %}
-                            {% else %}
-                                <tr>
-                                    <td colspan="{{ confusion_labels|length + 1 }}" class="text-center text-muted">
-                                        Confusion Matrix belum tersedia.
-                                    </td>
-                                </tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
-                </div>
+            <div class="warning-box mb-3">
+                <b>Catatan evaluasi:</b>
+                <br>
+                {% for pesan in peringatan_evaluasi %}
+                    {{ pesan }}<br>
+                {% endfor %}
             </div>
+
+        {% endif %}
+
+        <div class="table-responsive">
+
+            <table class="table table-bordered align-middle matrix-table">
+
+                <thead>
+
+                    <tr>
+                        <th>Aktual \ Prediksi</th>
+
+                        {% for label in confusion_labels %}
+
+                            <th>{{ label }}</th>
+
+                        {% endfor %}
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% if confusion_matrix %}
+
+                        {% for row in confusion_matrix %}
+
+                            {% set row_index = loop.index0 %}
+
+                            <tr>
+
+                                <td class="matrix-label">
+                                    {{ confusion_labels[row_index] }}
+                                </td>
+
+                                {% for value in row %}
+
+                                    <td class="{% if row_index == loop.index0 %}matrix-correct{% else %}matrix-wrong{% endif %}">
+                                        {{ value }}
+                                    </td>
+
+                                {% endfor %}
+
+                            </tr>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                        <tr>
+                            <td colspan="{{ confusion_labels|length + 1 }}" class="text-center text-muted">
+                                Confusion Matrix belum tersedia. Minimal dibutuhkan data alumni latih dan data alumni uji yang memiliki label valid.
+                            </td>
+                        </tr>
+
+                    {% endif %}
+
+                </tbody>
+
+            </table>
+
         </div>
 
     </div>
@@ -699,25 +712,23 @@ Evaluasi Sistem
 
         <div class="metric-note">
 
-            Evaluasi memakai <b>nilai mapel, minat mapel, dan bakat/kemampuan</b>.
-            Metode <b>{{ rasio_split_evaluasi }}</b> menguji setiap alumni satu per satu, sementara alumni lainnya
-            menjadi data latih pada putaran tersebut.
-            Hanya alumni dengan label aktual, minat mapel, dan bakat/kemampuan yang valid sebagai
-            <b>Kelompok Mapel 1</b> atau <b>Kelompok Mapel 2</b> yang dihitung.
+            <b>Accuracy, Precision, Recall, dan F1-Score</b> dihitung dari evaluasi split data alumni memakai nilai mapel saja.
+            Data alumni dibagi menjadi <b>{{ rasio_split_evaluasi }}</b>, yaitu data latih untuk tetangga KNN dan data uji untuk pengujian.
+            Variabel minat_mapel dan bakat_kemampuan tetap dipakai pada proses rekomendasi jurusan siswa, tetapi tidak dipakai dalam evaluasi metrik.
             <br><br>
             Total data alumni valid:
             <b>{{ total_data_alumni_evaluasi }}</b> data.
             <br>
-            Jumlah data latih per putaran:
+            Jumlah data latih:
             <b>{{ jumlah_data_latih_evaluasi }}</b> data.
             <br>
-            Total alumni yang diuji:
-            <b>{{ jumlah_data_evaluasi }}</b> data.
+            Jumlah data uji:
+            <b>{{ jumlah_data_evaluasi }}</b> data uji.
             <br>
             Nilai K evaluasi:
             <b>{{ nilai_k_evaluasi }}</b>.
             <br>
-            Sumber perhitungan metrik:
+            Sumber perbandingan metrik:
             <b>{{ sumber_evaluasi | join(', ') }}</b>.
 
         </div>
@@ -769,7 +780,7 @@ Evaluasi Sistem
     <div class="card-custom">
 
         <div class="section-title">
-            Detail Evaluasi Alumni Berlabel Aktual
+            Detail Evaluasi Split Data Alumni
         </div>
 
         <div class="table-responsive">
@@ -784,14 +795,15 @@ Evaluasi Sistem
                         <th>ID Alumni</th>
                         <th>Nama Alumni</th>
                         <th>Label Aktual Alumni</th>
+                        <th>Prediksi KNN (Nilai Mapel)</th>
+                        <th>K</th>
+                        <th>Jumlah Tetangga</th>
+                        <th>Rata Jarak</th>
+                        <th>Confidence</th>
+                        <th>Status</th>
                         <th>Nilai Mapel</th>
                         <th>Minat Mapel</th>
                         <th>Bakat/Kemampuan</th>
-                        <th>K</th>
-                        <th>Prediksi KNN</th>
-                        <th>Status</th>
-                        <th>Confidence</th>
-                        <th>Rata Jarak</th>
 
                     </tr>
 
@@ -810,50 +822,50 @@ Evaluasi Sistem
                                 </td>
 
                                 <td>
-                                    {{ e.id_alumni }}
+                                    {{ e[0] }}
                                 </td>
 
                                 <td>
-                                    {{ e.nama_alumni }}
-                                </td>
-
-                                <td>
-                                    <span class="badge-custom badge-jurusan">
-                                        {{ e.label_aktual }}
-                                    </span>
-                                </td>
-
-                                <td>
-                                    {{ e.nilai_mapel }}
-                                </td>
-
-                                <td>
-                                    {{ e.minat_mapel }}
-                                </td>
-
-                                <td>
-                                    {{ e.bakat_kemampuan }}
-                                </td>
-
-                                <td>
-                                    {{ nilai_k_evaluasi }}
+                                    {{ e[1] }}
                                 </td>
 
                                 <td>
                                     <span class="badge-custom badge-jurusan">
-                                        {{ e.hasil.prediksi }}
+                                        {{ e[2] }}
                                     </span>
                                 </td>
 
                                 <td>
+                                    <span class="badge-custom badge-jurusan">
+                                        {{ e[3] }}
+                                    </span>
+                                </td>
 
-                                    {% if e.hasil.status == 'Benar' %}
+                                <td>
+                                    {{ e[4] }}
+                                </td>
+
+                                <td>
+                                    {{ e[5] }}
+                                </td>
+
+                                <td>
+                                    {{ "%.4f"|format(e[6]|float) }}
+                                </td>
+
+                                <td>
+                                    {{ "%.2f"|format(e[7]|float) }}%
+                                </td>
+
+                                <td>
+
+                                    {% if e[8] == 'Benar' %}
 
                                         <span class="badge-custom badge-correct">
                                             Benar
                                         </span>
 
-                                    {% elif e.hasil.status == 'Salah' %}
+                                    {% elif e[8] == 'Salah' %}
 
                                         <span class="badge-custom badge-wrong">
                                             Salah
@@ -870,11 +882,15 @@ Evaluasi Sistem
                                 </td>
 
                                 <td>
-                                    {{ "%.2f"|format(e.hasil.confidence|float) }}%
+                                    {{ e[9] if e[9] else '-' }}
                                 </td>
 
                                 <td>
-                                    {{ "%.4f"|format(e.hasil.rata_jarak|float) }}
+                                    {{ e[10] if e[10] else '-' }}
+                                </td>
+
+                                <td>
+                                    {{ e[11] if e[11] else '-' }}
                                 </td>
 
                             </tr>
@@ -885,8 +901,8 @@ Evaluasi Sistem
 
                         <tr>
 
-                            <td colspan="12" class="text-center text-muted">
-                                Evaluasi belum tersedia. Pastikan tersedia alumni berlabel aktual yang valid.
+                            <td colspan="13" class="text-center text-muted">
+                                Evaluasi split data alumni belum tersedia
                             </td>
 
                         </tr>
