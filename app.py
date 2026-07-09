@@ -4305,8 +4305,8 @@ def admin_evaluasi_sistem():
     # =====================================================
     # EVALUASI AKURASI BERDASARKAN SPLIT DATA ALUMNI
     # Label aktual diambil dari hasil_jurusan alumni.
-    # Prediksi evaluasi hanya memakai nilai mapel agar tidak bocor dari
-    # variabel minat_mapel/bakat_kemampuan.
+    # Prediksi memakai susunan fitur yang sama dengan proses rekomendasi:
+    # nilai mapel, minat mapel, dan bakat/kemampuan.
     # =====================================================
     nilai_k_evaluasi = 5
     jumlah_data_evaluasi = 0
@@ -4320,7 +4320,7 @@ def admin_evaluasi_sistem():
     kesamaan_variabel_label = hitung_kesamaan_variabel_label([])
     sumber_evaluasi = [
         'Hasil Jurusan Alumni sebagai label aktual',
-        'Prediksi KNN berdasarkan nilai mapel alumni'
+        'Prediksi KNN berdasarkan nilai mapel, minat mapel, dan bakat kemampuan alumni'
     ]
     data_evaluasi = []
 
@@ -4349,6 +4349,7 @@ def admin_evaluasi_sistem():
         y_pred = []
         jumlah_tidak_dihitung = 0
         jumlah_label_tidak_valid = 0
+        jumlah_fitur_tidak_valid = 0
         label_valid = LABEL_KELOMPOK_VALID
 
         data_alumni_valid = []
@@ -4356,14 +4357,22 @@ def admin_evaluasi_sistem():
         for row in data_alumni:
 
             label_aktual = normalisasi_variabel_kelompok(row[8])
+            minat_mapel = normalisasi_variabel_kelompok(row[6])
+            bakat_kemampuan = normalisasi_variabel_kelompok(row[7])
 
-            if label_aktual in label_valid:
-
-                data_alumni_valid.append(row)
-
-            else:
+            if label_aktual not in label_valid:
 
                 jumlah_label_tidak_valid += 1
+
+                continue
+
+            if minat_mapel not in label_valid or bakat_kemampuan not in label_valid:
+
+                jumlah_fitur_tidak_valid += 1
+
+                continue
+
+            data_alumni_valid.append(row)
 
         total_data_alumni_evaluasi = len(data_alumni_valid)
         kesamaan_variabel_label = hitung_kesamaan_variabel_label(
@@ -4392,11 +4401,13 @@ def admin_evaluasi_sistem():
 
                 for alumni_latih in data_latih_eval:
 
-                    fitur_latih = buat_fitur_nilai_mapel(
+                    fitur_latih = buat_fitur_knn(
                         alumni_latih[2],
                         alumni_latih[3],
                         alumni_latih[4],
                         alumni_latih[5],
+                        alumni_latih[6],
+                        alumni_latih[7]
                     )
 
                     data_latih.append(fitur_latih)
@@ -4405,11 +4416,13 @@ def admin_evaluasi_sistem():
                 for alumni_uji in data_uji_eval:
 
                     label_aktual = normalisasi_variabel_kelompok(alumni_uji[8])
-                    fitur_uji = buat_fitur_nilai_mapel(
+                    fitur_uji = buat_fitur_knn(
                         alumni_uji[2],
                         alumni_uji[3],
                         alumni_uji[4],
-                        alumni_uji[5]
+                        alumni_uji[5],
+                        alumni_uji[6],
+                        alumni_uji[7]
                     )
 
                     hasil_knn_eval = knn_predict(
@@ -4475,13 +4488,13 @@ def admin_evaluasi_sistem():
         if kesamaan_variabel_label['minat_persen'] >= 80:
 
             peringatan_evaluasi.append(
-                f"Evaluasi metrik hanya memakai nilai mapel. minat_mapel tidak dipakai dalam evaluasi karena {kesamaan_variabel_label['minat_persen']}% data alumni memiliki minat_mapel yang sama dengan hasil_jurusan."
+                f"minat_mapel tetap dipakai sebagai fitur evaluasi dan memiliki kesamaan {kesamaan_variabel_label['minat_persen']}% dengan hasil_jurusan. Pastikan nilainya berasal dari pengukuran minat yang independen, bukan disalin dari label aktual."
             )
 
         if kesamaan_variabel_label['bakat_persen'] >= 80:
 
             peringatan_evaluasi.append(
-                f"bakat_kemampuan juga tidak dipakai dalam evaluasi metrik karena {kesamaan_variabel_label['bakat_persen']}% data alumni memiliki bakat_kemampuan yang sama dengan hasil_jurusan."
+                f"bakat_kemampuan tetap dipakai sebagai fitur evaluasi dan memiliki kesamaan {kesamaan_variabel_label['bakat_persen']}% dengan hasil_jurusan. Pastikan nilainya berasal dari pengukuran bakat yang independen, bukan disalin dari label aktual."
             )
 
         if metrik['accuracy'] == 100 and 0 < jumlah_data_evaluasi < 10:
@@ -4512,6 +4525,12 @@ def admin_evaluasi_sistem():
 
             peringatan_evaluasi.append(
                 f'{jumlah_label_tidak_valid} data alumni tidak dipakai karena hasil_jurusan belum valid.'
+            )
+
+        if jumlah_fitur_tidak_valid > 0:
+
+            peringatan_evaluasi.append(
+                f'{jumlah_fitur_tidak_valid} data alumni berlabel aktual tidak dipakai karena minat_mapel atau bakat_kemampuan belum valid.'
             )
 
         if jumlah_tidak_dihitung > 0:

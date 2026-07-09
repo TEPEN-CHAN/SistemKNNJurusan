@@ -326,7 +326,7 @@ Evaluasi Sistem
             </div>
 
             <div class="topbar-subtitle">
-                Analisis hasil rekomendasi dan evaluasi metode KNN menggunakan split data alumni 80:20.
+                Evaluasi KNN menggunakan data alumni berlabel aktual dan seluruh variabel model.
             </div>
 
         </div>
@@ -712,9 +712,11 @@ Evaluasi Sistem
 
         <div class="metric-note">
 
-            <b>Accuracy, Precision, Recall, dan F1-Score</b> dihitung dari evaluasi split data alumni memakai nilai mapel saja.
+            <b>Accuracy, Precision, Recall, dan F1-Score</b> dihitung dari evaluasi split data alumni memakai
+            nilai mapel, minat mapel, dan bakat/kemampuan.
             Data alumni dibagi menjadi <b>{{ rasio_split_evaluasi }}</b>, yaitu data latih untuk tetangga KNN dan data uji untuk pengujian.
-            Variabel minat_mapel dan bakat_kemampuan tetap dipakai pada proses rekomendasi jurusan siswa, tetapi tidak dipakai dalam evaluasi metrik.
+            Hanya alumni dengan label aktual, minat mapel, dan bakat/kemampuan yang valid sebagai
+            <b>Kelompok Mapel 1</b> atau <b>Kelompok Mapel 2</b> yang dihitung.
             <br><br>
             Total data alumni valid:
             <b>{{ total_data_alumni_evaluasi }}</b> data.
@@ -780,7 +782,7 @@ Evaluasi Sistem
     <div class="card-custom">
 
         <div class="section-title">
-            Detail Evaluasi Split Data Alumni
+            Detail Evaluasi Alumni Berlabel Aktual
         </div>
 
         <div class="table-responsive">
@@ -795,7 +797,7 @@ Evaluasi Sistem
                         <th>ID Alumni</th>
                         <th>Nama Alumni</th>
                         <th>Label Aktual Alumni</th>
-                        <th>Prediksi KNN (Nilai Mapel)</th>
+                        <th>Prediksi KNN (Semua Variabel)</th>
                         <th>K</th>
                         <th>Jumlah Tetangga</th>
                         <th>Rata Jarak</th>
@@ -902,7 +904,7 @@ Evaluasi Sistem
                         <tr>
 
                             <td colspan="13" class="text-center text-muted">
-                                Evaluasi split data alumni belum tersedia
+                                Evaluasi belum tersedia. Pastikan tersedia alumni berlabel aktual yang valid.
                             </td>
 
                         </tr>
