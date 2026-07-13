@@ -134,6 +134,9 @@
       <button class="btn btn-danger" onclick="hapusTerpilih()">
         <i class="bi bi-trash-fill me-1"></i>Hapus Terpilih
       </button>
+      <button class="btn btn-outline-danger" onclick="hapusSemuaAlumni()">
+        <i class="bi bi-trash3-fill me-1"></i>Hapus Semua
+      </button>
       <a href="/admin/download_alumni" class="btn btn-success">
         <i class="bi bi-file-earmark-excel-fill me-1"></i>Download Excel
       </a>
@@ -269,6 +272,36 @@ function hapusTerpilih() {
       .then((res) => res.json())
       .then((data) => {
         Swal.fire('Berhasil', data.message, 'success').then(() => location.reload());
+      });
+  });
+}
+
+function hapusSemuaAlumni() {
+  Swal.fire({
+    title:             'Hapus semua data alumni?',
+    text:              'Semua data alumni akan dihapus permanen.',
+    icon:              'warning',
+    showCancelButton:  true,
+    confirmButtonText: 'Ya, Hapus Semua',
+    cancelButtonText:  'Batal',
+    confirmButtonColor:'#dc2626'
+  }).then((result) => {
+    if (!result.isConfirmed) return;
+
+    fetch('/admin/hapus_semua_alumni', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' }
+    })
+      .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (ok && data.status === 'success') {
+          Swal.fire('Berhasil', data.message, 'success').then(() => location.reload());
+        } else {
+          Swal.fire('Gagal', data.message || 'Gagal menghapus semua data alumni.', 'error');
+        }
+      })
+      .catch(() => {
+        Swal.fire('Gagal', 'Terjadi kesalahan saat menghapus semua data alumni.', 'error');
       });
   });
 }

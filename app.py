@@ -650,6 +650,35 @@ def nilai_excel_pertama(row, daftar_kolom):
     return None
 
 
+def normalisasi_id_alumni_excel(value):
+
+    if value is None or pd.isna(value):
+
+        return None
+
+    if isinstance(value, str):
+
+        value = value.strip()
+
+        if value == '':
+
+            return None
+
+    try:
+
+        nilai_float = float(value)
+
+    except (TypeError, ValueError):
+
+        return None
+
+    if not nilai_float.is_integer() or nilai_float <= 0:
+
+        return None
+
+    return int(nilai_float)
+
+
 def normalisasi_variabel_kelompok(value):
 
     if pd.isna(value):
@@ -818,6 +847,7 @@ def pastikan_kolom_variabel_knn_baru():
 def upload_data_alumni(file):
 
     df = pd.read_excel(file)
+    df = df.dropna(how='all')
 
     df.columns = (
         df.columns
@@ -873,6 +903,28 @@ def upload_data_alumni(file):
     pastikan_kolom_variabel_knn_baru()
 
     punya_id_alumni = 'id_alumni' in df.columns
+    id_alumni_per_baris = {}
+
+    if punya_id_alumni:
+
+        id_excel_per_baris = []
+        jumlah_id = {}
+
+        for index, value in df['id_alumni'].items():
+
+            id_alumni_excel = normalisasi_id_alumni_excel(value)
+            id_excel_per_baris.append((index, id_alumni_excel))
+
+            if id_alumni_excel is not None:
+
+                jumlah_id[id_alumni_excel] = jumlah_id.get(id_alumni_excel, 0) + 1
+
+        id_alumni_per_baris = {
+            index: id_alumni_excel
+            if id_alumni_excel is not None and jumlah_id.get(id_alumni_excel, 0) == 1
+            else None
+            for index, id_alumni_excel in id_excel_per_baris
+        }
 
     cur = mysql.connection.cursor()
 
@@ -880,13 +932,13 @@ def upload_data_alumni(file):
 
         for index, row in df.iterrows():
 
-            id_alumni = nilai_excel(row, 'id_alumni') if punya_id_alumni else None
+            id_alumni = id_alumni_per_baris.get(index) if punya_id_alumni else None
 
             if id_alumni is not None:
 
                 cur.execute("""
 
-                    REPLACE INTO alumni(
+                    INSERT INTO alumni(
 
                         id_alumni,
                         nama_alumni,
@@ -907,6 +959,17 @@ def upload_data_alumni(file):
                         %s,%s,%s,%s,%s
 
                     )
+
+                    ON DUPLICATE KEY UPDATE
+                        nama_alumni=VALUES(nama_alumni),
+                        nilai_pancasila=VALUES(nilai_pancasila),
+                        nilai_matematika=VALUES(nilai_matematika),
+                        nilai_bahasaindo=VALUES(nilai_bahasaindo),
+                        nilai_bahasaingg=VALUES(nilai_bahasaingg),
+                        minat_mapel=VALUES(minat_mapel),
+                        bakat_kemampuan=VALUES(bakat_kemampuan),
+                        hasil_jurusan=VALUES(hasil_jurusan),
+                        tanggal_input=VALUES(tanggal_input)
 
                 """, (
 
@@ -2263,7 +2326,7 @@ def admin_input_alumni():
 
             simpan_log(f'Mengupload data alumni sebanyak {jumlah_data} baris')
 
-            flash('Data alumni berhasil diupload', 'success')
+            flash(f'Data alumni berhasil diupload sebanyak {jumlah_data} baris', 'success')
 
             return redirect_alumni_page()
 
@@ -2455,6 +2518,52 @@ def admin_hapus_alumni_massal():
         return jsonify({
             'status': 'error',
             'message': f'Gagal menghapus data alumni: {str(e)}'
+        }), 500
+
+    finally:
+
+        cur.close()
+
+
+# =========================================================
+# ADMIN - HAPUS SEMUA DATA ALUMNI
+# =========================================================
+@app.route('/hapus_semua_alumni', methods=['POST'])
+@app.route('/admin/hapus_semua_alumni', methods=['POST'])
+@login_required(roles=[1, 2])
+def admin_hapus_semua_alumni():
+
+    cur = mysql.connection.cursor()
+
+    try:
+
+        cur.execute("""
+            SELECT COUNT(*)
+            FROM alumni
+        """)
+
+        jumlah_data = cur.fetchone()[0]
+
+        cur.execute("""
+            DELETE FROM alumni
+        """)
+
+        mysql.connection.commit()
+
+        simpan_log(f'Menghapus semua data alumni sebanyak {jumlah_data} data')
+
+        return jsonify({
+            'status': 'success',
+            'message': f'{jumlah_data} data alumni berhasil dihapus'
+        })
+
+    except Exception as e:
+
+        mysql.connection.rollback()
+
+        return jsonify({
+            'status': 'error',
+            'message': f'Gagal menghapus semua data alumni: {str(e)}'
         }), 500
 
     finally:
@@ -2729,7 +2838,7 @@ def input_alumni():
 
             simpan_log(f'Mengupload data alumni Guru BK sebanyak {jumlah_data} baris')
 
-            flash('Data alumni berhasil diupload', 'success')
+            flash(f'Data alumni berhasil diupload sebanyak {jumlah_data} baris', 'success')
 
             return redirect('/input_alumni')
 

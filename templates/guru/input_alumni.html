@@ -493,6 +493,11 @@
                             Hapus Terpilih
                         </button>
 
+                        <button type="button" class="btn-action-danger" onclick="hapusSemuaAlumni()">
+                            <i class="bi bi-trash3-fill me-1"></i>
+                            Hapus Semua
+                        </button>
+
                         <a href="/download_alumni" class="btn-action-success">
                             <i class="bi bi-file-earmark-excel-fill me-1"></i>
                             Download Excel
@@ -710,6 +715,49 @@
             })
             .catch(() => {
                 Swal.fire('Gagal', 'Terjadi kesalahan saat menghapus data.', 'error');
+            });
+
+        });
+    }
+
+    function hapusSemuaAlumni(){
+
+        Swal.fire({
+            title: 'Hapus semua data alumni?',
+            text: 'Semua data alumni akan dihapus permanen.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, hapus semua',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#dc2626'
+        }).then((result) => {
+
+            if(!result.isConfirmed){
+                return;
+            }
+
+            fetch('/hapus_semua_alumni', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then((res) => res.json().then((data) => ({
+                ok: res.ok,
+                data: data
+            })))
+            .then(({ ok, data }) => {
+
+                if(ok && data.status === 'success'){
+                    Swal.fire('Berhasil', data.message, 'success')
+                        .then(() => location.reload());
+                }else{
+                    Swal.fire('Gagal', data.message || 'Gagal menghapus semua data alumni.', 'error');
+                }
+
+            })
+            .catch(() => {
+                Swal.fire('Gagal', 'Terjadi kesalahan saat menghapus semua data alumni.', 'error');
             });
 
         });
